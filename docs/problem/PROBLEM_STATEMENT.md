@@ -1,9 +1,9 @@
-Problem: Manual expense tracking is tedious. Users struggle to categorize diverse spending habits
-into meaningful budgets.
-Users: Personal finance users and small business owners.
-Functionality: Users input natural language descriptions of spending; the system categorizes, saves,
-and visualizes the data.
-GenAI Integration: Extracts {amount, currency, category, merchant} from messy strings
-using NLP models.
-Scenarios: User types "Took the team out for Pizza in Munich, cost me 45 Euro." AI identifies
-Category: Food, Amount: 45, Currency: EUR.
+# ⚡ ExpenseFlow `by 99 Downtime`
+
+## Problem statement
+
+Individuals and small households often struggle to maintain a clear and consistent overview of their daily finances, because manualy tracking expenses is time consuming. Existing financial tools are frequently overly complex, requiring users to navigate multiple menus and manually input detailed metadata such as categories, merchants, and dates for every minor transaction. This "entry fatigue" leads to inconsistent logging, fragmented data, and an eventual loss of financial control, making it difficult for users to identify spending leaks or adhere to long-term budgeting goals.
+
+There is a need for a streamlined, unified application that allows users to record expenses effortlessly through natural language input. The system must automatically parse informal text—such as "Spent 12€ on a kebab for lunch" and extract structured information including the amount, merchant, and appropriate category (e.g., "Food & Dining"). To support long-term financial health, the app should offer robust budget management tools that track spending against user-defined limits and provide real-time status updates across different categories.
+
+The application will leverage a dedicated GenAI component to transform unstructured user input into actionable financial data and provide personalized, intelligent insights into spending behavior (e.g., “Your dining expenses are 15% higher than last month due to frequent weekend cafe visits”). This will allow users to make faster, more informed financial decisions without the burden of manual data entry. To ensure sustained financial awareness, the system should generate concise weekly AI summaries and trigger immediate notifications when a budget threshold is nearly reached or exceeded, improving financial discipline and long-term security.
