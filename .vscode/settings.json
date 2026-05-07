@@ -1,0 +1,5 @@
+{
+  "python-envs.defaultEnvManager": "ms-python.python:venv",
+  "python.analysis.extraPaths": ["./apps/ai-service"],
+  "python.defaultInterpreterPath": "apps/ai-service/.venv/bin/python"
+}
