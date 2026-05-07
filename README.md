@@ -32,6 +32,44 @@ Run `bunx nx graph` to visually explore what was created. Now, let's get you up 
 bun dev
 ```
 
+## Services
+
+### Spring Boot services (Java 21 + Gradle)
+
+| Service | Path | Port |
+|---|---|---|
+| transaction-service | [`apps/transaction-service/`](apps/transaction-service) | 8080 |
+| analysis-service | [`apps/analysis-service/`](apps/analysis-service) | 8081 |
+| budget-service | [`apps/budget-service/`](apps/budget-service) | 8082 |
+
+**Prerequisites:** JDK 21+
+
+Run via Nx (recommended, integrates with `bun dev`):
+
+```sh
+bunx nx serve transaction-service
+bunx nx serve analysis-service
+bunx nx serve budget-service
+```
+
+Or run Gradle directly:
+
+```sh
+cd apps/<service-name>
+./gradlew bootRun
+```
+
+Verify the health endpoint of each service:
+
+```sh
+curl http://localhost:8080/actuator/health   # transaction-service
+curl http://localhost:8081/actuator/health   # analysis-service
+curl http://localhost:8082/actuator/health   # budget-service
+# => {"status":"UP"}
+```
+
+Other Nx targets: `build`, `test` (e.g. `bunx nx build transaction-service`).
+
 ## Run tasks
 
 To run tasks with Nx use:
