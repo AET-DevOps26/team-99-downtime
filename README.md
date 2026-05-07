@@ -5,6 +5,20 @@
 > [!WARNING]
 > This project is still in development.
 
+## Problem Statement
+
+The full problem statement — target users, main functionality, GenAI integration, scenarios, and the preliminary microservice architecture — lives in [`docs/problem/PROBLEM_STATEMENT.md`](docs/problem/PROBLEM_STATEMENT.md).
+
+## Diagrams
+
+All architecture and design diagrams live under [`docs/architecture/`](docs/architecture/):
+
+- [`SERVICE_OVERVIEW.md`](docs/architecture/SERVICE_OVERVIEW.md) — high-level service topology (frontend, backend services, data layer).
+- [`UML_DIAGRAM.md`](docs/architecture/UML_DIAGRAM.md) — UML use case diagram (actors, system boundary, `<<include>>` / `<<extend>>` relationships).
+
+> [!NOTE]
+> Diagrams under `docs/` are written in [Mermaid](https://mermaid.js.org/). They render automatically on GitHub. To preview them locally in VS Code you might need to install an extension.
+
 ## Development Setup
 
 1. [Install bun](https://bun.com/docs/installation)
