@@ -14,7 +14,8 @@ flowchart LR
         UC3(["View dashboard"]):::userAction
         UC4(["Set budget limits"]):::userAction
         UC5(["See transaction history"]):::userAction
-        UC6(["Edit category"]):::userAction
+        UC6(["Manage transactions"]):::userAction
+        UC7(["Manage categories"]):::userAction
 
         %% --- AI / system (purple) ---
         UC9(["Auto-categorize<br/>transactions"]):::aiSystem
@@ -31,6 +32,7 @@ flowchart LR
     User --- UC4
     User --- UC5
     User --- UC6
+    User --- UC7
 
     %% ===== AI service associations =====
     UC9  --- AIService
