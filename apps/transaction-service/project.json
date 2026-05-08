@@ -1,0 +1,33 @@
+{
+  "name": "transaction-service",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/transaction-service/src",
+  "targets": {
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "./gradlew bootRun",
+        "cwd": "apps/transaction-service"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": ["{projectRoot}/build"],
+      "options": {
+        "command": "./gradlew build",
+        "cwd": "apps/transaction-service"
+      },
+      "cache": true
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "./gradlew test",
+        "cwd": "apps/transaction-service"
+      },
+      "cache": true
+    }
+  },
+  "tags": []
+}
