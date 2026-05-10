@@ -13,7 +13,7 @@ The full problem statement — target users, main functionality, GenAI integrati
 
 All architecture and design diagrams live under [`docs/architecture/`](docs/architecture/):
 
-- [`SERVICE_OVERVIEW.md`](docs/architecture/SERVICE_OVERVIEW.md) — high-level service topology (frontend, backend services, data layer).
+- [`SERVICE_OVERVIEW.md`](docs/architecture/SERVICE_OVERVIEW.md) — high-level service topology (frontend, backend services, data layer). **Also includes class diagrams.**
 - [`UML_DIAGRAM.md`](docs/architecture/UML_DIAGRAM.md) — UML use case diagram (actors, system boundary, `<<include>>` / `<<extend>>` relationships).
 
 > [!NOTE]
@@ -36,11 +36,11 @@ bun dev
 
 ### Spring Boot services (Java 21 + Gradle)
 
-| Service | Path | Port |
-|---|---|---|
+| Service             | Path                                                    | Port |
+| ------------------- | ------------------------------------------------------- | ---- |
 | transaction-service | [`apps/transaction-service/`](apps/transaction-service) | 8080 |
-| analysis-service | [`apps/analysis-service/`](apps/analysis-service) | 8081 |
-| budget-service | [`apps/budget-service/`](apps/budget-service) | 8082 |
+| analysis-service    | [`apps/analysis-service/`](apps/analysis-service)       | 8081 |
+| budget-service      | [`apps/budget-service/`](apps/budget-service)           | 8082 |
 
 **Prerequisites:** JDK 21+
 
