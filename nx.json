@@ -19,6 +19,10 @@
     "docker:build": {
       "dependsOn": ["build"],
       "cache": true
+    },
+    "test": {
+      "cache": true,
+      "outputs": ["{workspaceRoot}/reports/{projectRoot}"]
     }
   },
   "neverConnectToCloud": true,
