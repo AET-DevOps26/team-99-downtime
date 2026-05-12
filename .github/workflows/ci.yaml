@@ -20,21 +20,21 @@ jobs:
         with:
           fetch-depth: 0 # Required for Nx affected logic
 
-      - name: Derive appropriate SHAs for base and head for nx affected
-        uses: nrwl/nx-set-shas@v4
-
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
-      - name: Install Dependencies
-        run: bun install
-
       - name: Start Nx Agent Session
-        run: bun nx-cloud start-ci-run
+        run: bunx nx start-ci-run --distribute-on="3 polyglot-linux" --stop-agents-after="build"
         env:
           NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
+
+      - name: Derive appropriate SHAs for base and head for nx affected
+        uses: nrwl/nx-set-shas@v4
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
 
       # Run affected tests across React, Python, and Spring Boot (Offloaded to Nx Agents)
       - name: Run Tests
