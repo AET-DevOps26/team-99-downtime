@@ -13,6 +13,10 @@ jobs:
       contents: read
       # Required permissions for uploading to ghcr.io
       packages: write
+      # Required for publishing test results
+      issues: read
+      checks: write
+      pull-requests: write
 
     steps:
       - name: Checkout Repository
@@ -25,19 +29,25 @@ jobs:
         with:
           bun-version: latest
 
+      # install python uv
+      - name: Install uv with all available options
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+
       - name: Derive appropriate SHAs for base and head for nx affected
         uses: nrwl/nx-set-shas@v4
 
-      - name: Cache Nx
-        uses: actions/cache@v5
+      - name: Restore Nx Cache
+        uses: actions/cache/restore@v5
+        id: cache-restore
         with:
           path: .nx/cache
           # Key includes the OS and a hash of your lockfile.
           # We add the Run ID so it always creates a fresh entry for the next run.
-          key: nx-${{ runner.os }}-${{ hashFiles('bun.lockb', 'package.json') }}-${{ github.run_id }}
-          # Restore-keys allow it to find the MOST RECENT cache if an exact match isn't found.
+          key:
+            nx-${{ runner.os }}-${{ hashFiles('bun.lock') }}-${{ github.run_id }}
+            # Restore-keys allow it to find the MOST RECENT cache if an exact match isn't found.
           restore-keys: |
-            nx-${{ runner.os }}-${{ hashFiles('bun.lockb', 'package.json') }}-
+            nx-${{ runner.os }}-${{ hashFiles('bun.lock') }}-
             nx-${{ runner.os }}-
 
       - name: Install Dependencies
@@ -51,14 +61,14 @@ jobs:
       - name: Publish Test Results
         uses: EnricoMi/publish-unit-test-result-action@v2
         # Run even if tests failed to ensure results are published
-        if: always()
+        if: (!cancelled())
         with:
           files: |
             **/reports/**/*.xml
             **/target/surefire-reports/*.xml
             **/build/test-results/**/*.xml
-          check_name: "Unit Test Results"
-          comment_mode: "update" # Keeps a single sticky comment on the PR
+          check_name: "Test Results"
+          comment_mode: "changes"
 
       # Run affected builds (Offloaded to Nx Agents)
       # Agents compile the code and sync the resulting folders back
@@ -79,3 +89,11 @@ jobs:
         # Only push on success and merges to main
         if: success() && github.event_name == 'push'
         run: bun nx affected --target=docker:build  -- --push
+
+      # This step runs even if the steps above fails
+      - name: Save Nx Cache
+        uses: actions/cache/save@v5
+        if: always() && steps.cache-restore.outputs.cache-hit != 'true'
+        with:
+          path: .nx/cache
+          key: ${{ steps.cache-restore.outputs.cache-primary-key }}
