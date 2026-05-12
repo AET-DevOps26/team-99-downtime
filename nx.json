@@ -21,7 +21,7 @@
       "cache": true
     }
   },
-  "neverConnectToCloud": false,
+  "neverConnectToCloud": true,
   "plugins": [
     {
       "plugin": "@nx/vite/plugin",
