@@ -2,7 +2,10 @@
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "analytics": false,
   "namedInputs": {
-    "default": ["{projectRoot}/**/*", "sharedGlobals"],
+    "default": [
+      "{projectRoot}/**/*",
+      "sharedGlobals"
+    ],
     "production": [
       "default",
       "!{projectRoot}/**/?(*.)+(spec|test).[jt]s?(x)?(.snap)",
@@ -11,7 +14,7 @@
     ],
     "sharedGlobals": []
   },
-  "neverConnectToCloud": true,
+  "neverConnectToCloud": false,
   "plugins": [
     {
       "plugin": "@nx/vite/plugin",
@@ -58,5 +61,6 @@
         "linter": "none"
       }
     }
-  }
+  },
+  "nxCloudId": "6a02e23d040210ccb48a96f5"
 }
