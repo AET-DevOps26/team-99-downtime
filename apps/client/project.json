@@ -4,5 +4,11 @@
   "sourceRoot": "apps/client/src",
   "projectType": "application",
   "tags": [],
-  "targets": {}
+  "targets": {
+    "docker:run": {
+      "options": {
+        "args": ["-p", "8080:80", "--rm"]
+      }
+    }
+  }
 }
