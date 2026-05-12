@@ -99,8 +99,5 @@
         "linter": "none"
       }
     }
-  },
-  "remoteCache": {
-    "plugin": "@nx/remote-cache-shared-fs"
   }
 }
