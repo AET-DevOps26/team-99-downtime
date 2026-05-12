@@ -25,11 +25,10 @@ jobs:
         with:
           bun-version: latest
 
-      # - name: Start Nx Agent Session
-      #   run: bunx nx start-ci-run --distribute-on="3 polyglot-linux" --stop-agents-after="build"
-      #   env:
-      #     NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Start Nx Agent Session
+        run: bunx nx start-ci-run --no-distribute
+        env:
+          NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
 
       - name: Derive appropriate SHAs for base and head for nx affected
         uses: nrwl/nx-set-shas@v4
