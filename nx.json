@@ -101,9 +101,6 @@
     }
   },
   "remoteCache": {
-    "plugin": "@nx/remote-cache-shared-fs",
-    "options": {
-      "remoteDirectory": ".nx/shared-cache"
-    }
+    "plugin": "@nx/remote-cache-shared-fs"
   }
 }

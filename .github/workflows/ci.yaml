@@ -45,7 +45,7 @@ jobs:
         uses: actions/cache/restore@v5
         id: cache-restore
         with:
-          path: .nx/shared-cache
+          path: .nx/cache
           # Key includes the OS and a hash of your lockfile.
           # We add the Run ID so it always creates a fresh entry for the next run.
           key:
@@ -84,7 +84,7 @@ jobs:
         uses: actions/cache/save@v5
         if: always() && steps.cache-restore.outputs.cache-hit != 'true'
         with:
-          path: .nx/shared-cache
+          path: .nx/cache
           key: ${{ steps.cache-restore.outputs.cache-primary-key }}
 
       - name: Log in to GHCR
