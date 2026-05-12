@@ -19,6 +19,9 @@ jobs:
       checks: write
       pull-requests: write
 
+    env:
+      NX_KEY: ${{ secrets.NX_KEY }}
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v6
