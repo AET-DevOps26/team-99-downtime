@@ -28,6 +28,18 @@ jobs:
       - name: Derive appropriate SHAs for base and head for nx affected
         uses: nrwl/nx-set-shas@v4
 
+      - name: Cache Nx
+        uses: actions/cache@v5
+        with:
+          path: .nx/cache
+          # Key includes the OS and a hash of your lockfile.
+          # We add the Run ID so it always creates a fresh entry for the next run.
+          key: nx-${{ runner.os }}-${{ hashFiles('bun.lockb', 'package.json') }}-${{ github.run_id }}
+          # Restore-keys allow it to find the MOST RECENT cache if an exact match isn't found.
+          restore-keys: |
+            nx-${{ runner.os }}-${{ hashFiles('bun.lockb', 'package.json') }}-
+            nx-${{ runner.os }}-
+
       - name: Install Dependencies
         run: bun install --frozen-lockfile
 
