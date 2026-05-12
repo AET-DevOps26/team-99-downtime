@@ -8,6 +8,7 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    name: Build, Test, and Publish Containers
 
     permissions:
       contents: read
@@ -20,9 +21,10 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0 # Required for Nx affected logic
+          filter: tree:0 # Optional, but recommended by nx
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -30,11 +32,11 @@ jobs:
           bun-version: latest
 
       # install python uv
-      - name: Install uv with all available options
+      - name: Install uv (Python Package & Version Manager)
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
 
       - name: Derive appropriate SHAs for base and head for nx affected
-        uses: nrwl/nx-set-shas@v4
+        uses: nrwl/nx-set-shas@v5
 
       - name: Restore Nx Cache
         uses: actions/cache/restore@v5
@@ -53,7 +55,7 @@ jobs:
       - name: Install Dependencies
         run: bun install --frozen-lockfile
 
-      # Run affected tests across React, Python, and Spring Boot (Offloaded to Nx Agents)
+      # Run affected tests across React, Python, and Spring Boot
       - name: Run Tests
         run: bun nx affected --target=test --parallel=3
         continue-on-error: true
@@ -70,15 +72,22 @@ jobs:
           check_name: "Test Results"
           comment_mode: "changes"
 
-      # Run affected builds (Offloaded to Nx Agents)
-      # Agents compile the code and sync the resulting folders back
+      # Run affected builds
       - name: Run Build
         run: bun nx affected --target=build --parallel=3
+
+      # This step runs even if the steps above fails
+      - name: Save Nx Cache
+        uses: actions/cache/save@v5
+        if: always() && steps.cache-restore.outputs.cache-hit != 'true'
+        with:
+          path: .nx/cache
+          key: ${{ steps.cache-restore.outputs.cache-primary-key }}
 
       - name: Log in to GHCR
         # Only run on success and merges to main
         if: success() && github.event_name == 'push'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -89,11 +98,3 @@ jobs:
         # Only push on success and merges to main
         if: success() && github.event_name == 'push'
         run: bun nx affected --target=docker:build  -- --push
-
-      # This step runs even if the steps above fails
-      - name: Save Nx Cache
-        uses: actions/cache/save@v5
-        if: always() && steps.cache-restore.outputs.cache-hit != 'true'
-        with:
-          path: .nx/cache
-          key: ${{ steps.cache-restore.outputs.cache-primary-key }}
