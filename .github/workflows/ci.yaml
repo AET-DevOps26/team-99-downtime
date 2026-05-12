@@ -46,6 +46,19 @@ jobs:
       # Run affected tests across React, Python, and Spring Boot (Offloaded to Nx Agents)
       - name: Run Tests
         run: bun nx affected --target=test --parallel=3
+        continue-on-error: true
+
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        # Run even if tests failed to ensure results are published
+        if: always()
+        with:
+          files: |
+            **/reports/**/*.xml
+            **/target/surefire-reports/*.xml
+            **/build/test-results/**/*.xml
+          check_name: "Unit Test Results"
+          comment_mode: "update" # Keeps a single sticky comment on the PR
 
       # Run affected builds (Offloaded to Nx Agents)
       # Agents compile the code and sync the resulting folders back
