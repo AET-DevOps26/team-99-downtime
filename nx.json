@@ -12,7 +12,11 @@
     "sharedGlobals": []
   },
   "targetDefaults": {
-    "containerize": {
+    "build": {
+      "cache": true,
+      "outputs": ["{workspaceRoot}/dist/{projectRoot}"]
+    },
+    "docker:build": {
       "dependsOn": ["build"],
       "cache": true
     }
@@ -52,13 +56,25 @@
       "options": {
         "buildTarget": {
           "name": "docker:build",
+          "env": {
+            "DOCKER_BUILDKIT": "1"
+          },
+          "cwd": ".",
           "args": [
-            "-t",
+            "-f",
+            "{projectRoot}/Dockerfile",
+            "--tag",
             "ghcr.io/aet-devops26/team-99-downtime/{imageRef}:latest",
-            "-t",
+            "--tag",
             "ghcr.io/aet-devops26/team-99-downtime/{imageRef}:{shortCommitSha}",
             "--label",
-            "org.opencontainers.image.source=https://github.com/AET-DevOps26/team-99-downtime"
+            "org.opencontainers.image.title={projectName}",
+            "--label",
+            "org.opencontainers.image.source=https://github.com/AET-DevOps26/team-99-downtime",
+            "--label",
+            "org.opencontainers.image.revision={commitSha}",
+            "--label",
+            "org.opencontainers.image.created={currentDate}"
           ]
         },
         "runTarget": {
