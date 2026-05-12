@@ -14,6 +14,7 @@
     "@nx/docker": "22.7.1",
     "@nx/js": "22.7.1",
     "@nx/react": "22.7.1",
+    "@nx/shared-fs-cache": "^5.0.5",
     "@nx/vite": "22.7.1",
     "@nx/vitest": "22.7.1",
     "@nx/web": "22.7.1",

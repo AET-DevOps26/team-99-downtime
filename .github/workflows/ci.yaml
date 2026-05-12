@@ -42,15 +42,15 @@ jobs:
         uses: actions/cache/restore@v5
         id: cache-restore
         with:
-          path: .nx/cache
+          path: .nx/shared-cache
           # Key includes the OS and a hash of your lockfile.
           # We add the Run ID so it always creates a fresh entry for the next run.
           key:
-            nx-${{ runner.os }}-${{ hashFiles('bun.lock') }}-${{ github.run_id }}
+            nx-shared-${{ runner.os }}-${{ hashFiles('bun.lock') }}-${{ github.run_id }}
             # Restore-keys allow it to find the MOST RECENT cache if an exact match isn't found.
           restore-keys: |
-            nx-${{ runner.os }}-${{ hashFiles('bun.lock') }}-
-            nx-${{ runner.os }}-
+            nx-shared-${{ runner.os }}-${{ hashFiles('bun.lock') }}-
+            nx-shared-${{ runner.os }}-
 
       - name: Install Dependencies
         run: bun install --frozen-lockfile
@@ -81,7 +81,7 @@ jobs:
         uses: actions/cache/save@v5
         if: always() && steps.cache-restore.outputs.cache-hit != 'true'
         with:
-          path: .nx/cache
+          path: .nx/shared-cache
           key: ${{ steps.cache-restore.outputs.cache-primary-key }}
 
       - name: Log in to GHCR

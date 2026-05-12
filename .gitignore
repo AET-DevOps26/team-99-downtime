@@ -47,6 +47,7 @@ Thumbs.db
 
 .nx/cache
 .nx/workspace-data
+.nx/key
 .claude/worktrees
 .claude/settings.local.json
 

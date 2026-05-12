@@ -100,5 +100,11 @@
       }
     }
   },
-  "nxCloudId": "6a02e23d040210ccb48a96f5"
+  "nxCloudId": "none",
+  "remoteCache": {
+    "plugin": "@nx/remote-cache-shared-fs",
+    "options": {
+      "remoteDirectory": ".nx/shared-cache"
+    }
+  }
 }
