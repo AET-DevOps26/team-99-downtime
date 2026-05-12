@@ -25,11 +25,11 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Start Nx Agent Session
-        run: bunx nx start-ci-run --distribute-on="3 polyglot-linux" --stop-agents-after="build"
-        env:
-          NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # - name: Start Nx Agent Session
+      #   run: bunx nx start-ci-run --distribute-on="3 polyglot-linux" --stop-agents-after="build"
+      #   env:
+      #     NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Derive appropriate SHAs for base and head for nx affected
         uses: nrwl/nx-set-shas@v4
@@ -39,12 +39,12 @@ jobs:
 
       # Run affected tests across React, Python, and Spring Boot (Offloaded to Nx Agents)
       - name: Run Tests
-        run: bun nx affected --target=test --parallel=3
+        run: bun nx affected --target=test
 
       # Run affected builds (Offloaded to Nx Agents)
       # Agents compile the code and sync the resulting folders back
       - name: Run Build
-        run: bun nx affected --target=build --parallel=3
+        run: bun nx affected --target=build
 
       - name: Log in to GHCR
         # Only run on success and merges to main
@@ -59,4 +59,4 @@ jobs:
       - name: Build & Push Containers
         # Only push on success and merges to main
         if: success() && github.event_name == 'push'
-        run: bun nx affected --target=docker:build --parallel=3 -- --push
+        run: bun nx affected --target=docker:build  -- --push
