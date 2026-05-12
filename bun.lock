@@ -9,6 +9,7 @@
         "react-dom": "^19.0.0",
       },
       "devDependencies": {
+        "@nx/docker": "22.7.1",
         "@nx/js": "22.7.1",
         "@nx/react": "22.7.1",
         "@nx/vite": "22.7.1",
@@ -332,6 +333,8 @@
     "@napi-rs/wasm-runtime": ["@napi-rs/wasm-runtime@0.2.4", "", { "dependencies": { "@emnapi/core": "^1.1.0", "@emnapi/runtime": "^1.1.0", "@tybys/wasm-util": "^0.9.0" } }, "sha512-9zESzOO5aDByvhIAsOy9TbpZ0Ur2AJbUI7UT73kcUTS2mxAMHOBaa1st/jAymNoCtvrit99kkzT1FZuXVcgfIQ=="],
 
     "@nx/devkit": ["@nx/devkit@22.7.1", "", { "dependencies": { "@zkochan/js-yaml": "0.0.7", "ejs": "5.0.1", "enquirer": "~2.3.6", "minimatch": "10.2.4", "semver": "^7.6.3", "tslib": "^2.3.0", "yargs-parser": "21.1.1" }, "peerDependencies": { "nx": ">= 21 <= 23 || ^22.0.0-0" } }, "sha512-z2ayFHq406MyVpNtksGnsfHOYZVTSInwQgZeg6u+S4sD21Wvb+oldhqkbYX46jiGJSaw5aUjFdzXJu2l4MYP1A=="],
+
+    "@nx/docker": ["@nx/docker@22.7.1", "", { "dependencies": { "@nx/devkit": "22.7.1", "enquirer": "~2.3.6", "tslib": "^2.3.0" } }, "sha512-jTB9pczTG7gQsaWdycWw8azm8iZ4AkuFttjmIVK4gGtoRf8rzJadn+pID/DHAwKay/Kxb7w2RyfFDJcyNCtvsQ=="],
 
     "@nx/eslint": ["@nx/eslint@22.7.1", "", { "dependencies": { "@nx/devkit": "22.7.1", "@nx/js": "22.7.1", "semver": "^7.6.3", "tslib": "^2.3.0", "typescript": "~5.9.2" }, "peerDependencies": { "@nx/jest": "22.7.1", "@zkochan/js-yaml": "0.0.7", "eslint": "^8.0.0 || ^9.0.0 || ^10.0.0" }, "optionalPeers": ["@nx/jest", "@zkochan/js-yaml"] }, "sha512-wBx/U1NTZ4arbjFrI7bI0zd1FMSBpqIszzfJ0pXyqrHA3KxNLFTQI713XoSD2hxTNrbh4owFQD7SYG4WpNN3CA=="],
 

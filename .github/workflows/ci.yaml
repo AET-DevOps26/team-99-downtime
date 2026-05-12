@@ -50,4 +50,4 @@ jobs:
       - name: Build & Push Containers
         # Only push on success and merges to main
         if: success() && github.event_name == 'push'
-        run: bun nx affected --target=containerize --parallel=3
+        run: bun nx affected --target=docker:build --parallel=3 -- --push

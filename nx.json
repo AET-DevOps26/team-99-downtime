@@ -46,6 +46,25 @@
       "options": {
         "packageManager": "uv"
       }
+    },
+    {
+      "plugin": "@nx/docker",
+      "options": {
+        "buildTarget": {
+          "name": "docker:build",
+          "args": [
+            "-t",
+            "ghcr.io/aet-devops26/team-99-downtime/{imageRef}:latest",
+            "-t",
+            "ghcr.io/aet-devops26/team-99-downtime/{imageRef}:{shortCommitSha}",
+            "--label",
+            "org.opencontainers.image.source=https://github.com/AET-DevOps26/team-99-downtime"
+          ]
+        },
+        "runTarget": {
+          "name": "docker:run"
+        }
+      }
     }
   ],
   "generators": {
