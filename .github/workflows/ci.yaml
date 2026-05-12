@@ -1,0 +1,53 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      # Required permissions for uploading to ghcr.io
+      packages: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required for Nx affected logic
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install
+
+      # Run affected tests across React, Python, and Spring Boot (Offloaded to Nx Agents)
+      - name: Run Tests
+        run: bun nx affected --target=test --parallel=3
+
+      # Run affected builds (Offloaded to Nx Agents)
+      # Agents compile the code and sync the resulting folders back
+      - name: Run Build
+        run: bun nx affected --target=build --parallel=3
+
+      - name: Log in to GHCR
+        # Only run on success and merges to main
+        if: success() && github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Build and Push Containers (Runs on the local GitHub runner)
+      - name: Build & Push Containers
+        # Only push on success and merges to main
+        if: success() && github.event_name == 'push'
+        run: bun nx affected --target=containerize --parallel=3
