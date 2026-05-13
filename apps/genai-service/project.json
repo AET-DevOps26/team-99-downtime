@@ -28,9 +28,9 @@
     },
     "build": {
       "executor": "@nxlv/python:build",
-      "outputs": ["{projectRoot}/dist"],
+      "outputs": ["{workspaceRoot}/dist/{projectRoot}"],
       "options": {
-        "outputPath": "{projectRoot}/dist",
+        "outputPath": "{workspaceRoot}/dist/{projectRoot}",
         "publish": false,
         "lockedVersions": true,
         "bundleLocalDependencies": true
@@ -55,10 +55,7 @@
     },
     "test": {
       "executor": "@nxlv/python:run-commands",
-      "outputs": [
-        "{workspaceRoot}/reports/{projectRoot}/unittests",
-        "{workspaceRoot}/coverage/{projectRoot}"
-      ],
+      "outputs": ["{workspaceRoot}/reports/{projectRoot}"],
       "options": {
         "command": "uv run pytest tests/",
         "cwd": "{projectRoot}"
