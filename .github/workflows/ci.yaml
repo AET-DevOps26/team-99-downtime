@@ -98,6 +98,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set up Docker Buildx
+        # && github.event_name == 'push'
+        if: success()
+        uses: docker/setup-buildx-action@v3
+
       # Build and Push Containers (Runs on the local GitHub runner)
       - name: Build & Push Containers
         # Only push on success and merges to main
