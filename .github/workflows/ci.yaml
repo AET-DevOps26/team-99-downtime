@@ -14,6 +14,7 @@ jobs:
       contents: read
       # Required permissions for uploading to ghcr.io
       packages: write
+      id-token: write
       # Required for publishing test results
       issues: read
       checks: write
@@ -89,7 +90,8 @@ jobs:
 
       - name: Log in to GHCR
         # Only run on success and merges to main
-        if: success() && github.event_name == 'push'
+        #&& github.event_name == 'push'
+        if: success()
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
@@ -99,5 +101,6 @@ jobs:
       # Build and Push Containers (Runs on the local GitHub runner)
       - name: Build & Push Containers
         # Only push on success and merges to main
-        if: success() && github.event_name == 'push'
+        #&& github.event_name == 'push'
+        if: success()
         run: bun nx affected --target=docker:build  -- --push
