@@ -86,7 +86,7 @@ bunx nx build client      # production build → dist/apps/client
 bunx nx test client       # vitest
 ```
 
-**Path alias:** `@/*` → `apps/client/src/*` (defined in root `tsconfig.base.json`). Import shared utilities like `import { cn } from '@/lib/utils'`.
+**Path alias:** `@/*` → `apps/client/src/*` (scoped to this app; defined in [`apps/client/tsconfig.json`](apps/client/tsconfig.json) for TypeScript and in [`apps/client/vite.config.mts`](apps/client/vite.config.mts) `resolve.alias` for the bundler). Import shared utilities like `import { cn } from '@/lib/utils'`.
 
 **Adding shadcn components:**
 

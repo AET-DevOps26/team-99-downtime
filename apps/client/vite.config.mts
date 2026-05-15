@@ -1,4 +1,5 @@
 /// <reference types='vitest' />
+import * as path from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -8,6 +9,11 @@ import { nxCopyAssetsPlugin } from "@nx/vite/plugins/nx-copy-assets.plugin";
 export default defineConfig(() => ({
   root: import.meta.dirname,
   cacheDir: "../../node_modules/.vite/apps/client",
+  resolve: {
+    alias: {
+      "@": path.resolve(import.meta.dirname, "src"),
+    },
+  },
   server: {
     port: 4200,
     host: "localhost",
