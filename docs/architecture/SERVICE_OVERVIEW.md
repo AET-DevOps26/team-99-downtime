@@ -2,9 +2,16 @@
 
 ---
 
+## Use Case Diagram
+
+![Use Case Diagram](./UseCaseDiagram.png)
+
+---
+
 ## Component Diagram
 
 ![Component Diagram](./ComponentDiagram.png)
+
 ---
 
 ### 1. Auth Service
