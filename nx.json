@@ -111,7 +111,8 @@
   "release": {
     "releaseTag": {
       "preferDockerVersion": true,
-      "requireSemver": true
+      "requireSemver": true,
+      "checkAllBranchesWhen": ["main"]
     },
     "version": {
       "conventionalCommits": true
