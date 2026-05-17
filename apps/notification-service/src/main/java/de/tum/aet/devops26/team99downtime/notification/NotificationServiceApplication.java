@@ -1,12 +1,12 @@
-package de.tum.aet.devops26.team99downtime.budget;
+package de.tum.aet.devops26.team99downtime.notification;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class BudgetServiceApplication {
+public class NotificationServiceApplication {
 
   public static void main(String[] args) {
-    SpringApplication.run(BudgetServiceApplication.class, args);
+    SpringApplication.run(NotificationServiceApplication.class, args);
   }
 }

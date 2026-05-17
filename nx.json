@@ -2,31 +2,48 @@
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "analytics": false,
   "namedInputs": {
-    "default": ["{projectRoot}/**/*", "sharedGlobals"],
+    "default": [
+      "{projectRoot}/**/*",
+      "sharedGlobals"
+    ],
     "production": [
       "default",
       "!{projectRoot}/**/?(*.)+(spec|test).[jt]s?(x)?(.snap)",
       "!{projectRoot}/tsconfig.spec.json",
-      "!{projectRoot}/src/test-setup.[jt]s"
+      "!{projectRoot}/src/test-setup.[jt]s",
+      "!{projectRoot}/src/test/**/*"
     ],
     "sharedGlobals": []
   },
   "targetDefaults": {
     "build": {
       "cache": true,
-      "outputs": ["{workspaceRoot}/dist/{projectRoot}"]
+      "outputs": [
+        "{workspaceRoot}/dist/{projectRoot}"
+      ]
     },
     "docker:build": {
-      "dependsOn": ["build"],
+      "dependsOn": [
+        "build"
+      ],
       "cache": true
     },
     "test": {
       "cache": true,
-      "outputs": ["{workspaceRoot}/reports/{projectRoot}"]
+      "outputs": [
+        "{workspaceRoot}/reports/{projectRoot}"
+      ]
     }
   },
   "neverConnectToCloud": true,
   "plugins": [
+    {
+      "plugin": "@nx/gradle",
+      "options": {
+        "buildTargetName": "build",
+        "testTargetName": "test"
+      }
+    },
     {
       "plugin": "@nx/vite/plugin",
       "options": {
@@ -74,7 +91,7 @@
             "--label",
             "org.opencontainers.image.title={projectName}",
             "--label",
-            "org.opencontainers.image.source=https://github.com/AET-DevOps26/team-99-downtime",
+            "org.opencontainers.image.source=https://github.com/aet-devops26/team-99-downtime",
             "--label",
             "org.opencontainers.image.revision={commitSha}",
             "--label",
