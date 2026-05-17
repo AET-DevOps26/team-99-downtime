@@ -90,6 +90,10 @@
   "release": {
     "version": {
       "versionActions": "@nxlv/python/release/version-actions"
+    },
+
+    "docker": {
+      "repositoryName": "aet-devops26/team-99-downtime/t99-genai-service"
     }
   }
 }

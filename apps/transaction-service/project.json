@@ -22,9 +22,7 @@
       "continuous": true,
       "options": {
         "taskName": "bootRun",
-        "args": [
-          "--continuous"
-        ]
+        "args": ["--continuous"]
       }
     }
   },

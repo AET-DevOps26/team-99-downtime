@@ -1,8 +1,6 @@
 {
   "python-envs.defaultEnvManager": "ms-python.python:venv",
-  "python.analysis.extraPaths": [
-    "./apps/ai-service"
-  ],
+  "python.analysis.extraPaths": ["./apps/ai-service"],
   "python.defaultInterpreterPath": "apps/ai-service/.venv/bin/python",
   "java.configuration.updateBuildConfiguration": "automatic",
   "java.checkstyle.configuration": "${workspaceFolder}/config/checkstyle/checkstyle.xml",
