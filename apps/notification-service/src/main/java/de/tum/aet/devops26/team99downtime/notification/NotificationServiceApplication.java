@@ -1,12 +1,12 @@
-package de.tum.aet.devops26.team99downtime.transaction;
+package de.tum.aet.devops26.team99downtime.notification;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class TransactionServiceApplication {
+public class NotificationServiceApplication {
 
   public static void main(String[] args) {
-    SpringApplication.run(TransactionServiceApplication.class, args);
+    SpringApplication.run(NotificationServiceApplication.class, args);
   }
 }

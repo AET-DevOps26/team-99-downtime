@@ -5,28 +5,25 @@
   "sourceRoot": "apps/budget-service/src",
   "targets": {
     "serve": {
-      "executor": "nx:run-commands",
+      "metadata": {
+        "description": "Run the application"
+      },
+      "executor": "@nx/gradle:gradle",
+      "continuous": true,
       "options": {
-        "command": "./gradlew bootRun",
-        "cwd": "apps/budget-service"
+        "taskName": "bootRun"
       }
     },
-    "build": {
-      "executor": "nx:run-commands",
-      "outputs": ["{projectRoot}/build"],
-      "options": {
-        "command": "./gradlew build",
-        "cwd": "apps/budget-service"
+    "dev": {
+      "metadata": {
+        "description": "Run the application in development mode with continuous build"
       },
-      "cache": true
-    },
-    "test": {
-      "executor": "nx:run-commands",
+      "executor": "@nx/gradle:gradle",
+      "continuous": true,
       "options": {
-        "command": "./gradlew test",
-        "cwd": "apps/budget-service"
-      },
-      "cache": true
+        "taskName": "bootRun",
+        "args": ["--continuous"]
+      }
     }
   },
   "tags": [],

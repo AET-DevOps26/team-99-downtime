@@ -26,14 +26,8 @@ jobs:
           fetch-depth: 0 # Required for Nx affected logic
           filter: tree:0 # Optional, but recommended by nx
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      # install python uv
-      - name: Install uv (Python Package & Version Manager)
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+      - name: Setup Build Tools
+        uses: ./.github/actions/setup-build-tools
 
       - name: Derive appropriate SHAs for base and head for nx affected
         uses: nrwl/nx-set-shas@v5
@@ -51,9 +45,6 @@ jobs:
           restore-keys: |
             nx-shared-${{ runner.os }}-${{ hashFiles('bun.lock') }}-
             nx-shared-${{ runner.os }}-
-
-      - name: Install Dependencies
-        run: bun install --frozen-lockfile
 
       # Run affected tests across React, Python, and Spring Boot
       - name: Run Tests
