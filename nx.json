@@ -67,14 +67,10 @@
           "args": [
             "-f",
             "{projectRoot}/Dockerfile",
-            "--tag",
-            "ghcr.io/aet-devops26/team-99-downtime/{imageRef}:latest",
-            "--tag",
-            "ghcr.io/aet-devops26/team-99-downtime/{imageRef}:{shortCommitSha}",
             "--label",
             "org.opencontainers.image.title={projectName}",
             "--label",
-            "org.opencontainers.image.source=https://github.com/AET-DevOps26/team-99-downtime",
+            "org.opencontainers.image.source=https://github.com/aet-devops26/team-99-downtime",
             "--label",
             "org.opencontainers.image.revision={commitSha}",
             "--label",
@@ -102,6 +98,31 @@
         "style": "none",
         "linter": "none"
       }
+    }
+  },
+  "release": {
+    "releaseTag": {
+      "preferDockerVersion": true,
+      "requireSemver": true
+    },
+    "version": {
+      "conventionalCommits": true
+    },
+    "groups": {
+      "apps": {
+        "projects": ["*"],
+        "projectsRelationship": "independent"
+      }
+    },
+    "changelog": {
+      "projectChangelogs": {
+        "createRelease": "github",
+        "file": false
+      }
+    },
+    "docker": {
+      "registryUrl": "ghcr.io",
+      "skipVersionActions": true
     }
   }
 }

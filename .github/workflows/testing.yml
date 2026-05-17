@@ -1,9 +1,8 @@
-name: CI Pipeline
+name: Testing Pipeline
 
 on:
-  push:
-    branches: [main]
   pull_request:
+  merge_group:
 
 jobs:
   build-and-test:
@@ -12,8 +11,6 @@ jobs:
 
     permissions:
       contents: read
-      # Required permissions for uploading to ghcr.io
-      packages: write
       # Required for publishing test results
       issues: read
       checks: write
@@ -86,18 +83,3 @@ jobs:
         with:
           path: .nx/cache
           key: ${{ steps.cache-restore.outputs.cache-primary-key }}
-
-      - name: Log in to GHCR
-        # Only run on success and merges to main
-        if: success() && github.event_name == 'push'
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Build and Push Containers (Runs on the local GitHub runner)
-      - name: Build & Push Containers
-        # Only push on success and merges to main
-        if: success() && github.event_name == 'push'
-        run: bun nx affected --target=docker:build  -- --push
