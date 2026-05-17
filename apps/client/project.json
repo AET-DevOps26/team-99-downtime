@@ -4,6 +4,16 @@
   "sourceRoot": "apps/client/src",
   "projectType": "application",
   "tags": [],
-  "// targets": "to see all targets run: nx show project client --web",
-  "targets": {}
+  "targets": {
+    "docker:run": {
+      "options": {
+        "args": ["-p", "8080:80", "--rm"]
+      }
+    }
+  },
+  "release": {
+    "docker": {
+      "repositoryName": "aet-devops26/team-99-downtime/t99-client"
+    }
+  }
 }

@@ -7,12 +7,34 @@
       "default",
       "!{projectRoot}/**/?(*.)+(spec|test).[jt]s?(x)?(.snap)",
       "!{projectRoot}/tsconfig.spec.json",
-      "!{projectRoot}/src/test-setup.[jt]s"
+      "!{projectRoot}/src/test-setup.[jt]s",
+      "!{projectRoot}/src/test/**/*"
     ],
     "sharedGlobals": []
   },
+  "targetDefaults": {
+    "build": {
+      "cache": true,
+      "outputs": ["{workspaceRoot}/dist/{projectRoot}"]
+    },
+    "docker:build": {
+      "dependsOn": ["build"],
+      "cache": true
+    },
+    "test": {
+      "cache": true,
+      "outputs": ["{workspaceRoot}/reports/{projectRoot}"]
+    }
+  },
   "neverConnectToCloud": true,
   "plugins": [
+    {
+      "plugin": "@nx/gradle",
+      "options": {
+        "buildTargetName": "build",
+        "testTargetName": "test"
+      }
+    },
     {
       "plugin": "@nx/vite/plugin",
       "options": {
@@ -40,6 +62,33 @@
       "options": {
         "packageManager": "uv"
       }
+    },
+    {
+      "plugin": "@nx/docker",
+      "options": {
+        "buildTarget": {
+          "name": "docker:build",
+          "env": {
+            "DOCKER_BUILDKIT": "1"
+          },
+          "cwd": ".",
+          "args": [
+            "-f",
+            "{projectRoot}/Dockerfile",
+            "--label",
+            "org.opencontainers.image.title={projectName}",
+            "--label",
+            "org.opencontainers.image.source=https://github.com/aet-devops26/team-99-downtime",
+            "--label",
+            "org.opencontainers.image.revision={commitSha}",
+            "--label",
+            "org.opencontainers.image.created={currentDate}"
+          ]
+        },
+        "runTarget": {
+          "name": "docker:run"
+        }
+      }
     }
   ],
   "generators": {
@@ -57,6 +106,37 @@
         "style": "none",
         "linter": "none"
       }
+    }
+  },
+  "release": {
+    "releaseTag": {
+      "preferDockerVersion": true,
+      "requireSemver": true,
+      "checkAllBranchesWhen": ["main"]
+    },
+    "version": {
+      "conventionalCommits": true
+    },
+    "groups": {
+      "apps": {
+        "projects": ["*"],
+        "projectsRelationship": "independent"
+      }
+    },
+    "changelog": {
+      "projectChangelogs": {
+        "createRelease": "github",
+        "file": false
+      }
+    },
+    "docker": {
+      "registryUrl": "ghcr.io",
+      "skipVersionActions": true
+    },
+    "git": {
+      "commit": true,
+      "commitMessage": "chore(release): publish v{version} [skip ci]",
+      "tag": true
     }
   }
 }

@@ -27,11 +27,11 @@ bun dev
 
 ### Spring Boot services (Java 21 + Gradle)
 
-| Service             | Path                                                    | Port |
-| ------------------- | ------------------------------------------------------- | ---- |
-| transaction-service | [`apps/transaction-service/`](apps/transaction-service) | 8080 |
-| analysis-service    | [`apps/analysis-service/`](apps/analysis-service)       | 8081 |
-| budget-service      | [`apps/budget-service/`](apps/budget-service)           | 8082 |
+| Service              | Path                                                      | Port |
+| -------------------- | --------------------------------------------------------- | ---- |
+| transaction-service  | [`apps/transaction-service/`](apps/transaction-service)   | 8080 |
+| notification-service | [`apps/notification-service/`](apps/notification-service) | 8081 |
+| budget-service       | [`apps/budget-service/`](apps/budget-service)             | 8082 |
 
 **Prerequisites:** JDK 21+
 
@@ -39,7 +39,7 @@ Run via Nx (recommended, integrates with `bun dev`):
 
 ```sh
 bunx nx serve transaction-service
-bunx nx serve analysis-service
+bunx nx serve notification-service
 bunx nx serve budget-service
 ```
 
@@ -54,7 +54,7 @@ Verify the health endpoint of each service:
 
 ```sh
 curl http://localhost:8080/actuator/health   # transaction-service
-curl http://localhost:8081/actuator/health   # analysis-service
+curl http://localhost:8081/actuator/health   # notification-service
 curl http://localhost:8082/actuator/health   # budget-service
 # => {"status":"UP"}
 ```

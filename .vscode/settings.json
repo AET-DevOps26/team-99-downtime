@@ -1,5 +1,27 @@
 {
   "python-envs.defaultEnvManager": "ms-python.python:venv",
   "python.analysis.extraPaths": ["./apps/ai-service"],
-  "python.defaultInterpreterPath": "apps/ai-service/.venv/bin/python"
+  "python.defaultInterpreterPath": "apps/ai-service/.venv/bin/python",
+  "java.configuration.updateBuildConfiguration": "automatic",
+  "java.checkstyle.configuration": "${workspaceFolder}/config/checkstyle/checkstyle.xml",
+  "[java]": {
+    "spotlessGradle.format.enable": true,
+    "spotlessGradle.diagnostics.enable": true,
+    "editor.defaultFormatter": "richardwillis.vscode-spotless-gradle",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.spotlessGradle": "always"
+    }
+  },
+  "[gradle]": {
+    "spotlessGradle.format.enable": true,
+    "spotlessGradle.diagnostics.enable": true,
+    "editor.defaultFormatter": "richardwillis.vscode-spotless-gradle",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.spotlessGradle": "always"
+    }
+  },
+  "java.project.explorer.showNonJavaResources": false,
+  "java.compile.nullAnalysis.mode": "disabled"
 }

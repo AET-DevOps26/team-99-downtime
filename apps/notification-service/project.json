@@ -1,8 +1,8 @@
 {
-  "name": "transaction-service",
+  "name": "notification-service",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "projectType": "application",
-  "sourceRoot": "apps/transaction-service/src",
+  "sourceRoot": "apps/notification-service/src",
   "targets": {
     "serve": {
       "metadata": {
@@ -29,7 +29,7 @@
   "tags": [],
   "release": {
     "docker": {
-      "repositoryName": "aet-devops26/team-99-downtime/t99-transaction-service"
+      "repositoryName": "aet-devops26/team-99-downtime/t99-notification-service"
     }
   }
 }
