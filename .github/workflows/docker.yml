@@ -1,0 +1,84 @@
+name: Docker Build and Publish Pipeline
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    name: Docker Build & Publish Affected Containers
+
+    permissions:
+      # need write permissions for writing the tags
+      contents: write
+      # Required permissions for uploading to ghcr.io
+      packages: write
+      id-token: write
+
+    env:
+      NX_KEY: ${{ secrets.NX_KEY }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # Required for Nx affected logic
+          filter: tree:0 # Optional, but recommended by nx
+
+      - name: Setup Build Tools
+        uses: ./.github/actions/setup-build-tools
+
+      - name: Restore Nx Cache
+        uses: actions/cache/restore@v5
+        id: cache-restore
+        with:
+          path: .nx/cache
+          # Key includes the OS and a hash of your lockfile.
+          # We add the Run ID so it always creates a fresh entry for the next run.
+          key:
+            nx-shared-${{ runner.os }}-${{ hashFiles('bun.lock') }}-${{ github.run_id }}
+            # Restore-keys allow it to find the MOST RECENT cache if an exact match isn't found.
+          restore-keys: |
+            nx-shared-${{ runner.os }}-${{ hashFiles('bun.lock') }}-
+            nx-shared-${{ runner.os }}-
+
+      # Run affected builds
+      - name: Run Build
+        run: bun nx affected --target=build --parallel=3 --base=origin/main~1 --head=origin/main
+
+      # This step runs even if the steps above fails
+      - name: Save Nx Cache
+        uses: actions/cache/save@v5
+        if: always() && steps.cache-restore.outputs.cache-hit != 'true'
+        with:
+          path: .nx/cache
+          key: ${{ steps.cache-restore.outputs.cache-primary-key }}
+
+      # Login to GitHub Container Registry
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      # Build Containers
+      - name: Build Containers
+        run: bun nx affected --target=docker:build --base=origin/main~1 --head=origin/main
+
+      # Configure Git for pushing version tags (if needed)
+      - name: Configure git identity
+        shell: bash
+        run: >
+          git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com' &&
+          git config --global user.name 'github-actions[bot]'
+
+      # Tag Release & Publish Containers
+      - name: Tag Release & Publish Containers
+        run: bun nx release --dockerVersionScheme=production --yes --first-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

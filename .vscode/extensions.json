@@ -2,6 +2,8 @@
   "recommendations": [
     "ms-python.python",
     "AuxisLabs.python-uv-toolkit",
-    "charliermarsh.ruff"
+    "charliermarsh.ruff",
+    "richardwillis.vscode-spotless-gradle",
+    "shengchen.vscode-checkstyle"
   ]
 }
