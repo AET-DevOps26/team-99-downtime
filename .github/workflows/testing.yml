@@ -1,0 +1,78 @@
+name: Testing Pipeline
+
+on:
+  pull_request:
+  merge_group:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    name: Build, Test, and Publish Containers
+
+    permissions:
+      contents: read
+      # Required for publishing test results
+      issues: read
+      checks: write
+      pull-requests: write
+      # find last sucessful run
+      actions: read
+
+    env:
+      NX_KEY: ${{ secrets.NX_KEY }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # Required for Nx affected logic
+          filter: tree:0 # Optional, but recommended by nx
+
+      - name: Setup Build Tools
+        uses: ./.github/actions/setup-build-tools
+
+      - name: Derive appropriate SHAs for base and head for nx affected
+        uses: nrwl/nx-set-shas@v5
+
+      - name: Restore Nx Cache
+        uses: actions/cache/restore@v5
+        id: cache-restore
+        with:
+          path: .nx/cache
+          # Key includes the OS and a hash of your lockfile.
+          # We add the Run ID so it always creates a fresh entry for the next run.
+          key:
+            nx-shared-${{ runner.os }}-${{ hashFiles('bun.lock') }}-${{ github.run_id }}
+            # Restore-keys allow it to find the MOST RECENT cache if an exact match isn't found.
+          restore-keys: |
+            nx-shared-${{ runner.os }}-${{ hashFiles('bun.lock') }}-
+            nx-shared-${{ runner.os }}-
+
+      # Run affected tests across React, Python, and Spring Boot
+      - name: Run Tests
+        run: bun nx affected --target=test --parallel=3
+        continue-on-error: true
+
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        # Run even if tests failed to ensure results are published
+        if: (!cancelled())
+        with:
+          files: |
+            **/reports/**/*.xml
+            **/target/surefire-reports/*.xml
+            **/build/test-results/**/*.xml
+          check_name: "Test Results"
+          comment_mode: "changes"
+
+      # Run affected builds
+      - name: Run Build
+        run: bun nx affected --target=build --parallel=3
+
+      # This step runs even if the steps above fails
+      - name: Save Nx Cache
+        uses: actions/cache/save@v5
+        if: always() && steps.cache-restore.outputs.cache-hit != 'true'
+        with:
+          path: .nx/cache
+          key: ${{ steps.cache-restore.outputs.cache-primary-key }}
