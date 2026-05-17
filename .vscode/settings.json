@@ -24,5 +24,6 @@
       "source.fixAll.spotlessGradle": "always"
     }
   },
-  "java.compile.nullAnalysis.mode": "automatic"
+  "java.project.explorer.showNonJavaResources": false,
+  "java.compile.nullAnalysis.mode": "disabled"
 }

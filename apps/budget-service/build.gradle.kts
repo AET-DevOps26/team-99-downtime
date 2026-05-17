@@ -7,8 +7,8 @@ plugins {
 	id("dev.nx.gradle.project-graph") version "0.1.21"
 }
 
-val workspaceRoot = rootDir.parentFile.parentFile
-val projectRootRel = rootDir.toRelativeString(workspaceRoot)
+val workspaceRoot = rootDir
+val projectRootRel = projectDir.toRelativeString(rootDir)
 val distDir = workspaceRoot.resolve("dist").resolve(projectRootRel)
 
 group = "de.tum.aet.devops26.team99downtime"
@@ -37,6 +37,20 @@ dependencies {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+}
+
+tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
+    // Tell the worker to put the final jar straight into dist folder
+    destinationDirectory.set(distDir)
+    
+    // Standardize the name so Nx always knows the exact filename
+    archiveFileName.set("app.jar")
+}
+
+tasks.named("build") {
+    // This explicitly tells Gradle that the final output of the entire 'build' pipeline 
+    // lives in the distDir, helping tools like Nx track build artifacts accurately.
+    outputs.dir(distDir)
 }
 
 checkstyle {
