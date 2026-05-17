@@ -77,8 +77,8 @@ jobs:
           git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com' &&
           git config --global user.name 'github-actions[bot]'
 
-      # Publish Containers
-      - name: Tag Repository and Publish Containers
-        run: bun nx release --dockerVersionScheme=production --yes --first-release
+      # Tag Release & Publish Containers
+      - name: Tag Release & Publish Containers
+        run: bun nx release --dockerVersionScheme=production --first-release --yes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
