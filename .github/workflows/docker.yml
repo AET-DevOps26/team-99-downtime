@@ -79,6 +79,6 @@ jobs:
 
       # Tag Release & Publish Containers
       - name: Tag Release & Publish Containers
-        run: bun nx release --dockerVersionScheme=production --first-release --yes
+        run: bun nx release --dockerVersionScheme=production --yes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
