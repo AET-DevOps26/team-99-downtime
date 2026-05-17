@@ -5,7 +5,11 @@
     "allowSyntheticDefaultImports": true,
     "strict": true,
     "moduleResolution": "bundler",
-    "types": ["vite/client", "vitest"]
+    "types": ["vite/client", "vitest"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
   },
   "files": [],
   "include": [],
