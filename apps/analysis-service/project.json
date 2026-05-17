@@ -29,5 +29,10 @@
       "cache": true
     }
   },
-  "tags": []
+  "tags": [],
+  "release": {
+    "docker": {
+      "repositoryName": "aet-devops26/team-99-downtime/t99-analysis-service"
+    }
+  }
 }
