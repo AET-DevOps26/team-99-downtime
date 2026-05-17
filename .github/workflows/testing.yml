@@ -27,7 +27,7 @@ jobs:
           filter: tree:0 # Optional, but recommended by nx
 
       - name: Setup Build Tools
-        uses: ./.github/actions/setup-gradle-env
+        uses: ./.github/actions/setup-build-tools
 
       - name: Derive appropriate SHAs for base and head for nx affected
         uses: nrwl/nx-set-shas@v5

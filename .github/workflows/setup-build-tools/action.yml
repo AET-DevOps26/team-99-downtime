@@ -4,9 +4,6 @@ description: "Setup bun, python, python uv, Java, and Gradle for reusable workfl
 runs:
   using: "composite"
   steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
     - name: Set up JDK
       uses: actions/setup-java@v4
       with:
