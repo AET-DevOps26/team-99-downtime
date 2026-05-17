@@ -10,7 +10,8 @@ jobs:
     name: Docker Build & Publish Affected Containers
 
     permissions:
-      contents: read
+      # need write permissions for writing the tags
+      contents: write
       # Required permissions for uploading to ghcr.io
       packages: write
       id-token: write
@@ -72,6 +73,15 @@ jobs:
       - name: Build Containers
         run: bun nx affected --target=docker:build
 
+      # Configure Git for pushing version tags (if needed)
+      - name: Configure git identity
+        shell: bash
+        run: >
+          git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com' &&
+          git config --global user.name 'github-actions[bot]'
+
       # Publish Containers
       - name: Publish Containers
         run: bun nx release --dockerVersionScheme=production --first-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

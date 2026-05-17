@@ -2,10 +2,7 @@
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "analytics": false,
   "namedInputs": {
-    "default": [
-      "{projectRoot}/**/*",
-      "sharedGlobals"
-    ],
+    "default": ["{projectRoot}/**/*", "sharedGlobals"],
     "production": [
       "default",
       "!{projectRoot}/**/?(*.)+(spec|test).[jt]s?(x)?(.snap)",
@@ -18,21 +15,15 @@
   "targetDefaults": {
     "build": {
       "cache": true,
-      "outputs": [
-        "{workspaceRoot}/dist/{projectRoot}"
-      ]
+      "outputs": ["{workspaceRoot}/dist/{projectRoot}"]
     },
     "docker:build": {
-      "dependsOn": [
-        "build"
-      ],
+      "dependsOn": ["build"],
       "cache": true
     },
     "test": {
       "cache": true,
-      "outputs": [
-        "{workspaceRoot}/reports/{projectRoot}"
-      ]
+      "outputs": ["{workspaceRoot}/reports/{projectRoot}"]
     }
   },
   "neverConnectToCloud": true,
@@ -140,6 +131,11 @@
     "docker": {
       "registryUrl": "ghcr.io",
       "skipVersionActions": true
+    },
+    "git": {
+      "commit": true,
+      "commitMessage": "chore(release): publish v{version} [skip ci]",
+      "tag": true
     }
   }
 }
