@@ -29,9 +29,6 @@ jobs:
       - name: Setup Build Tools
         uses: ./.github/actions/setup-build-tools
 
-      - name: Derive appropriate SHAs for base and head for nx affected
-        uses: nrwl/nx-set-shas@v5
-
       - name: Restore Nx Cache
         uses: actions/cache/restore@v5
         id: cache-restore
@@ -48,7 +45,7 @@ jobs:
 
       # Run affected builds
       - name: Run Build
-        run: bun nx affected --target=build --parallel=3
+        run: bun nx affected --target=build --parallel=3 --base=origin/main~1 --head=origin/main
 
       # This step runs even if the steps above fails
       - name: Save Nx Cache
@@ -67,11 +64,11 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       # Build Containers
       - name: Build Containers
-        run: bun nx affected --target=docker:build
+        run: bun nx affected --target=docker:build --base=origin/main~1 --head=origin/main
 
       # Configure Git for pushing version tags (if needed)
       - name: Configure git identity
@@ -80,8 +77,8 @@ jobs:
           git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com' &&
           git config --global user.name 'github-actions[bot]'
 
-      # Publish Containers
-      - name: Publish Containers
-        run: bun nx release --dockerVersionScheme=production --first-release
+      # Tag Release & Publish Containers
+      - name: Tag Release & Publish Containers
+        run: bun nx release --dockerVersionScheme=production --yes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
