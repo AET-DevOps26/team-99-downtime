@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1.7
-
 #dev
 FROM oven/bun:1-alpine AS dev
 RUN apk add --no-cache openjdk21-jre-headless

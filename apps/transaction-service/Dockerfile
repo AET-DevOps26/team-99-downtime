@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1.7
-
 # dev
 FROM eclipse-temurin:21-jdk-alpine AS dev
 WORKDIR /workspace
