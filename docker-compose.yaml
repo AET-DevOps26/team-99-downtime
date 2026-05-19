@@ -1,39 +1,43 @@
-name: team-99-downtime-dev
+name: team-99-downtime
 
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: team99-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-devuser}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-devpass}
-      POSTGRES_DB: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Runs only on a fresh volume, re-run with `docker compose down -v` to re-bootstrap.
       - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-devuser} -d ${POSTGRES_DB:-postgres}"]
       interval: 5s
       timeout: 5s
       retries: 10
+    networks: [team99]
 
   pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: team99-pgadmin
+    image: dpage/pgadmin4:8.12
     restart: unless-stopped
     environment:
-      PGADMIN_DEFAULT_EMAIL: dev@team99.dev
-      PGADMIN_DEFAULT_PASSWORD: devpass
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-dev@team99.dev}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-devpass}
       PGADMIN_CONFIG_SERVER_MODE: "False"
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
     ports:
-      - "5050:80"
+      - "${PGADMIN_PORT:-5050}:80"
     depends_on:
       postgres:
         condition: service_healthy
+    networks: [team99]
 
 volumes:
   postgres_data:
+
+networks:
+  team99:
