@@ -45,6 +45,11 @@ testem.log
 .DS_Store
 Thumbs.db
 
+# Local env files (do not commit secrets)
+.env
+.env.*
+!.env.example
+
 .nx/cache
 .nx/workspace-data
 .nx/key
