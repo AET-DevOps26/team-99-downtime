@@ -11,12 +11,8 @@ jobs:
 
     permissions:
       contents: read
-      # Required for publishing test results
-      issues: read
-      checks: write
-      pull-requests: write
-      # find last sucessful run
-      actions: read
+      actions: read # Required for nrwl/nx-set-shas
+      checks: write # Required for dorny/test-reporter
 
     env:
       NX_KEY: ${{ secrets.NX_KEY }}
@@ -43,7 +39,7 @@ jobs:
           # We add the Run ID so it always creates a fresh entry for the next run.
           key:
             nx-shared-${{ runner.os }}-${{ hashFiles('bun.lock') }}-${{ github.run_id }}
-            # Restore-keys allow it to find the MOST RECENT cache if an exact match isn't found.
+          # Restore-keys allow it to find the MOST RECENT cache if an exact match isn't found.
           restore-keys: |
             nx-shared-${{ runner.os }}-${{ hashFiles('bun.lock') }}-
             nx-shared-${{ runner.os }}-
@@ -51,25 +47,39 @@ jobs:
       # Run affected tests across React, Python, and Spring Boot
       - name: Run Tests
         run: bun nx affected --target=test --parallel=3
-        continue-on-error: true
 
-      - name: Publish Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v2
-        # Run even if tests failed to ensure results are published
+      # Upload raw XML for debugging even if publishing fails
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
         if: (!cancelled())
         with:
-          files: |
-            **/reports/**/*.xml
-            **/target/surefire-reports/*.xml
-            **/build/test-results/**/*.xml
-          check_name: "Test Results"
-          comment_mode: "changes"
+          name: test-results
+          path: |
+            reports/**/*.xml
+            apps/**/build/test-results/**/*.xml
+          retention-days: 7
+          if-no-files-found: ignore
+
+      # Creates a GitHub Check Run with per-suite pass/fail counts
+      - name: Publish Test Results
+        uses: dorny/test-reporter@v3
+        if: (!cancelled())
+        with:
+          name: Test Results
+          use-actions-summary: true
+          path: |
+            reports/**/*.xml
+            apps/**/build/test-results/**/*.xml
+          reporter: java-junit
+          # Don't fail here — the Run Tests step already gates the job
+          fail-on-error: false
+          fail-on-empty: false
 
       # Run affected builds
       - name: Run Build
         run: bun nx affected --target=build --parallel=3
 
-      # This step runs even if the steps above fails
+      # This step runs even if the steps above fail
       - name: Save Nx Cache
         uses: actions/cache/save@v5
         if: always() && steps.cache-restore.outputs.cache-hit != 'true'
