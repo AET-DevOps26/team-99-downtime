@@ -29,6 +29,9 @@ jobs:
       - name: Setup Build Tools
         uses: ./.github/actions/setup-build-tools
 
+      - name: Derive appropriate SHAs for base and head for nx affected
+        uses: nrwl/nx-set-shas@v5
+
       - name: Restore Nx Cache
         uses: actions/cache/restore@v5
         id: cache-restore
@@ -43,18 +46,6 @@ jobs:
             nx-shared-${{ runner.os }}-${{ hashFiles('bun.lock') }}-
             nx-shared-${{ runner.os }}-
 
-      # Run affected builds
-      - name: Run Build
-        run: bun nx affected --target=build --parallel=3 --base=origin/main~1 --head=origin/main
-
-      # This step runs even if the steps above fails
-      - name: Save Nx Cache
-        uses: actions/cache/save@v5
-        if: always() && steps.cache-restore.outputs.cache-hit != 'true'
-        with:
-          path: .nx/cache
-          key: ${{ steps.cache-restore.outputs.cache-primary-key }}
-
       # Login to GitHub Container Registry
       - name: Log in to GHCR
         uses: docker/login-action@v4
@@ -66,19 +57,35 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      # Build Containers
-      - name: Build Containers
-        run: bun nx affected --target=docker:build --base=origin/main~1 --head=origin/main
-
-      # Configure Git for pushing version tags (if needed)
+      # Configure Git for pushing version tags
       - name: Configure git identity
         shell: bash
         run: >
           git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com' &&
           git config --global user.name 'github-actions[bot]'
 
-      # Tag Release & Publish Containers
+      # Version, build, tag, and publish affected containers in one step
       - name: Tag Release & Publish Containers
         run: bun nx release --dockerVersionScheme=production --yes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Re-tag each released image with :latest and push
+      # nx release writes the versioned image ref to tmp/{projectRoot}/.docker-version
+      - name: Push Latest Tags
+        shell: bash
+        run: |
+          for vfile in $(find tmp -name ".docker-version" 2>/dev/null); do
+            image=$(cat "$vfile")
+            base="${image%:*}"
+            docker tag "$image" "$base:latest"
+            docker push "$base:latest"
+          done
+
+      # This step runs even if the steps above fail
+      - name: Save Nx Cache
+        uses: actions/cache/save@v5
+        if: always() && steps.cache-restore.outputs.cache-hit != 'true'
+        with:
+          path: .nx/cache
+          key: ${{ steps.cache-restore.outputs.cache-primary-key }}
