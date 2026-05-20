@@ -8,12 +8,66 @@
 ## Docs
 
 - [Problem Statement](docs/problem/PROBLEM_STATEMENT.md)
-- [Service Overview](docs/architecture/SERVICE_OVERVIEW.md) — UML / component / service diagrams + API calls diagrams
+- [Service Overview](docs/architecture/SERVICE_OVERVIEW.md) - UML / component / service diagrams + API calls diagrams
 
 ## Development Setup
 
-1. [Install bun](https://bun.com/docs/installation)
-1. Install dependencies `bun install` — this also sets up the Git hooks via Husky automatically
+There are two approaches to running the stack locally. Pick whichever fits your machine.
+
+### Approach 1 - Docker
+
+Runs the full stack (Postgres, pgAdmin, all 5 services) in containers with hot reload. Only requires Docker installed.
+
+```sh
+docker compose up -d --build   # first run, or after a Dockerfile change
+docker compose up -d           # any other time
+```
+
+Configure credentials and ports via `.env` (see `.env.example`).
+
+### Approach 2 - Bun + Nx (native)
+
+Runs the apps natively on your host via Nx; only Postgres + pgAdmin in Docker. Faster startup and lighter on resources, but needs the toolchains installed (JDK 21, bun, uv for Python).
+
+```sh
+# Infra only
+docker compose up -d postgres pgadmin
+
+# Install deps (also sets up Git hooks via Husky) and launch all apps in parallel
+bun install
+bun dev
+```
+
+Run `bunx nx graph` to visually explore the workspace.
+
+### Endpoints (either approach)
+
+| Service              | URL                   |
+| -------------------- | --------------------- |
+| client               | http://localhost:4200 |
+| transaction-service  | http://localhost:8080 |
+| notification-service | http://localhost:8081 |
+| budget-service       | http://localhost:8082 |
+| genai-service        | http://localhost:8000 |
+| pgAdmin              | http://localhost:5050 |
+| Postgres             | localhost:5432        |
+
+### pgAdmin
+
+Web UI for Postgres, included in the compose stack for browsing schemas and running ad-hoc queries. Open http://localhost:5050 and log in:
+
+- **Email:** `dev@team99.dev`
+- **Password:** `devpass`
+
+First time only, register the Postgres server: right-click **Servers** -> **Register** -> **Server...**
+
+- **Name:** anything (e.g. `team99`)
+- **Connection** tab:
+  - Host: `postgres`
+  - Port: `5432`
+  - Maintenance database: `postgres`
+  - Username: `devuser`
+  - Password: `devpass`
 
 ## Git Hooks
 
@@ -42,12 +96,6 @@ fix(budget-service): correct category limit calculation
 chore: update dependencies
 ```
 
-## Launch applications
-
-```sh
-bun dev
-```
-
 ## Services
 
 ### Spring Boot services (Java 21 + Gradle)
@@ -60,19 +108,10 @@ bun dev
 
 **Prerequisites:** JDK 21+
 
-Run via Nx (recommended, integrates with `bun dev`):
+To run an individual service (instead of `bun dev`):
 
 ```sh
-bunx nx serve transaction-service
-bunx nx serve notification-service
-bunx nx serve budget-service
-```
-
-Or run Gradle directly:
-
-```sh
-cd apps/<service-name>
-./gradlew bootRun
+bunx nx serve <service-name>     # or: cd apps/<service-name> && ./gradlew bootRun
 ```
 
 Verify the health endpoint of each service:
@@ -94,11 +133,8 @@ Other Nx targets: `build`, `test` (e.g. `bunx nx build transaction-service`).
 
 **Stack:** React 19, Vite 8, Tailwind CSS v4 (via `@tailwindcss/vite`), shadcn/ui (new-york style, neutral base).
 
-Run:
-
 ```sh
-bunx nx serve client      # dev server at http://localhost:4200
-bunx nx build client      # production build → dist/apps/client
+bunx nx build client      # production build -> dist/apps/client
 bunx nx test client       # vitest
 ```
 
@@ -113,43 +149,4 @@ bunx shadcn@latest add <component>      # e.g. card, input, dialog
 
 Components land in `src/components/ui/`. Configuration lives in [`apps/client/components.json`](apps/client/components.json).
 
-**Theming:** Tailwind v4 uses CSS-first config — design tokens (colors, radius, dark mode) are in [`apps/client/src/styles.css`](apps/client/src/styles.css). Add a `.dark` class to `<html>` to toggle dark mode. No `tailwind.config.js`.
-
-## Run tasks
-
-To run tasks with Nx use:
-
-```sh
-bunx nx <target> <project-name>
-```
-
-For example:
-
-```sh
-bunx nx build client
-```
-
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
-
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Add new projects
-
-While you could add new projects to your workspace manually, you might want to leverage [Nx plugins](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) and their [code generation](https://nx.dev/features/generate-code?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) feature.
-
-To install a new plugin you can use the `nx add` command. Here's an example of adding the React plugin:
-
-```sh
-bunx nx add @nx/react
-```
-
-Use the plugin's generator to create new projects. For example, to create a new React library:
-
-```sh
-# Generate a library
-bunx nx g @nx/react:lib some-lib
-```
-
-You can use `bunx nx list` to get a list of installed plugins. Then, run `bunx nx list <plugin-name>` to learn about more specific capabilities of a particular plugin. Alternatively, [install Nx Console](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) to browse plugins and generators in your IDE.
-
-[Learn more about Nx plugins &raquo;](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) | [Browse the plugin registry &raquo;](https://nx.dev/plugin-registry?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+**Theming:** Tailwind v4 uses CSS-first config - design tokens (colors, radius, dark mode) are in [`apps/client/src/styles.css`](apps/client/src/styles.css). Add a `.dark` class to `<html>` to toggle dark mode. No `tailwind.config.js`.

@@ -1,0 +1,137 @@
+name: team-99-downtime
+
+x-java-dev: &java-dev
+  restart: unless-stopped
+  depends_on:
+    postgres:
+      condition: service_healthy
+  networks: [team99]
+  environment:
+    SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-devuser}
+    SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-devpass}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-devuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-devpass}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Runs only on a fresh volume, re-run with `docker compose down -v` to re-bootstrap.
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-devuser} -d ${POSTGRES_DB:-postgres}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [team99]
+
+  pgadmin:
+    image: dpage/pgadmin4:8.12
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-dev@team99.dev}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-devpass}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    ports:
+      - '${PGADMIN_PORT:-5050}:80'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [team99]
+
+  transaction-service:
+    <<: *java-dev
+    build:
+      context: .
+      dockerfile: apps/transaction-service/Dockerfile
+      target: dev
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/transaction_db
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-devuser}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-devpass}
+    ports:
+      - '8080:8080'
+    volumes:
+      - .:/workspace
+      # Per-service Gradle home: a shared volume causes lock contention on
+      # /root/.gradle/caches/journal-1.lock.
+      - gradle_cache_transaction:/root/.gradle
+      # Per-service project cache: masks /workspace/.gradle from the host bind
+      # mount so all 3 services don't fight over fileHashes.lock.
+      # (--project-cache-dir would work too, but it's incompatible with --continuous.)
+      - gradle_project_transaction:/workspace/.gradle
+
+  notification-service:
+    <<: *java-dev
+    build:
+      context: .
+      dockerfile: apps/notification-service/Dockerfile
+      target: dev
+    ports:
+      - '8081:8081'
+    volumes:
+      - .:/workspace
+      - gradle_cache_notification:/root/.gradle
+      - gradle_project_notification:/workspace/.gradle
+
+  budget-service:
+    <<: *java-dev
+    build:
+      context: .
+      dockerfile: apps/budget-service/Dockerfile
+      target: dev
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/budget_db
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-devuser}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-devpass}
+    ports:
+      - '8082:8082'
+    volumes:
+      - .:/workspace
+      - gradle_cache_budget:/root/.gradle
+      - gradle_project_budget:/workspace/.gradle
+
+  genai-service:
+    build:
+      context: .
+      dockerfile: apps/genai-service/Dockerfile
+      target: dev
+    restart: unless-stopped
+    ports:
+      - '8000:8000'
+    volumes:
+      - ./apps/genai-service/src:/workspace/apps/genai-service/src
+    networks: [team99]
+
+  client:
+    build:
+      context: .
+      dockerfile: apps/client/Dockerfile
+      target: dev
+    restart: unless-stopped
+    ports:
+      - '4200:4200'
+    volumes:
+      - .:/workspace
+      - client_node_modules:/workspace/node_modules
+    networks: [team99]
+
+volumes:
+  postgres_data:
+  gradle_cache_transaction:
+  gradle_cache_notification:
+  gradle_cache_budget:
+  gradle_project_transaction:
+  gradle_project_notification:
+  gradle_project_budget:
+  client_node_modules:
+
+networks:
+  team99:
