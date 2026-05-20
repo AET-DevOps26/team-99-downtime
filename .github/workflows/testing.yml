@@ -51,7 +51,6 @@ jobs:
       # Run affected tests across React, Python, and Spring Boot
       - name: Run Tests
         run: bun nx affected --target=test --parallel=3
-        continue-on-error: true
 
       - name: Publish Test Results
         uses: EnricoMi/publish-unit-test-result-action@v2
@@ -62,8 +61,8 @@ jobs:
             **/reports/**/*.xml
             **/target/surefire-reports/*.xml
             **/build/test-results/**/*.xml
-          check_name: "Test Results"
-          comment_mode: "changes"
+          check_name: 'Test Results'
+          comment_mode: 'changes'
 
       # Run affected builds
       - name: Run Build
