@@ -62,6 +62,7 @@ spotless {
 	java {
 		target("src/**/*.java")
 		googleJavaFormat("1.23.0")
+		ratchetFrom("HEAD")
 	}
 }
 

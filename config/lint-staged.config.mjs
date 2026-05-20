@@ -10,9 +10,12 @@ export default {
     ];
   },
 
-  // Spotless and Checkstyle operate on the full source tree — ignore the file list
-  '*.java': () => [
-    './gradlew :apps:budget-service:spotlessApply :apps:transaction-service:spotlessApply :apps:notification-service:spotlessApply --continue',
-    './gradlew :apps:budget-service:checkstyleMain :apps:transaction-service:checkstyleMain :apps:notification-service:checkstyleMain --continue',
-  ],
+  '*.java': (files) => {
+    const services = ['budget-service', 'transaction-service', 'notification-service'];
+    const affected = services.filter((s) => files.some((f) => f.includes(`/apps/${s}/`)));
+    if (affected.length === 0) return [];
+    const spotless = affected.map((s) => `:apps:${s}:spotlessApply`).join(' ');
+    const checkstyle = affected.map((s) => `:apps:${s}:checkstyleMain`).join(' ');
+    return [`./gradlew ${spotless} --continue`, `./gradlew ${checkstyle} --continue`];
+  },
 };
