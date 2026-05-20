@@ -13,9 +13,34 @@
 ## Development Setup
 
 1. [Install bun](https://bun.com/docs/installation)
-1. Install dependecies `bun install`
+1. Install dependencies `bun install` — this also sets up the Git hooks via Husky automatically
 
-Run `bunx nx graph` to visually explore what was created. Now, let's get you up to speed!
+## Git Hooks
+
+This project uses [Husky](https://typicode.github.io/husky/) to enforce code quality on every commit.
+
+**pre-commit** — runs [lint-staged](https://github.com/lint-staged/lint-staged) on staged files:
+
+| File type                                   | Tool                                       |
+| ------------------------------------------- | ------------------------------------------ |
+| `*.ts`, `*.tsx`                             | ESLint + Prettier                          |
+| `*.js`, `*.json`, `*.md`, `*.yaml`, `*.yml` | Prettier                                   |
+| `*.py`                                      | Ruff (format + lint)                       |
+| `*.java`                                    | Spotless (Google Java Format) + Checkstyle |
+
+**commit-msg** — enforces [Conventional Commits](https://www.conventionalcommits.org/) via commitlint.
+
+Commit message format: `<type>(<scope>): <subject>`
+
+Common types: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `ci`
+
+Examples:
+
+```
+feat(client): add expense list view
+fix(budget-service): correct category limit calculation
+chore: update dependencies
+```
 
 ## Launch applications
 
@@ -63,8 +88,8 @@ Other Nx targets: `build`, `test` (e.g. `bunx nx build transaction-service`).
 
 ### Client (React + Vite + Tailwind v4 + shadcn/ui)
 
-| App | Path | Port |
-|---|---|---|
+| App    | Path                          | Port |
+| ------ | ----------------------------- | ---- |
 | client | [`apps/client/`](apps/client) | 4200 |
 
 **Stack:** React 19, Vite 8, Tailwind CSS v4 (via `@tailwindcss/vite`), shadcn/ui (new-york style, neutral base).
