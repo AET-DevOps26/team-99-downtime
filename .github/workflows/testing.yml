@@ -60,11 +60,6 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
-      # Temporary: list all XML files so we can verify exact paths for dorny
-      - name: List Test Result Files
-        if: (!cancelled())
-        run: find . -name "*.xml" -not -path "*/node_modules/*" -not -path "*/.nx/*"
-
       # Creates a GitHub Check Run with per-suite pass/fail counts
       - name: Publish Test Results
         uses: dorny/test-reporter@v3
@@ -72,9 +67,8 @@ jobs:
         with:
           name: Test Results
           use-actions-summary: true
-          path: |
-            reports/apps/*/junit.xml
-            apps/*/build/test-results/test/*.xml
+          # junit.xml = vitest + pytest; TEST-*.xml = Gradle (always this naming)
+          path: "**/junit.xml,**/TEST-*.xml"
           reporter: java-junit
           # Don't fail here — the Run Tests step already gates the job
           fail-on-error: false
