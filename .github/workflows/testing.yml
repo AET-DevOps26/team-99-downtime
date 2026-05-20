@@ -60,6 +60,11 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+      # Temporary: list all XML files so we can verify exact paths for dorny
+      - name: List Test Result Files
+        if: (!cancelled())
+        run: find . -name "*.xml" -not -path "*/node_modules/*" -not -path "*/.nx/*"
+
       # Creates a GitHub Check Run with per-suite pass/fail counts
       - name: Publish Test Results
         uses: dorny/test-reporter@v3
