@@ -1,0 +1,3 @@
+set -e
+bunx lint-staged --config config/lint-staged.config.mjs
+bunx nx affected -t test --base=HEAD --parallel=3
