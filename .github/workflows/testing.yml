@@ -68,8 +68,8 @@ jobs:
           name: Test Results
           use-actions-summary: true
           path: |
-            reports/**/*.xml
-            apps/**/build/test-results/**/*.xml
+            reports/apps/*/junit.xml
+            apps/*/build/test-results/test/*.xml
           reporter: java-junit
           # Don't fail here — the Run Tests step already gates the job
           fail-on-error: false
