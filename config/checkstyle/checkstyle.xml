@@ -15,10 +15,39 @@
   </module>
 
   <module name="TreeWalker">
+
+    <!-- Imports -->
     <module name="AvoidStarImport"/>
     <module name="UnusedImports"/>
 
+    <!-- Naming conventions -->
+    <module name="PackageName">
+      <property name="format" value="^[a-z]+(\.[a-z][a-z0-9]*)*$"/>
+    </module>
+    <module name="TypeName"/>
+    <module name="MethodName"/>
+    <module name="ConstantName"/>
+    <module name="LocalVariableName"/>
+    <module name="MemberName"/>
+    <module name="ParameterName"/>
+
+    <!-- Structural -->
     <module name="OneStatementPerLine"/>
     <module name="MultipleVariableDeclarations"/>
+
+    <!-- Empty constructs -->
+    <module name="EmptyStatement"/>
+    <module name="EmptyBlock">
+      <property name="option" value="text"/>
+    </module>
+    <module name="EmptyCatchBlock">
+      <property name="exceptionVariableName" value="expected|ignored"/>
+    </module>
+
+    <!-- Correctness -->
+    <module name="EqualsHashCode"/>
+    <module name="MissingSwitchDefault"/>
+    <module name="FallThrough"/>
+
   </module>
 </module>
