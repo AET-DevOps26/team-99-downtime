@@ -1,0 +1,2 @@
+set -e
+bunx lint-staged --config config/lint-staged.config.mjs

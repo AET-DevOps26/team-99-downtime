@@ -1,0 +1,7 @@
+node_modules
+dist
+build
+apps/*/build
+bun.lock
+*.java
+*.py
