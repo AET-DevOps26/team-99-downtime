@@ -37,8 +37,7 @@ jobs:
           path: .nx/cache
           # Key includes the OS and a hash of your lockfile.
           # We add the Run ID so it always creates a fresh entry for the next run.
-          key:
-            nx-shared-${{ runner.os }}-${{ hashFiles('bun.lock') }}-${{ github.run_id }}
+          key: nx-shared-${{ runner.os }}-${{ hashFiles('bun.lock') }}-${{ github.run_id }}
           # Restore-keys allow it to find the MOST RECENT cache if an exact match isn't found.
           restore-keys: |
             nx-shared-${{ runner.os }}-${{ hashFiles('bun.lock') }}-
@@ -50,7 +49,7 @@ jobs:
 
       # Upload raw XML for debugging even if publishing fails
       - name: Upload Test Results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: (!cancelled())
         with:
           name: test-results
@@ -68,7 +67,7 @@ jobs:
           name: Test Results
           use-actions-summary: true
           # junit.xml = vitest + pytest; TEST-*.xml = Gradle (always this naming)
-          path: "**/junit.xml,**/TEST-*.xml"
+          path: 'apps/**/build/test-results/**/TEST-*.xml,reports/apps/*/junit.xml'
           reporter: java-junit
           # Don't fail here — the Run Tests step already gates the job
           fail-on-error: false
