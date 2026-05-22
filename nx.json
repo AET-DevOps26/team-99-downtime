@@ -120,7 +120,7 @@
     "groups": {
       "apps": {
         "projects": ["*"],
-        "projectsRelationship": "independent"
+        "projectsRelationship": "fixed"
       }
     },
     "changelog": {

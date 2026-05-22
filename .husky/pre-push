@@ -1,2 +1,2 @@
 set -e
-bunx nx affected -t test --base=origin/main --parallel=3
+bunx nx affected -t test --base=origin/main --parallel=3 --outputStyle=static
