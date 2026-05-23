@@ -124,7 +124,7 @@
       }
     },
     "changelog": {
-      "projectChangelogs": {
+      "workspaceChangelog": {
         "createRelease": "github",
         "file": false
       }
