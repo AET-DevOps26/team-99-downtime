@@ -132,7 +132,7 @@
     },
     "docker": {
       "versionSchemes": {
-        "production": "v{versionActionsVersion}"
+        "production": "{versionActionsVersion}"
       }
     },
     "git": {
