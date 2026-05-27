@@ -110,8 +110,8 @@
   },
   "release": {
     "releaseTag": {
-      "preferDockerVersion": true,
       "requireSemver": true,
+      "pattern": "v{version}",
       "checkAllBranchesWhen": ["main"]
     },
     "version": {
@@ -120,7 +120,8 @@
     "groups": {
       "apps": {
         "projects": ["*"],
-        "projectsRelationship": "fixed"
+        "projectsRelationship": "fixed",
+        "docker": { "registryUrl": "ghcr.io" }
       }
     },
     "changelog": {
@@ -130,8 +131,9 @@
       }
     },
     "docker": {
-      "registryUrl": "ghcr.io",
-      "skipVersionActions": true
+      "versionSchemes": {
+        "production": "{versionActionsVersion}"
+      }
     },
     "git": {
       "commit": true,

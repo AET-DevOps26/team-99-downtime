@@ -8,7 +8,7 @@ export default tseslint.config(
     files: ['apps/client/**/*.{ts,tsx}'],
     languageOptions: {
       parserOptions: {
-        project: './apps/client/tsconfig.json',
+        projectService: './apps/client/tsconfig.json',
         tsconfigRootDir: import.meta.dirname,
       },
     },
