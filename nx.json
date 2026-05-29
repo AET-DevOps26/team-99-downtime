@@ -136,7 +136,7 @@
       }
     },
     "git": {
-      "commit": true,
+      "commit": false,
       "commitMessage": "chore(release): publish v{version} [skip ci]",
       "tag": true
     }
