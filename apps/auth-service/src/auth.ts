@@ -7,7 +7,6 @@ import { Pool } from 'pg';
  *
  * `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` are read from the environment, so
  * neither the signing secret nor the base URL lives in source control.
- * See docs/guides/auth-service-step1.md for the full setup.
  */
 export const auth = betterAuth({
   database: new Pool({

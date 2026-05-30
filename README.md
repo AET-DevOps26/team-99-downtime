@@ -45,6 +45,7 @@ Run `bunx nx graph` to visually explore the workspace.
 | Service              | URL                   |
 | -------------------- | --------------------- |
 | client               | http://localhost:4200 |
+| auth-service         | http://localhost:3000 |
 | transaction-service  | http://localhost:8080 |
 | notification-service | http://localhost:8081 |
 | budget-service       | http://localhost:8082 |
@@ -150,3 +151,24 @@ bunx shadcn@latest add <component>      # e.g. card, input, dialog
 Components land in `src/components/ui/`. Configuration lives in [`apps/client/components.json`](apps/client/components.json).
 
 **Theming:** Tailwind v4 uses CSS-first config - design tokens (colors, radius, dark mode) are in [`apps/client/src/styles.css`](apps/client/src/styles.css). Add a `.dark` class to `<html>` to toggle dark mode. No `tailwind.config.js`.
+
+### Auth service (Bun + Better Auth)
+
+| App          | Path                                      | Port |
+| ------------ | ----------------------------------------- | ---- |
+| auth-service | [`apps/auth-service/`](apps/auth-service) | 3000 |
+
+**Stack:** [Better Auth](https://better-auth.com/) on the Bun runtime, backed by its own `auth_db` Postgres database. Handles email+password and Google OAuth sign-in, and issues JWTs (via the `jwt()` plugin) that the Spring services validate against the JWKS endpoint — see [`docs/architecture/SERVICE_OVERVIEW.md`](docs/architecture/SERVICE_OVERVIEW.md) §1.
+
+```sh
+bunx nx serve auth-service   # bun --watch, http://localhost:3000
+bunx nx test auth-service    # bun test
+```
+
+**Config:** set `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, and `GOOGLE_CLIENT_SECRET` in `.env` (see `.env.example`). First-time setup needs the schema migrated into `auth_db`:
+
+```sh
+cd apps/auth-service && bunx @better-auth/cli@latest migrate --config src/auth.ts -y
+```
+
+Key endpoints (under `/api/auth`): `GET /ok` (health), `GET /jwks`, `GET /token`, `POST /sign-up/email`, `POST /sign-in/email`, `GET /sign-in/social?provider=google`.

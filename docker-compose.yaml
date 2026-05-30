@@ -46,6 +46,31 @@ services:
         condition: service_healthy
     networks: [team99]
 
+  auth-service:
+    build:
+      context: .
+      dockerfile: apps/auth-service/Dockerfile
+      target: dev
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-devuser}:${POSTGRES_PASSWORD:-devpass}@postgres:5432/auth_db
+      # Browser-facing base URL: OAuth redirects and cookies use this. The Spring
+      # services fetch JWKS server-to-server at http://auth-service:3000 separately.
+      BETTER_AUTH_URL: http://localhost:3000
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      PORT: '3000'
+    ports:
+      - '3000:3000'
+    volumes:
+      - .:/workspace
+      - auth_service_node_modules:/workspace/node_modules
+    networks: [team99]
+
   transaction-service:
     <<: *java-dev
     build:
@@ -132,6 +157,7 @@ volumes:
   gradle_project_notification:
   gradle_project_budget:
   client_node_modules:
+  auth_service_node_modules:
 
 networks:
   team99:
