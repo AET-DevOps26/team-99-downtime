@@ -57,9 +57,11 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-devuser}:${POSTGRES_PASSWORD:-devpass}@postgres:5432/auth_db
-      # Browser-facing base URL: OAuth redirects and cookies use this. The Spring
-      # services fetch JWKS server-to-server at http://auth-service:3000 separately.
-      BETTER_AUTH_URL: http://localhost:3000
+      # Browser-facing base URL — this is where the user's browser reaches the app
+      # (the client on :4200, which proxies /api/auth to this service). OAuth
+      # redirects and cookies must use this origin, NOT the internal :3000.
+      # The Spring services fetch JWKS server-to-server at http://auth-service:3000.
+      BETTER_AUTH_URL: http://localhost:4200
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
@@ -141,6 +143,14 @@ services:
       dockerfile: apps/client/Dockerfile
       target: dev
     restart: unless-stopped
+    environment:
+      # Vite dev-proxy target for /api/auth. Inside the compose network the
+      # auth-service is reachable by its service name, not localhost (which would
+      # resolve to the client container itself). Native `nx serve` omits this and
+      # falls back to http://localhost:3000.
+      VITE_AUTH_URL: http://auth-service:3000
+    depends_on:
+      - auth-service
     ports:
       - '4200:4200'
     volumes:

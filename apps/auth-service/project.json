@@ -6,13 +6,13 @@
   "targets": {
     "serve": {
       "metadata": {
-        "description": "Run the auth-service (loads apps/auth-service/.env via Bun)"
+        "description": "Run the auth-service (loads the root .env via Bun)"
       },
       "continuous": true,
       "options": {
         "cwd": "apps/auth-service"
       },
-      "command": "bun --watch run src/server.ts"
+      "command": "bun --env-file=../../.env --watch run src/server.ts"
     },
     "test": {
       "metadata": {
