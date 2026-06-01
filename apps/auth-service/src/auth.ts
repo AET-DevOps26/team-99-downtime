@@ -37,6 +37,16 @@ export const auth = betterAuth({
   },
 
   // Mints JWTs (GET /api/auth/token) and exposes JWKS (GET /api/auth/jwks) so
-  // the Spring services can validate tokens without touching the database.
-  plugins: [jwt()],
+  // the Spring/Python microservices can validate tokens without touching the
+  // database. RS256 is used (instead of the EdDSA default) because it is
+  // verified natively by Spring Security and Python (PyJWT) with no extra
+  // crypto providers. Changing this requires clearing the `jwks` table so the
+  // key regenerates under the new algorithm.
+  plugins: [
+    jwt({
+      jwks: {
+        keyPairConfig: { alg: 'RS256', modulusLength: 2048 },
+      },
+    }),
+  ],
 });
