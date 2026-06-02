@@ -126,6 +126,8 @@ curl http://localhost:8082/actuator/health   # budget-service
 
 Other Nx targets: `build`, `test` (e.g. `bunx nx build transaction-service`).
 
+**Authentication:** all endpoints except `/actuator/health` require a Bearer JWT from the auth-service (`401` otherwise). See the auth-service section for how to get a token.
+
 ### Client (React + Vite + Tailwind v4 + shadcn/ui)
 
 | App    | Path                          | Port |
@@ -139,7 +141,7 @@ bunx nx build client      # production build -> dist/apps/client
 bunx nx test client       # vitest
 ```
 
-**Path alias:** `@/*` → `apps/client/src/*` (scoped to this app; defined in [`apps/client/tsconfig.json`](apps/client/tsconfig.json) for TypeScript and in [`apps/client/vite.config.mts`](apps/client/vite.config.mts) `resolve.alias` for the bundler). Import shared utilities like `import { cn } from '@/lib/utils'`.
+**Path alias:** `@/*` → `apps/client/src/*` (scoped to this app; defined in [`apps/client/tsconfig.json`](apps/client/tsconfig.json) for TypeScript and in [`apps/client/vite.config.mts`](apps/client/vite.config.mts) `resolve.alias` for the bundler). Import shared utilities like `import { cn } from '@/shared/lib/utils'`.
 
 **Adding shadcn components:**
 
@@ -148,7 +150,7 @@ cd apps/client
 bunx shadcn@latest add <component>      # e.g. card, input, dialog
 ```
 
-Components land in `src/components/ui/`. Configuration lives in [`apps/client/components.json`](apps/client/components.json).
+Components land in `src/shared/ui/`. Configuration lives in [`apps/client/components.json`](apps/client/components.json). See [`apps/client/ARCHITECTURE.md`](apps/client/ARCHITECTURE.md) for the feature-first structure.
 
 **Theming:** Tailwind v4 uses CSS-first config - design tokens (colors, radius, dark mode) are in [`apps/client/src/styles.css`](apps/client/src/styles.css). Add a `.dark` class to `<html>` to toggle dark mode. No `tailwind.config.js`.
 
