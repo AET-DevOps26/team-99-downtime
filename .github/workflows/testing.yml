@@ -2,6 +2,7 @@ name: Testing Pipeline
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, edited]
   merge_group:
 
 jobs:
@@ -35,6 +36,7 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     name: Build, Test, and Publish Containers
+    if: github.event.action != 'edited'
 
     permissions:
       contents: read
