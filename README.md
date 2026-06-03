@@ -1,6 +1,6 @@
 # ⚡ ExpenseFlow `v1.0` `by 99 Downtime`
 
-![GitHub commit activity](https://img.shields.io/github/commit-activity/w/AET-DevOps26/team-99-downtime?style=for-the-badge) ![GitHub branch check runs](https://img.shields.io/github/check-runs/AET-DevOps26/team-99-downtime/main?style=for-the-badge) ![Swagger Validator](https://img.shields.io/swagger/valid/3.0?specUrl=https%3A%2F%2Fraw.githubusercontent.com%2FOAI%2FOpenAPI-Specification%2Fc442afe06ec28443df0c69d01dc38c54968b246f%2Fexamples%2Fv2.0%2Fjson%2Fpetstore-expanded.json&style=for-the-badge)
+![GitHub commit activity](https://img.shields.io/github/commit-activity/w/AET-DevOps26/team-99-downtime?style=for-the-badge) ![GitHub branch check runs](https://img.shields.io/github/check-runs/AET-DevOps26/team-99-downtime/main?style=for-the-badge)
 
 > [!WARNING]
 > This project is still in development.
@@ -9,6 +9,7 @@
 
 - [Problem Statement](docs/problem/PROBLEM_STATEMENT.md)
 - [Service Overview](docs/architecture/SERVICE_OVERVIEW.md) - UML / component / service diagrams + API calls diagrams
+- [Developing with Auth](docs/development/AUTHENTICATION.md) - get a token, call secured endpoints, secure new ones
 
 ## Development Setup
 
@@ -16,14 +17,21 @@ There are two approaches to running the stack locally. Pick whichever fits your 
 
 ### Approach 1 - Docker
 
-Runs the full stack (Postgres, pgAdmin, all 5 services) in containers with hot reload. Only requires Docker installed.
+Runs the full stack (Postgres, pgAdmin, the Caddy gateway, and all app services) in containers with hot reload. Only requires Docker installed.
+
+First, create `.env` from the example and fill in the secrets — without them the auth-service won't start:
+
+```sh
+cp .env.example .env
+# set BETTER_AUTH_SECRET (openssl rand -base64 32) and the Google OAuth creds
+```
 
 ```sh
 docker compose up -d --build   # first run, or after a Dockerfile change
 docker compose up -d           # any other time
 ```
 
-Configure credentials and ports via `.env` (see `.env.example`).
+Then open **http://localhost:9099** (the gateway). On a fresh `auth_db` the `auth-migrate` container applies the schema automatically before auth-service starts.
 
 ### Approach 2 - Bun + Nx (native)
 
@@ -40,18 +48,29 @@ bun dev
 
 Run `bunx nx graph` to visually explore the workspace.
 
-### Endpoints (either approach)
+> Note: auth goes through the Caddy gateway (Approach 1). Native `nx serve` alone (no gateway) is fine for building/iterating, but the end-to-end auth flow needs the Docker stack.
 
-| Service              | URL                   |
-| -------------------- | --------------------- |
-| client               | http://localhost:4200 |
-| auth-service         | http://localhost:3000 |
-| transaction-service  | http://localhost:8080 |
-| notification-service | http://localhost:8081 |
-| budget-service       | http://localhost:8082 |
-| genai-service        | http://localhost:8000 |
-| pgAdmin              | http://localhost:5050 |
-| Postgres             | localhost:5432        |
+### Endpoints
+
+Use the app at **http://localhost:9099** — the Caddy gateway. It routes everything
+behind one origin (see [`Caddyfile`](Caddyfile)):
+
+| Path (via gateway) | Goes to              |
+| ------------------ | -------------------- |
+| `/`                | client (React)       |
+| `/api/auth/*`      | auth-service         |
+| `/transactions/*`  | transaction-service  |
+| `/budgets/*`       | budget-service       |
+| `/notifications/*` | notification-service |
+| `/genai/*`         | genai-service        |
+
+Each service's own port is still published for debugging (`auth` 3000,
+`transaction` 8080, `notification` 8081, `budget` 8082, `genai` 8000),
+plus pgAdmin (5050) and Postgres (5432).
+
+### Verify it works
+
+Open **http://localhost:9099** and sign up. Every backend service requires a Bearer JWT (`401` otherwise) and exposes `GET /api/me` as a probe. For the terminal smoke test (get a token, call a protected route) and the full auth workflow, see [Developing with Auth](docs/development/AUTHENTICATION.md).
 
 ### pgAdmin
 
@@ -126,7 +145,7 @@ curl http://localhost:8082/actuator/health   # budget-service
 
 Other Nx targets: `build`, `test` (e.g. `bunx nx build transaction-service`).
 
-**Authentication:** all endpoints except `/actuator/health` require a Bearer JWT from the auth-service (`401` otherwise). See the auth-service section for how to get a token.
+**Authentication:** all endpoints except `/actuator/health` require a Bearer JWT (`401` otherwise). See [Verify it works](#verify-it-works) for a quick token+probe, or [Developing with Auth](docs/development/AUTHENTICATION.md) for the full dev guide (getting tokens, the gateway path quirk, securing new endpoints).
 
 ### Client (React + Vite + Tailwind v4 + shadcn/ui)
 
@@ -160,17 +179,30 @@ Components land in `src/shared/ui/`. Configuration lives in [`apps/client/compon
 | ------------ | ----------------------------------------- | ---- |
 | auth-service | [`apps/auth-service/`](apps/auth-service) | 3000 |
 
-**Stack:** [Better Auth](https://better-auth.com/) on the Bun runtime, backed by its own `auth_db` Postgres database. Handles email+password and Google OAuth sign-in, and issues JWTs (via the `jwt()` plugin) that the Spring services validate against the JWKS endpoint — see [`docs/architecture/SERVICE_OVERVIEW.md`](docs/architecture/SERVICE_OVERVIEW.md) §1.
+**Stack:** [Better Auth](https://better-auth.com/) on the Bun runtime, backed by its own `auth_db` Postgres database. Handles email+password and Google OAuth sign-in, and issues JWTs (via the `jwt()` plugin) that the backend services (Spring + genai) validate against the JWKS endpoint — see [`docs/architecture/SERVICE_OVERVIEW.md`](docs/architecture/SERVICE_OVERVIEW.md) §1.
 
 ```sh
 bunx nx serve auth-service   # bun --watch, http://localhost:3000
 bunx nx test auth-service    # bun test
 ```
 
-**Config:** set `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, and `GOOGLE_CLIENT_SECRET` in `.env` (see `.env.example`). First-time setup needs the schema migrated into `auth_db`:
+**Config:** set `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, and `GOOGLE_CLIENT_SECRET` in `.env` (see `.env.example`). `BETTER_AUTH_URL` is the browser-facing gateway origin (`http://localhost:9099`).
 
-```sh
-cd apps/auth-service && bunx @better-auth/cli@latest migrate --config src/auth.ts -y
-```
+**Schema migration is automatic:** the `auth-migrate` container runs once on `docker compose up`, applies the Better Auth schema to `auth_db`, and exits; `auth-service` waits for it. No manual step. (Maps to a Kubernetes Job / initContainer in production.)
 
 Key endpoints (under `/api/auth`): `GET /ok` (health), `GET /jwks`, `GET /token`, `POST /sign-up/email`, `POST /sign-in/email`, `GET /sign-in/social?provider=google`.
+
+### GenAI service (Python + FastAPI)
+
+| App           | Path                                        | Port |
+| ------------- | ------------------------------------------- | ---- |
+| genai-service | [`apps/genai-service/`](apps/genai-service) | 8000 |
+
+**Stack:** FastAPI on Python (managed with [uv](https://docs.astral.sh/uv/)), served by uvicorn. Handles transaction categorization and summaries via LLM pipelines (currently a mock structured response).
+
+```sh
+bunx nx serve genai-service   # uvicorn --reload, http://localhost:8000
+bunx nx test genai-service    # uv run pytest
+```
+
+**Endpoints:** `POST /analyze` and `GET /api/me` require a Bearer JWT; `GET /health` is public (container probe). Like the Spring services, it validates RS256 tokens against the auth-service JWKS and checks the issuer — see [Developing with Auth](docs/development/AUTHENTICATION.md).

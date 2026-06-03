@@ -7,7 +7,11 @@ Change the shape? Update this file in the same commit. Keep it true.
 
 ```
 src/
-  app/         app start. router, route guards, providers. wiring only. NO feature code.
+  main.tsx     entry point. mounts <App/> into the DOM. nothing else.
+  app/         app wiring. router + providers. NO feature code.
+    app.tsx      RouterProvider + global Toaster.
+    router.tsx   route table.
+    guards/      route guards (GuestRoute, ProtectedRoute).
   pages/       one file per route. thin. calls a hook, gives data to ui.
   features/<name>/        one folder = one feature. everything for it lives here.
     api/        talk to server. plain functions. no React.
@@ -19,6 +23,7 @@ src/
     ui/         shadcn + generic parts (button, card, wordmark)
     lib/        utils, auth-client singleton
     layout/     app frame (Sidebar, Header, AppLayout)
+    hooks/      cross-feature hooks (none yet; placeholder)
 ```
 
 `features/auth/` is the real example. Copy its shape for new features.
