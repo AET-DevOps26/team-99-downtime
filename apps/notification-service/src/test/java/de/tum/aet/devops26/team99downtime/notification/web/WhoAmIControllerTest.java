@@ -23,7 +23,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @TestPropertySource(
     properties = {
       "spring.security.oauth2.resourceserver.jwt.jwk-set-uri=http://auth-service:3000/api/auth/jwks",
-      "auth.issuer=http://localhost:4200"
+      "auth.issuer=http://localhost:9099"
     })
 class WhoAmIControllerTest {
 
@@ -46,7 +46,7 @@ class WhoAmIControllerTest {
                                 builder
                                     .subject("user-123")
                                     .claim("email", "user@team99.dev")
-                                    .issuer("http://localhost:4200"))))
+                                    .issuer("http://localhost:9099"))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.userId").value("user-123"))
         .andExpect(jsonPath("$.email").value("user@team99.dev"));

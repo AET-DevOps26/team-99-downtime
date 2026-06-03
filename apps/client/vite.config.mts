@@ -17,15 +17,6 @@ export default defineConfig(() => ({
   server: {
     port: 4200,
     host: "localhost",
-    proxy: {
-      // Same-origin gateway for the auth-service: the browser calls
-      // /api/auth/* on :4200 and Vite forwards to the auth-service, avoiding
-      // cross-origin (CORS) issues with credentialed requests in dev.
-      "/api/auth": {
-        target: process.env.VITE_AUTH_URL ?? "http://localhost:3000",
-        changeOrigin: true,
-      },
-    },
   },
   preview: {
     port: 4200,

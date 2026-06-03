@@ -11,6 +11,20 @@ x-java-dev: &java-dev
     SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-devpass}
 
 services:
+  # Single-origin dev gateway : browser hits http://localhost:9099,
+  # Caddy routes by path to each service. Config in ./Caddyfile.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '9099:80'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - client
+      - auth-service
+    networks: [team99]
+
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -46,6 +60,31 @@ services:
         condition: service_healthy
     networks: [team99]
 
+  # Run-once migration job: applies the Better Auth schema to auth_db, then
+  # exits. auth-service waits for this to finish (service_completed_successfully)
+  # so no manual migrate step is needed. Mirrors a Kubernetes Job / initContainer
+  # for the production deployment (#64) — migration is separate from serving and
+  # runs once regardless of how many auth-service replicas exist.
+  auth-migrate:
+    build:
+      context: .
+      dockerfile: apps/auth-service/Dockerfile
+      target: dev
+    restart: 'no'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-devuser}:${POSTGRES_PASSWORD:-devpass}@postgres:5432/auth_db
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+    # Runs the programmatic migration (better-auth/db/migration) via the service's
+    # own config + pg adapter — no CLI, no native deps to compile in the image.
+    command: sh -c "cd apps/auth-service && bun run src/migrate.ts"
+    volumes:
+      - .:/workspace
+      - auth_service_node_modules:/workspace/node_modules
+    networks: [team99]
+
   auth-service:
     build:
       context: .
@@ -55,13 +94,14 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      auth-migrate:
+        condition: service_completed_successfully
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-devuser}:${POSTGRES_PASSWORD:-devpass}@postgres:5432/auth_db
-      # Browser-facing base URL — this is where the user's browser reaches the app
-      # (the client on :4200, which proxies /api/auth to this service). OAuth
-      # redirects and cookies must use this origin, NOT the internal :3000.
-      # The Spring services fetch JWKS server-to-server at http://auth-service:3000.
-      BETTER_AUTH_URL: http://localhost:4200
+      # Browser-facing origin: the single Caddy gateway (http://localhost:9099). OAuth
+      # redirects, cookies and the token issuer all use this. The Spring/Python
+      # services fetch JWKS server-to-server at http://auth-service:3000.
+      BETTER_AUTH_URL: http://localhost:9099
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
@@ -143,14 +183,9 @@ services:
       dockerfile: apps/client/Dockerfile
       target: dev
     restart: unless-stopped
-    environment:
-      # Vite dev-proxy target for /api/auth. Inside the compose network the
-      # auth-service is reachable by its service name, not localhost (which would
-      # resolve to the client container itself). Native `nx serve` omits this and
-      # falls back to http://localhost:3000.
-      VITE_AUTH_URL: http://auth-service:3000
-    depends_on:
-      - auth-service
+    # No auth env here: the browser reaches everything through the Caddy gateway
+    # (http://localhost:9099), which routes /api/auth to auth-service. The client is
+    # same-origin behind Caddy and never calls auth-service directly.
     ports:
       - '4200:4200'
     volumes:

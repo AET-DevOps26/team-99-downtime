@@ -4,10 +4,10 @@ import { jwtClient } from 'better-auth/client/plugins';
 /**
  * The single Better Auth client instance (shared infrastructure).
  *
- * `baseURL` is left empty so requests go to the current origin (e.g.
- * http://localhost:4200/api/auth/*) and are proxied to the auth-service by Vite
- * (see vite.config.mts). This keeps auth calls same-origin, avoiding CORS and
- * matching the API-gateway model used in production.
+ * `baseURL` is left empty so requests go to the current origin
+ * (http://localhost:9099/api/auth/*). The Caddy gateway routes /api/auth to the
+ * auth-service, so calls stay same-origin (no CORS), matching the production
+ * API-gateway model.
  */
 export const authClient = createAuthClient({
   plugins: [jwtClient()],

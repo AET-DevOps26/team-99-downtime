@@ -14,7 +14,7 @@ spring:
 server:
   port: 8082
 
-# The issuer claim ("iss") that tokens must carry (BETTER_AUTH_URL),
-# validated explicitly in SecurityConfig.
+# The issuer claim ("iss") tokens must carry: BETTER_AUTH_URL = the Caddy
+# gateway, validated explicitly in SecurityConfig.
 auth:
-  issuer: ${AUTH_ISSUER:http://localhost:4200}
+  issuer: ${AUTH_ISSUER:http://localhost:9099}

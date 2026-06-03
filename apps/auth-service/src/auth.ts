@@ -13,8 +13,9 @@ export const auth = betterAuth({
     connectionString: process.env.DATABASE_URL,
   }),
 
-  // The React client. The baseURL origin is trusted automatically.
-  trustedOrigins: ['http://localhost:4200'],
+  // Browser origin behind the Caddy gateway. The baseURL origin is trusted
+  // automatically; this also covers the direct :4200 Vite dev server.
+  trustedOrigins: ['http://localhost:9099', 'http://localhost:4200'],
 
   emailAndPassword: {
     enabled: true,

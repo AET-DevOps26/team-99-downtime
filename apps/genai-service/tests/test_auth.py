@@ -16,7 +16,7 @@ from fastapi.testclient import TestClient
 from src import auth, config
 from src.main import app
 
-ISSUER = "http://localhost:4200"
+ISSUER = "http://localhost:9099"
 
 
 @pytest.fixture
