@@ -1,0 +1,203 @@
+name: Continuous Deployment
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    name: Docker Build & Publish Affected Containers
+    outputs:
+      images: ${{ steps.image_refs.outputs.images }}
+
+    permissions:
+      # need write permissions for writing the tags
+      contents: write
+      # Required permissions for uploading to ghcr.io
+      packages: write
+
+    env:
+      NX_KEY: ${{ secrets.NX_KEY }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # Required for Nx affected logic
+          filter: tree:0 # Optional, but recommended by nx
+
+      - name: Setup Build Tools
+        uses: ./.github/actions/setup-build-tools
+
+      - name: Derive appropriate SHAs for base and head for nx affected
+        uses: nrwl/nx-set-shas@v5
+
+      - name: Restore Nx Cache
+        uses: actions/cache/restore@v5
+        id: cache-restore
+        with:
+          path: .nx/cache
+          # Key includes the OS and a hash of your lockfile.
+          # We add the Run ID so it always creates a fresh entry for the next run.
+          key:
+            nx-shared-${{ runner.os }}-${{ hashFiles('bun.lock') }}-${{ github.run_id }}
+            # Restore-keys allow it to find the MOST RECENT cache if an exact match isn't found.
+          restore-keys: |
+            nx-shared-${{ runner.os }}-${{ hashFiles('bun.lock') }}-
+            nx-shared-${{ runner.os }}-
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      # Login to GitHub Container Registry
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Configure Git for pushing version tags
+      - name: Configure git identity
+        shell: bash
+        run: >
+          git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com' &&
+          git config --global user.name 'github-actions[bot]'
+
+      # Check whether conventional commits since the last tag warrant a release
+      - name: Check if release is needed
+        id: check-release
+        run: |
+          if bun nx release --dry-run 2>&1 | grep -q "No files would be changed"; then
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Version, build, tag, and publish affected containers in one step
+      - name: Tag Release & Publish Containers
+        if: steps.check-release.outputs.needed == 'true'
+        run: bun nx release publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Re-tag each released image with :latest and push
+      # nx release writes the versioned image ref to tmp/{projectRoot}/.docker-version
+      - name: Push Latest Tags
+        if: steps.check-release.outputs.needed == 'true'
+        shell: bash
+        run: |
+          for vfile in $(find tmp -name ".docker-version" 2>/dev/null); do
+            image=$(cat "$vfile")
+            base="${image%:*}"
+            docker tag "$image" "$base:latest"
+            docker push "$base:latest"
+          done
+
+      # Collect registry digest for each pushed image so the attest job can fan out
+      - name: Collect image refs and digests
+        if: steps.check-release.outputs.needed == 'true'
+        id: image_refs
+        shell: bash
+        run: |
+          images='[]'
+          tag=$(git describe --tags --abbrev=0)
+          {
+            echo "## Released Images"
+            echo ""
+            echo "**Release:** [\`$tag\`](https://github.com/${{ github.repository }}/releases/tag/$tag)"
+            echo ""
+            echo "| Image | Tags | Digest |"
+            echo "|-------|------|--------|"
+          } >> "$GITHUB_STEP_SUMMARY"
+          for vfile in $(find tmp -name ".docker-version" 2>/dev/null); do
+            image=$(cat "$vfile")
+            name="${image%:*}"
+            tag="${image##*:}"
+            digest=$(docker buildx imagetools inspect "$image" --format '{{json .Manifest}}' | jq -r '.digest')
+            images=$(echo "$images" | jq -c --arg n "$name" --arg d "$digest" '. + [{"name":$n,"digest":$d}]')
+            echo "| \`$name\` | \`$tag\`, \`latest\` | \`${digest:7:12}…\` |" >> "$GITHUB_STEP_SUMMARY"
+          done
+          echo "images=$images" >> "$GITHUB_OUTPUT"
+
+      - name: Write no-release summary
+        if: steps.check-release.outputs.needed == 'false'
+        run: |
+          echo "## No Release" >> "$GITHUB_STEP_SUMMARY"
+          echo "No conventional commits found that warrant a new release." >> "$GITHUB_STEP_SUMMARY"
+
+      # This step runs even if the steps above fail
+      - name: Save Nx Cache
+        uses: actions/cache/save@v5
+        if: always() && steps.cache-restore.outputs.cache-hit != 'true'
+        with:
+          path: .nx/cache
+          key: ${{ steps.cache-restore.outputs.cache-primary-key }}
+
+  attest:
+    name: Attest Image Provenance
+    needs: build-and-publish
+    if: needs.build-and-publish.outputs.images != '' && needs.build-and-publish.outputs.images != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      packages: write
+      attestations: write
+      # Enables the linked artifacts page in the GitHub UI
+      artifact-metadata: write
+    strategy:
+      matrix:
+        image: ${{ fromJSON(needs.build-and-publish.outputs.images) }}
+    steps:
+      - name: Attest build provenance
+        id: attest
+        uses: actions/attest@v4
+        with:
+          subject-name: ${{ matrix.image.name }}
+          subject-digest: ${{ matrix.image.digest }}
+          push-to-registry: true
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify attestation
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh attestation verify "oci://${{ matrix.image.name }}@${{ matrix.image.digest }}" \
+            --repo "${{ github.repository }}"
+
+      - name: Write attestation summary
+        run: |
+          {
+            echo "## Attestation"
+            echo ""
+            echo "| Image | Digest | Status |"
+            echo "|-------|--------|--------|"
+            echo "| \`${{ matrix.image.name }}\` | \`${{ matrix.image.digest }}\` | ✅ Verified |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    name: Deploy
+    needs: [build-and-publish, attest]
+    if: needs.build-and-publish.outputs.images != '' && needs.build-and-publish.outputs.images != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      deployments: write
+    steps:
+      - name: Deploy
+        run: echo "Deploying TODO..."
+
+      - name: Write deploy summary
+        run: |
+          echo "## Deploy" >> "$GITHUB_STEP_SUMMARY"
+          echo "Deployed at $(date -u '+%Y-%m-%d %H:%M UTC')" >> "$GITHUB_STEP_SUMMARY"
