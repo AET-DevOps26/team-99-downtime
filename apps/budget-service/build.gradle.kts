@@ -46,19 +46,6 @@ tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
     
     // Standardize the name so Nx always knows the exact filename
     archiveFileName.set("app.jar")
-
-    // bootJar still needs commons-jvm's jar on the classpath to package it.
-    dependsOn(":commons-jvm:jar")
-
-    // Disable layered jars. We don't use them (the Dockerfile just runs
-    // `java -jar app.jar`, no layer extraction), and the layering machinery
-    // evaluates `resolvedDependencies.artifactIds`, which fails under Nx's
-    // atomized Gradle execution with "Querying the mapped value of provider
-    // before task ':commons-jvm:jar' has completed" once a project dependency
-    // is on the classpath. Turning it off removes that failing code path.
-    layered {
-        enabled.set(false)
-    }
 }
 
 tasks.named("build") {

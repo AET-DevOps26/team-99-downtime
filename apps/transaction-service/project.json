@@ -24,6 +24,12 @@
         "taskName": "bootRun",
         "args": ["--continuous"]
       }
+    },
+    "build": {
+      "options": {
+        "//": "bootJar lazily resolves commons-jvm's artifact; Nx must not pass --exclude-task for it or bootJar fails evaluating resolvedDependencies. See https://github.com/nrwl/nx docs on includeDependsOnTasks.",
+        "includeDependsOnTasks": [":commons-jvm:jar"]
+      }
     }
   },
   "tags": [],
