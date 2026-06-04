@@ -73,7 +73,9 @@ jobs:
       - name: Check if release is needed
         id: check-release
         run: |
-          if bun nx release --dry-run 2>&1 | grep -q "No files would be changed"; then
+          dry_run_output=$(bun nx release --dry-run 2>&1)
+          echo "$dry_run_output"
+          if echo "$dry_run_output" | grep -q "No files would be changed"; then
             echo "needed=false" >> "$GITHUB_OUTPUT"
           else
             echo "needed=true" >> "$GITHUB_OUTPUT"
