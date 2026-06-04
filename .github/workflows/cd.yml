@@ -84,7 +84,7 @@ jobs:
       # Version, build, tag, and publish affected containers in one step
       - name: Tag Release & Publish Containers
         if: steps.check-release.outputs.needed == 'true'
-        run: bun nx release publish
+        run: bun nx release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
