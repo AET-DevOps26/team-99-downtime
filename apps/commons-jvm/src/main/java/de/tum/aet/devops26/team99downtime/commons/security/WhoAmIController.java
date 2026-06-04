@@ -1,4 +1,4 @@
-package de.tum.aet.devops26.team99downtime.notification.web;
+package de.tum.aet.devops26.team99downtime.commons.security;
 
 import java.util.Map;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;

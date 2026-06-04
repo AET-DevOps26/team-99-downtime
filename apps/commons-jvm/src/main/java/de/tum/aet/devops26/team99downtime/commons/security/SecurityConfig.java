@@ -1,8 +1,9 @@
-package de.tum.aet.devops26.team99downtime.transaction.config;
+package de.tum.aet.devops26.team99downtime.commons.security;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -16,14 +17,20 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
- * Configures the service as an OAuth2 resource server: every request must carry a valid RS256 JWT
- * minted by the auth-service, except the public health probe.
+ * Shared auto-configuration that turns any consuming service into an OAuth2 resource server: every
+ * request must carry a valid RS256 JWT minted by the auth-service, except the public health probe.
  *
  * <p>Tokens are verified against the auth-service's JWKS (RSA public keys) and checked for the
  * expected {@code iss} claim. The service holds no secret and never talks to the auth database —
  * verification is purely via the public keys.
+ *
+ * <p>Registered as an {@link AutoConfiguration} (see {@code
+ * META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports}) so it loads in
+ * services without being on their component-scan path. {@link WhoAmIController} is pulled in via
+ * {@link Import} for the same reason.
  */
-@Configuration
+@AutoConfiguration
+@Import(WhoAmIController.class)
 public class SecurityConfig {
 
   private final String jwkSetUri;

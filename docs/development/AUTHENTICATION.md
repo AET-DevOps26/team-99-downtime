@@ -131,25 +131,35 @@ the fastest way to prove auth works end-to-end. Swap the prefix:
 
 ### Spring service
 
-If you add a new Spring service, mirror an existing one
-([`SecurityConfig.java`](../../apps/transaction-service/src/main/java/de/tum/aet/devops26/team99downtime/transaction/config/SecurityConfig.java)
+The JWT validation logic lives once in the shared
+[`commons-jvm`](../../apps/commons-jvm) library
+([`SecurityConfig.java`](../../apps/commons-jvm/src/main/java/de/tum/aet/devops26/team99downtime/commons/security/SecurityConfig.java)),
+registered as a Spring Boot auto-configuration. A new Spring service wires it in
+with two changes — no security code to copy:
 
-- the `application.yaml` block):
+1. Depend on the library in `build.gradle.kts`:
 
-```yaml
-spring:
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          # server-to-server; NOT issuer-uri (that would trigger OIDC discovery
-          # against the browser origin, which is unreachable inside the network)
-          jwk-set-uri: ${AUTH_JWKS_URI:http://auth-service:3000/api/auth/jwks}
-auth:
-  issuer: ${AUTH_ISSUER:http://localhost:9099}
-```
+   ```kotlin
+   implementation(project(":commons-jvm"))
+   ```
 
-With `SecurityConfig` in place, **every route is protected by default**. Routes
+2. Provide the two config values in `application.yaml`:
+
+   ```yaml
+   spring:
+     security:
+       oauth2:
+         resourceserver:
+           jwt:
+             # server-to-server; NOT issuer-uri (that would trigger OIDC discovery
+             # against the browser origin, which is unreachable inside the network)
+             jwk-set-uri: ${AUTH_JWKS_URI:http://auth-service:3000/api/auth/jwks}
+   auth:
+     issuer: ${AUTH_ISSUER:http://localhost:9099}
+   ```
+
+The auto-configuration loads automatically (no component-scan needed) and brings
+the `/api/me` probe with it. **Every route is then protected by default**. Routes
 are opened explicitly via `permitAll()` — currently only `/actuator/health`.
 New endpoints need no extra code to be secured; the caller's identity is in the
 `Authentication` / JWT.

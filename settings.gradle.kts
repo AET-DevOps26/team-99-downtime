@@ -5,6 +5,8 @@ plugins {
     id("dev.nx.gradle.project-graph") version "0.1.21" apply false
 }
 
+include("commons-jvm")
+project(":commons-jvm").projectDir = file("apps/commons-jvm")
 include("budget-service")
 project(":budget-service").projectDir = file("apps/budget-service")
 include("notification-service")
