@@ -1,0 +1,37 @@
+# Local-dev reverse proxy / API gateway (issue #60).
+#
+# Single origin for the whole stack: the browser talks only to http://localhost:9099,
+# Caddy routes by path to the right service over the compose network. This
+# mirrors the production Kubernetes ingress; here it just runs locally.
+#
+# Auth note: Better Auth's routes are fixed under /api/auth, so that prefix is
+# forwarded as-is. The other services are mounted under a short prefix that is
+# stripped before forwarding (handle_path), so /transactions/api/me reaches
+# transaction-service as /api/me.
+
+:80 {
+	# Auth service — keep the /api/auth prefix (Better Auth owns it).
+	handle /api/auth/* {
+		reverse_proxy auth-service:3000
+	}
+
+	# Backend services — strip the prefix before forwarding.
+	handle_path /transactions/* {
+		reverse_proxy transaction-service:8080
+	}
+	handle_path /budgets/* {
+		reverse_proxy budget-service:8082
+	}
+	handle_path /notifications/* {
+		reverse_proxy notification-service:8081
+	}
+	handle_path /genai/* {
+		reverse_proxy genai-service:8000
+	}
+
+	# Everything else -> the React client (Vite dev server).
+	# reverse_proxy upgrades websockets, so Vite HMR works through Caddy.
+	handle {
+		reverse_proxy client:4200
+	}
+}

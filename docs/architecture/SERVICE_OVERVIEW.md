@@ -35,9 +35,9 @@ Client signs in via AuthService → client retrieves a JWT (`/api/auth/token`) �
 Create a Better Auth client in the React app
 
 ```ts
-// apps/client/src/lib/auth-client.ts
-import { createAuthClient } from "better-auth/react";
-import { jwtClient } from "better-auth/client/plugins";
+// apps/client/src/shared/lib/auth-client.ts
+import { createAuthClient } from 'better-auth/react';
+import { jwtClient } from 'better-auth/client/plugins';
 
 export const authClient = createAuthClient({
   plugins: [jwtClient()],
@@ -58,14 +58,14 @@ const jwt = data?.token;
 - The client includes it on cross-service calls:
 
 ```ts
-await fetch("/api/transactions", {
+await fetch('/api/transactions', {
   headers: {
     Authorization: `Bearer ${jwt}`,
   },
 });
 ```
 
-- Each service validates tokens using AuthService’s **JWKS** endpoint (`GET /api/auth/jwks`) and caches keys. On `kid` mismatch, refresh JWKS. Spring can achieve this with the following `application.yml` entry:
+- Each service validates tokens using AuthService’s **JWKS** endpoint (`GET /api/auth/jwks`) and caches keys. On `kid` mismatch, refresh JWKS. Spring is configured with the following `application.yaml` entry:
 
 ```yml
 spring:
@@ -73,9 +73,15 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          # The URL of auth service
-          jwk-set-uri: http://auth-service:3000/api/auth/jwks
-          issuer-uri: http://auth-service:3000
+          # JWKS is fetched server-to-server on the internal network. We use
+          # jwk-set-uri (NOT issuer-uri): issuer-uri would trigger OIDC discovery
+          # against the issuer origin (the browser-facing gateway), which isn't
+          # reachable from inside the network.
+          jwk-set-uri: ${AUTH_JWKS_URI:http://auth-service:3000/api/auth/jwks}
+# The issuer claim ("iss") tokens must carry: the browser-facing gateway origin.
+# Validated explicitly in SecurityConfig (see the JwtIssuerValidator).
+auth:
+  issuer: ${AUTH_ISSUER:http://localhost:9099}
 ```
 
 ```mermaid

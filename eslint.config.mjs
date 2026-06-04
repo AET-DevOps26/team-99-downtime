@@ -5,6 +5,20 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
+    rules: {
+      // Allow intentionally-unused identifiers prefixed with "_"
+      // (e.g. stub props `_props`, ignored args/rest siblings).
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
+    },
+  },
+  {
     files: ['apps/client/**/*.{ts,tsx}'],
     languageOptions: {
       parserOptions: {
@@ -19,6 +33,7 @@ export default tseslint.config(
       'dist/**',
       'build/**',
       'apps/*/build/**',
+      '.nx/**',
       '**/*.java',
       '**/*.py',
     ],

@@ -1,3 +1,17 @@
 spring:
   application:
     name: transaction-service
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Fetch the public keys server-to-server. We use jwk-set-uri (NOT
+          # issuer-uri) on purpose: issuer-uri would trigger OIDC discovery
+          # against the issuer origin (auth.issuer), the browser-facing gateway
+          # URL, which is not reachable from inside the network.
+          jwk-set-uri: ${AUTH_JWKS_URI:http://auth-service:3000/api/auth/jwks}
+
+# The issuer claim ("iss") tokens must carry: the browser-facing auth origin
+# (BETTER_AUTH_URL = the Caddy gateway), validated explicitly in SecurityConfig.
+auth:
+  issuer: ${AUTH_ISSUER:http://localhost:9099}

@@ -1,0 +1,35 @@
+{
+  "name": "auth-service",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/auth-service/src",
+  "targets": {
+    "serve": {
+      "metadata": {
+        "description": "Run the auth-service (loads the root .env via Bun)"
+      },
+      "continuous": true,
+      "options": {
+        "cwd": "apps/auth-service"
+      },
+      "command": "bun --env-file=../../.env --watch run src/server.ts"
+    },
+    "test": {
+      "metadata": {
+        "description": "Run the Bun unit tests"
+      },
+      "options": {
+        "cwd": "apps/auth-service"
+      },
+      "command": "bun test",
+      "cache": true,
+      "outputs": []
+    }
+  },
+  "tags": [],
+  "release": {
+    "docker": {
+      "repositoryName": "aet-devops26/team-99-downtime/t99-auth-service"
+    }
+  }
+}
