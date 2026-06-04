@@ -1,0 +1,7 @@
+{
+  "name": "commons-jvm",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "sourceRoot": "apps/commons-jvm/src",
+  "tags": []
+}
