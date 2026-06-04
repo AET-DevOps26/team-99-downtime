@@ -156,6 +156,13 @@ jobs:
       matrix:
         image: ${{ fromJSON(needs.build-and-publish.outputs.images) }}
     steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Attest build provenance
         id: attest
         uses: actions/attest@v4
@@ -163,13 +170,6 @@ jobs:
           subject-name: ${{ matrix.image.name }}
           subject-digest: ${{ matrix.image.digest }}
           push-to-registry: true
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Verify attestation
         env:
