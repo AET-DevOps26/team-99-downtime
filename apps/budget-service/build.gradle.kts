@@ -46,6 +46,13 @@ tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
     
     // Standardize the name so Nx always knows the exact filename
     archiveFileName.set("app.jar")
+
+    // bootJar reads commons-jvm's resolved artifacts for jar layering. Spring
+    // Boot's resolvedDependencies provider doesn't reliably carry the implicit
+    // task dependency on the project dependency under parallel execution (CI),
+    // so declare it explicitly to avoid a "queried before :commons-jvm:jar
+    // completed" build-ordering race.
+    dependsOn(":commons-jvm:jar")
 }
 
 tasks.named("build") {
