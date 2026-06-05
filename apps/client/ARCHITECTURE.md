@@ -83,8 +83,7 @@ data goes down as props. nothing smart lives in ui.
 - ❌ `useNavigate`, `toast`, business rules inside a `ui/` file. → `hooks/`.
 - ❌ logic inside a `pages/` file. page only wires hook → ui.
 - ❌ shared importing a feature. shared knows nothing about features.
-- ❌ a folder grouped by type at the top (`src/components`, `src/hooks`). we group
-  by feature, not by type.
+- ❌ a folder grouped by type at the top (`src/components`, `src/hooks`). we group by feature, not by type.
 - ❌ business logic in `app/`. app is wiring only.
 
 ## New feature
