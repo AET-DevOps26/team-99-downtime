@@ -21,12 +21,13 @@ src/
     index.ts    the door. outside world imports only this.
   shared/       stuff many features use.
     ui/         shadcn + generic parts (button, card, wordmark)
-    lib/        utils, auth-client singleton
+    lib/        utils, auth-client singleton, api (authed fetch to backend)
     layout/     app frame (Sidebar, Header, AppLayout)
     hooks/      cross-feature hooks (none yet; placeholder)
 ```
 
 `features/auth/` is the real example. Copy its shape for new features.
+(`features/budgets/` too — it talks to a backend.)
 
 ## Where does my file go?
 
@@ -37,6 +38,8 @@ Ask one thing: does it **call server / hold logic / validate / draw**?
 
 - **api/** — sends requests, gets data back. knows nothing about React or screens.
   one function per server action. `authApi.ts` has `signInWithEmail`, etc.
+  backend calls go through `shared/lib/api.ts` (`apiFetch`). it adds the JWT,
+  hits the gateway path (`/budgets/api/...`). `budgetApi.ts` is this.
 - **hooks/** — the brain of the feature. makes the form, calls api, runs schema
   check, shows error toast, navigates. returns plain stuff for a page to use.
   `useLogin.ts` is this.
@@ -44,6 +47,8 @@ Ask one thing: does it **call server / hold logic / validate / draw**?
   `authSchemas.ts`.
 - **ui/** — looks only. gets everything as props. has no fetch, no navigate, no
   rules. `LoginForm.tsx` takes `form`, `onSubmit`, `onGoogle` and just draws.
+  a modal can call its own hook instead of props. still fine — hook holds the
+  logic, ui still just draws. `ManageCategoriesModal.tsx`.
 - **index.ts** — lists what the feature lets others use. import `@/features/auth`,
   never the inside files.
 - **pages/** — glue. `const {form, onSubmit} = useLogin()` then `<LoginForm .../>`.
@@ -72,7 +77,8 @@ data goes down as props. nothing smart lives in ui.
 - deps go DOWN only: `app → pages → features → shared`.
 - ui takes props and draws. logic goes in a hook.
 - one job per file. file too big = split it.
-- better-auth sdk lives only in `shared/lib/auth-client.ts`.
+- better-auth sdk lives only in `shared/lib/auth-client.ts`. `api.ts` uses it to
+  add the JWT. features never touch tokens.
 
 ## FORBIDDEN (do not do this)
 
