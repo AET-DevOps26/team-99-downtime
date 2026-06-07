@@ -1,6 +1,18 @@
 spring:
   application:
     name: budget-service
+  # The datasource is not declared here on purpose: in docker it is injected via
+  # SPRING_DATASOURCE_URL/USERNAME/PASSWORD (see docker-compose.yaml), and tests
+  # fall back to an embedded H2. Only JPA behaviour is configured below.
+  jpa:
+    hibernate:
+      # Dev-grade schema management: Hibernate creates/updates tables from the
+      # entities on startup. Fine for the course project; switch to a Flyway
+      # migration before this is treated as production data.
+      ddl-auto: update
+    # Avoid holding a DB session open through view rendering — keeps the request
+    # boundary clean and silences the open-in-view startup warning.
+    open-in-view: false
   security:
     oauth2:
       resourceserver:
