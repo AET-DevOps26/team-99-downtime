@@ -38,7 +38,7 @@ class CategoryFlowIntegrationTest {
     mockMvc
         .perform(get("/api/categories").with(asUser("seed-user")))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.length()").value(6))
+        .andExpect(jsonPath("$.length()").value(11))
         .andExpect(jsonPath("$[?(@.name == 'Groceries')]").exists());
   }
 

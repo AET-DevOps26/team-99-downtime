@@ -22,12 +22,17 @@ public class CategoryService {
    */
   private static final List<Category> PREDEFINED =
       List.of(
+          predefined("Insurance", "150"),
           predefined("Groceries", "300"),
-          predefined("Rent", "1000"),
-          predefined("Transport", "100"),
-          predefined("Dining", "150"),
+          predefined("Transportation", "100"),
+          predefined("Healthcare", "80"),
+          predefined("Dining Out", "150"),
+          predefined("Entertainment", "100"),
+          predefined("Debt & Loans", "200"),
           predefined("Utilities", "200"),
-          predefined("Entertainment", "100"));
+          predefined("Travel", "100"),
+          predefined("Uncategorized", "50"),
+          predefined("Shopping", "150"));
 
   private final CategoryRepository repository;
 
