@@ -14,8 +14,14 @@ spec:
   template:
     metadata:
       labels:
+        {{- include "t99-app.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: postgresql
         app: {{ .Release.Name }}-postgresql
     spec:
+      securityContext:
+        fsGroup: 999
+        runAsUser: 999
+        runAsNonRoot: true
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
       containers:
