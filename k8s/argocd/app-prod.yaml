@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: t99-prod
+  namespace: t99-argo-cd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/aet-devops26/team-99-downtime
+    targetRevision: main
+    path: k8s/helm/t99-app
+    helm:
+      valueFiles:
+        - values.yaml
+        - values.prod.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: t99-prod
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=false
