@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-auth
+  labels:
+    {{- include "t99-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: auth
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "t99-app.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: auth
+  template:
+    metadata:
+      labels:
+        {{- include "t99-app.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: auth
+    spec:
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      initContainers:
+        - name: migrate
+          image: {{ include "t99-app.image" (dict "registry" .Values.global.imageRegistry "repo" .Values.authService.image.repository "tag" .Values.authService.image.tag) }}
+          command: ["bun", "run", "src/migrate.ts"]
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: t99-db-credentials
+                  key: password
+            - name: DATABASE_URL
+              value: "postgresql://postgres:$(DB_PASSWORD)@{{ .Release.Name }}-postgresql:5432/auth_db"
+      containers:
+        - name: auth
+          image: {{ include "t99-app.image" (dict "registry" .Values.global.imageRegistry "repo" .Values.authService.image.repository "tag" .Values.authService.image.tag) }}
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: t99-db-credentials
+                  key: password
+            - name: DATABASE_URL
+              value: "postgresql://postgres:$(DB_PASSWORD)@{{ .Release.Name }}-postgresql:5432/auth_db"
+            - name: BETTER_AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: t99-app-secrets
+                  key: jwtSigningKey
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-auth-config
+          livenessProbe:
+            httpGet:
+              path: /api/auth/ok
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 6
+          readinessProbe:
+            httpGet:
+              path: /api/auth/ok
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.authService.resources | nindent 12 }}
