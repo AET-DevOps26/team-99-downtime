@@ -1,0 +1,27 @@
+# k8s/helm/t99-app/values.stage.yaml
+# Image tags are updated by Kargo on each promotion.
+domain: stage.t99.stud.k8s.aet.cit.tum.de
+
+authService:
+  image:
+    tag: 'v0.1.0'
+
+client:
+  image:
+    tag: 'v0.1.0'
+
+transactionService:
+  image:
+    tag: 'v0.1.0'
+
+notificationService:
+  image:
+    tag: 'v0.1.0'
+
+budgetService:
+  image:
+    tag: 'v0.1.0'
+
+genaiService:
+  image:
+    tag: 'v0.1.0'

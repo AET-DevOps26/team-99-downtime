@@ -1,0 +1,36 @@
+# k8s/helm/t99-app/values.prod.yaml
+# Image tags are updated by Kargo on each promotion.
+domain: t99.stud.k8s.aet.cit.tum.de
+
+postgresql:
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+    limits:
+      memory: 512Mi
+      cpu: 200m
+
+authService:
+  image:
+    tag: 'v0.1.0'
+
+client:
+  image:
+    tag: 'v0.1.0'
+
+transactionService:
+  image:
+    tag: 'v0.1.0'
+
+notificationService:
+  image:
+    tag: 'v0.1.0'
+
+budgetService:
+  image:
+    tag: 'v0.1.0'
+
+genaiService:
+  image:
+    tag: 'v0.1.0'
