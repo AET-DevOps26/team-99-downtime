@@ -1,0 +1,102 @@
+global:
+  imageRegistry: ghcr.io/aet-devops26/team-99-downtime
+  imagePullSecrets:
+    - name: t99-ghcr-pull
+
+domain: ''
+clusterIssuer: letsencrypt-prod
+
+postgresql:
+  image:
+    tag: '16-alpine'
+  persistence:
+    storageClass: ''
+    size: 5Gi
+  resources:
+    requests:
+      memory: 128Mi
+      cpu: 100m
+    limits:
+      memory: 256Mi
+      cpu: 200m
+
+authService:
+  image:
+    repository: t99-auth-service
+    tag: ''
+  port: 3000
+  resources:
+    requests:
+      memory: 64Mi
+      cpu: 50m
+    limits:
+      memory: 128Mi
+      cpu: 100m
+
+client:
+  image:
+    repository: t99-client
+    tag: ''
+  port: 80
+  resources:
+    requests:
+      memory: 32Mi
+      cpu: 10m
+    limits:
+      memory: 64Mi
+      cpu: 50m
+
+transactionService:
+  image:
+    repository: t99-transaction-service
+    tag: ''
+  port: 8080
+  javaOpts: '-XX:MaxRAMPercentage=75.0 -XX:+UseContainerSupport'
+  resources:
+    requests:
+      memory: 192Mi
+      cpu: 100m
+    limits:
+      memory: 384Mi
+      cpu: 300m
+
+notificationService:
+  image:
+    repository: t99-notification-service
+    tag: ''
+  port: 8081
+  javaOpts: '-XX:MaxRAMPercentage=75.0 -XX:+UseContainerSupport'
+  resources:
+    requests:
+      memory: 192Mi
+      cpu: 100m
+    limits:
+      memory: 384Mi
+      cpu: 300m
+
+budgetService:
+  image:
+    repository: t99-budget-service
+    tag: ''
+  port: 8082
+  javaOpts: '-XX:MaxRAMPercentage=75.0 -XX:+UseContainerSupport'
+  resources:
+    requests:
+      memory: 192Mi
+      cpu: 100m
+    limits:
+      memory: 384Mi
+      cpu: 300m
+
+genaiService:
+  image:
+    repository: t99-genai-service
+    tag: ''
+  port: 8000
+  resources:
+    requests:
+      memory: 128Mi
+      cpu: 50m
+    limits:
+      memory: 256Mi
+      cpu: 150m
