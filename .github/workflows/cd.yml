@@ -189,17 +189,24 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   deploy:
-    name: Deploy
+    name: Trigger Kargo Stage Promotion
     needs: [build-and-publish, attest]
     if: needs.build-and-publish.outputs.images != '' && needs.build-and-publish.outputs.images != '[]'
     runs-on: ubuntu-latest
-    permissions:
-      deployments: write
+    env:
+      KARGO_SERVER: ${{ vars.KARGO_SERVER }}
+      KARGO_TOKEN: ${{ secrets.KARGO_API_TOKEN }}
     steps:
-      - name: Deploy
-        run: echo "Deploying TODO..."
+      - name: Install Kargo CLI
+        uses: akuity/setup-kargo@v0.0.14
+
+      - name: Trigger Kargo warehouse refresh
+        run: |
+          kargo login "$KARGO_SERVER" --token "$KARGO_TOKEN" --insecure-skip-tls-verify
+          kargo refresh warehouse t99-app-warehouse --project t99 --wait
 
       - name: Write deploy summary
         run: |
           echo "## Deploy" >> "$GITHUB_STEP_SUMMARY"
-          echo "Deployed at $(date -u '+%Y-%m-%d %H:%M UTC')" >> "$GITHUB_STEP_SUMMARY"
+          echo "Kargo warehouse refresh triggered at $(date -u '+%Y-%m-%d %H:%M UTC')" >> "$GITHUB_STEP_SUMMARY"
+          echo "Stage: auto-promoting via Kargo. Prod: requires manual approval in Kargo UI." >> "$GITHUB_STEP_SUMMARY"
