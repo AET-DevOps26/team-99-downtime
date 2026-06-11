@@ -1,0 +1,60 @@
+# ArgoCD Helm Chart values override for minimal resource usage
+# Namespace constraint: 1 GB RAM / 0.5 CPU total
+# Target usage: ~800Mi / 400m, with headroom
+
+# Disable unnecessary components
+applicationSet:
+  enabled: false
+
+notifications:
+  enabled: false
+
+dex:
+  enabled: false
+
+# Global configuration
+global:
+  deploymentAnnotations: {}
+
+# ArgoCD Server - API server + UI
+server:
+  replicas: 1
+  resources:
+    requests:
+      memory: '64Mi'
+      cpu: '50m'
+    limits:
+      memory: '128Mi'
+      cpu: '100m'
+
+# ArgoCD Controller - Application controller (required)
+controller:
+  replicas: 1
+  resources:
+    requests:
+      memory: '128Mi'
+      cpu: '100m'
+    limits:
+      memory: '256Mi'
+      cpu: '200m'
+
+# ArgoCD Repo Server - Repository server (required)
+repoServer:
+  replicas: 1
+  resources:
+    requests:
+      memory: '64Mi'
+      cpu: '50m'
+    limits:
+      memory: '128Mi'
+      cpu: '100m'
+
+# Redis - Required dependency (minimal config)
+redis:
+  resources:
+    requests:
+      memory: '32Mi'
+      cpu: '10m'
+    limits:
+      memory: '64Mi'
+      cpu: '50m'
