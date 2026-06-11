@@ -5,3 +5,5 @@ apps/*/build
 bun.lock
 *.java
 *.py
+k8s/helm/**/templates/**/*.yaml
+k8s/helm/**/templates/**/*.yml
