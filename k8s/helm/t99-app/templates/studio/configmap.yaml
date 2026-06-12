@@ -1,0 +1,14 @@
+{{- if .Values.drizzleStudio.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-studio-config
+  labels:
+    {{- include "t99-app.labels" . | nindent 4 }}
+data:
+  drizzle.config.js: |
+    export default {
+      dialect: 'postgresql',
+      dbCredentials: { url: process.env.DATABASE_URL },
+    };
+{{- end }}

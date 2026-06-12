@@ -1,0 +1,13 @@
+ExpenseFlow deployed to namespace {{ .Release.Namespace }}.
+
+App URL: https://{{ .Values.domain }}
+{{- if .Values.drizzleStudio.enabled }}
+
+Drizzle Studio
+  URL:      https://studio.{{ .Values.domain }}
+  Database: {{ .Values.drizzleStudio.database }}
+  Username: {{ .Values.drizzleStudio.username }}
+  Password: kubectl get secret t99-studio-auth \
+              -n {{ .Release.Namespace }} \
+              -o jsonpath='{.data.password}' | base64 -d && echo
+{{- end }}

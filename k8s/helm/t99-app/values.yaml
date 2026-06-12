@@ -98,3 +98,16 @@ genaiService:
     limits:
       memory: 256Mi
       cpu: 150m
+
+drizzleStudio:
+  enabled: false
+  # Which PostgreSQL database to inspect (auth_db | transaction_db | budget_db | postgres)
+  database: auth_db
+  username: admin
+  resources:
+    requests:
+      memory: 64Mi
+      cpu: 10m
+    limits:
+      memory: 256Mi
+      cpu: 200m

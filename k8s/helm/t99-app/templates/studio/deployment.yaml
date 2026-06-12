@@ -1,0 +1,67 @@
+{{- if .Values.drizzleStudio.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-studio
+  labels:
+    {{- include "t99-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: studio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "t99-app.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: studio
+  template:
+    metadata:
+      labels:
+        {{- include "t99-app.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: studio
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+        - name: studio
+          image: oven/bun:1-alpine
+          # bunx downloads drizzle-kit on first start (~20s cold start); subsequent
+          # pod restarts reuse the image layer cache if the node is the same.
+          command:
+            - bunx
+            - drizzle-kit@latest
+            - studio
+            - --host
+            - "0.0.0.0"
+            - --port
+            - "4983"
+          workingDir: /home/bun/app
+          env:
+            - name: HOME
+              value: /home/bun
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: t99-db-credentials
+                  key: password
+            - name: DATABASE_URL
+              value: "postgresql://postgres:$(DB_PASSWORD)@{{ .Release.Name }}-postgresql:5432/{{ .Values.drizzleStudio.database }}"
+          ports:
+            - containerPort: 4983
+          volumeMounts:
+            - name: config
+              mountPath: /home/bun/app/drizzle.config.js
+              subPath: drizzle.config.js
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 4983
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            failureThreshold: 6
+          resources:
+            {{- toYaml .Values.drizzleStudio.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ .Release.Name }}-studio-config
+{{- end }}
