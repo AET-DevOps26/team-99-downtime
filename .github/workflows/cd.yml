@@ -188,25 +188,40 @@ jobs:
             echo "| \`${{ matrix.image.name }}\` | \`${{ matrix.image.digest }}\` | ✅ Verified |"
           } >> "$GITHUB_STEP_SUMMARY"
 
-  deploy:
-    name: Trigger Kargo Stage Promotion
+  deploy-stage:
+    name: Deploy to Stage
     needs: [build-and-publish, attest]
     if: needs.build-and-publish.outputs.images != '' && needs.build-and-publish.outputs.images != '[]'
     runs-on: ubuntu-latest
-    env:
-      KARGO_SERVER: ${{ vars.KARGO_SERVER }}
-      KARGO_TOKEN: ${{ secrets.KARGO_API_TOKEN }}
     steps:
-      - name: Install Kargo CLI
-        uses: akuity/setup-kargo@v0.0.14
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
-      - name: Trigger Kargo warehouse refresh
+      - name: Set up kubeconfig
         run: |
-          kargo login "$KARGO_SERVER" --token "$KARGO_TOKEN" --insecure-skip-tls-verify
-          kargo refresh warehouse t99-app-warehouse --project t99 --wait
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG_DATA }}" | base64 -d > ~/.kube/config
+
+      - name: Deploy to t99-stage
+        run: |
+          VERSION=$(git describe --tags --abbrev=0)
+          helm upgrade --install t99 k8s/helm/t99-app/ \
+            -n t99-stage \
+            -f k8s/helm/t99-app/values.yaml \
+            -f k8s/helm/t99-app/values.stage.yaml \
+            --set authService.image.tag="$VERSION" \
+            --set client.image.tag="$VERSION" \
+            --set transactionService.image.tag="$VERSION" \
+            --set notificationService.image.tag="$VERSION" \
+            --set budgetService.image.tag="$VERSION" \
+            --set genaiService.image.tag="$VERSION" \
+            --wait --timeout 5m
 
       - name: Write deploy summary
         run: |
-          echo "## Deploy" >> "$GITHUB_STEP_SUMMARY"
-          echo "Kargo warehouse refresh triggered at $(date -u '+%Y-%m-%d %H:%M UTC')" >> "$GITHUB_STEP_SUMMARY"
-          echo "Stage: auto-promoting via Kargo. Prod: requires manual approval in Kargo UI." >> "$GITHUB_STEP_SUMMARY"
+          VERSION=$(git describe --tags --abbrev=0)
+          echo "## Deployed to Stage" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Version:** \`$VERSION\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "**URL:** https://stage.t99.stud.k8s.aet.cit.tum.de" >> "$GITHUB_STEP_SUMMARY"

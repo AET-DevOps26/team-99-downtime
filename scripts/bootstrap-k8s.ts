@@ -1,42 +1,8 @@
 #!/usr/bin/env bun
-import { $ } from 'bun';
+export {};
 
 console.log('=== ExpenseFlow K8s Bootstrap ===\n');
+console.log('This script creates the Kubernetes secrets required before the first deploy.');
+console.log('Run once per namespace (t99-stage and t99-prod are both covered).\n');
 
-// 1. Add Helm repo for ArgoCD
-console.log('Adding Helm repos...');
-await $`helm repo add argo https://argoproj.github.io/argo-helm`;
-await $`helm repo update`;
-
-// 2. Install ArgoCD
-// --skip-crds: CRDs require cluster-admin; a cluster admin must apply them first:
-//   kubectl apply -k "https://github.com/argoproj/argo-cd/manifests/crds?ref=stable"
-console.log('\nInstalling ArgoCD...');
-await $`helm upgrade --install argocd argo/argo-cd \
-  -n t99-argo-cd \
-  -f k8s/bootstrap/argocd-values.yaml \
-  --skip-crds \
-  --wait \
-  --timeout 5m`;
-
-// 3. Install Kargo
-console.log('\nInstalling Kargo...');
-await $`helm upgrade --install kargo oci://ghcr.io/akuity/kargo-charts/kargo \
-  -n t99-kargo \
-  -f k8s/bootstrap/kargo-values.yaml \
-  --wait \
-  --timeout 5m`;
-
-// 4. Apply Kargo manifests (Project, Warehouse, Stages)
-console.log('\nApplying Kargo manifests...');
-await $`kubectl apply -f k8s/kargo/`;
-
-// 5. Apply ArgoCD root App of Apps
-console.log('\nApplying ArgoCD root application...');
-await $`kubectl apply -f k8s/argocd/root-app.yaml`;
-
-console.log('\nBootstrap complete. ArgoCD and Kargo are ready.');
-console.log('Next: setting up Kubernetes secrets...\n');
-
-// 6. Run secrets creation script
 await import('./create-secrets');
