@@ -27,6 +27,27 @@ jobs:
       - name: Fail if linters left uncommitted changes
         run: git diff --exit-code
 
+  helm-lint:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Check for Helm chart changes
+        id: helm-changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            helm:
+              - 'k8s/helm/**'
+
+      - name: Lint Helm chart
+        if: steps.helm-changes.outputs.helm == 'true'
+        run: helm lint k8s/helm/t99-app/ -f k8s/helm/t99-app/values.stage.yaml
+
   build-and-test:
     runs-on: ubuntu-latest
     needs: lint
