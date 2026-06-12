@@ -31,6 +31,8 @@ spec:
                   key: password
             - name: DATABASE_URL
               value: "postgresql://postgres:$(DB_PASSWORD)@{{ .Release.Name }}-postgresql:5432/auth_db"
+          resources:
+            {{- toYaml .Values.authService.resources | nindent 12 }}
       containers:
         - name: auth
           image: {{ include "t99-app.image" (dict "registry" .Values.global.imageRegistry "repo" .Values.authService.image.repository "tag" .Values.authService.image.tag) }}
