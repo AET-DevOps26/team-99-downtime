@@ -9,10 +9,13 @@ await $`helm repo add argo https://argoproj.github.io/argo-helm`;
 await $`helm repo update`;
 
 // 2. Install ArgoCD
+// --skip-crds: CRDs require cluster-admin; a cluster admin must apply them first:
+//   kubectl apply -k "https://github.com/argoproj/argo-cd/manifests/crds?ref=stable"
 console.log('\nInstalling ArgoCD...');
 await $`helm upgrade --install argocd argo/argo-cd \
   -n t99-argo-cd \
   -f k8s/bootstrap/argocd-values.yaml \
+  --skip-crds \
   --wait \
   --timeout 5m`;
 

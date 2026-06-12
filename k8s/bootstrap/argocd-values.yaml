@@ -2,6 +2,13 @@
 # Namespace constraint: 1 GB RAM / 0.5 CPU total
 # Target usage: ~800Mi / 400m, with headroom
 
+# CRDs require cluster-scope write access — we don't have that.
+# A cluster admin must apply them once before this chart is installed:
+#   kubectl apply -k "https://github.com/argoproj/argo-cd/manifests/crds?ref=stable"
+crds:
+  install: false
+  keep: true
+
 # Disable unnecessary components
 applicationSet:
   enabled: false
