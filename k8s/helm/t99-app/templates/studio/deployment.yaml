@@ -24,16 +24,12 @@ spec:
       containers:
         - name: studio
           image: oven/bun:1-alpine
-          # bunx downloads drizzle-kit on first start (~20s cold start); subsequent
-          # pod restarts reuse the image layer cache if the node is the same.
+          # bun install resolves drizzle-kit + drizzle-orm from the mounted
+          # package.json, then starts studio (~20-30s cold start).
           command:
-            - bunx
-            - drizzle-kit@latest
-            - studio
-            - --host
-            - "0.0.0.0"
-            - --port
-            - "4983"
+            - sh
+            - -c
+            - "bun install && bunx drizzle-kit studio --host 0.0.0.0 --port 4983"
           workingDir: /home/bun/app
           env:
             - name: HOME
@@ -48,6 +44,9 @@ spec:
           ports:
             - containerPort: 4983
           volumeMounts:
+            - name: config
+              mountPath: /home/bun/app/package.json
+              subPath: package.json
             - name: config
               mountPath: /home/bun/app/drizzle.config.js
               subPath: drizzle.config.js

@@ -6,6 +6,13 @@ metadata:
   labels:
     {{- include "t99-app.labels" . | nindent 4 }}
 data:
+  package.json: |
+    {
+      "dependencies": {
+        "drizzle-kit": "latest",
+        "drizzle-orm": "latest"
+      }
+    }
   drizzle.config.js: |
     export default {
       dialect: 'postgresql',

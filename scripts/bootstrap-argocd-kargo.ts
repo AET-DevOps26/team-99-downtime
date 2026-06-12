@@ -23,7 +23,8 @@ await $`helm upgrade --install argocd argo/argo-cd \
   -f k8s/bootstrap/argocd-values.yaml \
   --skip-crds \
   --wait \
-  --timeout 5m`;
+  --timeout 5m \
+  --rollback-on-failure`;
 
 // 3. Install Kargo
 console.log('\nInstalling Kargo...');
@@ -31,7 +32,8 @@ await $`helm upgrade --install kargo oci://ghcr.io/akuity/kargo-charts/kargo \
   -n t99-kargo \
   -f k8s/bootstrap/kargo-values.yaml \
   --wait \
-  --timeout 5m`;
+  --timeout 5m \
+  --rollback-on-failure`;
 
 // 4. Apply Kargo manifests (Project, Warehouse, Stages)
 console.log('\nApplying Kargo manifests...');
