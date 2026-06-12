@@ -24,13 +24,19 @@ spec:
       containers:
         - name: studio
           image: oven/bun:1-alpine
-          # bun install resolves drizzle-kit + drizzle-orm from the mounted
-          # package.json, then starts studio (~20-30s cold start).
+          # ConfigMap files are read-only at /config; copy them to /tmp/studio
+          # (world-writable) so bun install can create node_modules there.
           command:
             - sh
             - -c
-            - "bun install && bunx drizzle-kit studio --host 0.0.0.0 --port 4983"
-          workingDir: /home/bun/app
+            - |
+              set -e
+              mkdir -p /tmp/studio
+              cp /config/package.json /tmp/studio/
+              cp /config/drizzle.config.js /tmp/studio/
+              cd /tmp/studio
+              bun install
+              bunx drizzle-kit studio --host 0.0.0.0 --port 4983
           env:
             - name: HOME
               value: /home/bun
@@ -45,11 +51,8 @@ spec:
             - containerPort: 4983
           volumeMounts:
             - name: config
-              mountPath: /home/bun/app/package.json
-              subPath: package.json
-            - name: config
-              mountPath: /home/bun/app/drizzle.config.js
-              subPath: drizzle.config.js
+              mountPath: /config
+              readOnly: true
           readinessProbe:
             httpGet:
               path: /
