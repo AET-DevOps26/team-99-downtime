@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Image tag to deploy (e.g. v1.2.3) — find tags at Releases'
+        description: 'Image tag to deploy (e.g. 0.1.2, without the v) — find tags at Releases'
         required: true
         type: string
 
@@ -23,16 +23,18 @@ jobs:
 
       - name: Deploy to t99-prod
         run: |
+          VERSION="${{ inputs.version }}"
+          VERSION=${VERSION#v}
           helm upgrade --install t99 k8s/helm/t99-app/ \
             -n t99-prod \
             -f k8s/helm/t99-app/values.yaml \
             -f k8s/helm/t99-app/values.prod.yaml \
-            --set authService.image.tag="${{ inputs.version }}" \
-            --set client.image.tag="${{ inputs.version }}" \
-            --set transactionService.image.tag="${{ inputs.version }}" \
-            --set notificationService.image.tag="${{ inputs.version }}" \
-            --set budgetService.image.tag="${{ inputs.version }}" \
-            --set genaiService.image.tag="${{ inputs.version }}" \
+            --set authService.image.tag="$VERSION" \
+            --set client.image.tag="$VERSION" \
+            --set transactionService.image.tag="$VERSION" \
+            --set notificationService.image.tag="$VERSION" \
+            --set budgetService.image.tag="$VERSION" \
+            --set genaiService.image.tag="$VERSION" \
             --wait --timeout 5m
 
       - name: Write deploy summary

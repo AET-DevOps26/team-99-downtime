@@ -212,6 +212,7 @@ jobs:
       - name: Deploy to t99-stage
         run: |
           VERSION=$(git describe --tags --abbrev=0)
+          VERSION=${VERSION#v}
           helm upgrade --install t99 k8s/helm/t99-app/ \
             -n t99-stage \
             -f k8s/helm/t99-app/values.yaml \
@@ -227,6 +228,7 @@ jobs:
       - name: Write deploy summary
         run: |
           VERSION=$(git describe --tags --abbrev=0)
+          VERSION=${VERSION#v}
           echo "## Deployed to Stage" >> "$GITHUB_STEP_SUMMARY"
           echo "**Version:** \`$VERSION\`" >> "$GITHUB_STEP_SUMMARY"
           echo "**URL:** https://stage.t99.stud.k8s.aet.cit.tum.de" >> "$GITHUB_STEP_SUMMARY"
