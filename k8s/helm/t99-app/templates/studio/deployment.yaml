@@ -18,51 +18,54 @@ spec:
         {{- include "t99-app.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: studio
     spec:
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-      containers:
-        - name: studio
-          image: oven/bun:1-alpine
-          # ConfigMap files are read-only at /config; copy them to /tmp/studio
-          # (world-writable) so bun install can create node_modules there.
+      initContainers:
+        - name: configure
+          image: busybox:1
           command:
             - sh
             - -c
             - |
-              set -e
-              mkdir -p /tmp/studio
-              cp /config/package.json /tmp/studio/
-              cp /config/drizzle.config.js /tmp/studio/
-              cd /tmp/studio
-              bun install
-              bunx drizzle-kit studio --host 0.0.0.0 --port 4983
+              if [ -f /app/store.json ]; then
+                echo "store.json already initialized, keeping existing config"
+                exit 0
+              fi
+              sed "s/__DB_PASSWORD__/${DB_PASSWORD}/g" /config/store.json > /app/store.json
+              echo "store.json initialized"
           env:
-            - name: HOME
-              value: /home/bun
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: t99-db-credentials
                   key: password
-            - name: DATABASE_URL
-              value: "postgresql://postgres:$(DB_PASSWORD)@{{ .Release.Name }}-postgresql:5432/{{ .Values.drizzleStudio.database }}"
-          ports:
-            - containerPort: 4983
           volumeMounts:
+            - name: store
+              mountPath: /app
             - name: config
               mountPath: /config
               readOnly: true
+      containers:
+        - name: gateway
+          image: ghcr.io/drizzle-team/gateway:latest
+          env:
+            - name: STORE_PATH
+              value: /app
+          ports:
+            - containerPort: 4983
+          volumeMounts:
+            - name: store
+              mountPath: /app
           readinessProbe:
             httpGet:
               path: /
               port: 4983
-            initialDelaySeconds: 45
-            periodSeconds: 10
-            failureThreshold: 6
+            initialDelaySeconds: 10
+            periodSeconds: 5
           resources:
             {{- toYaml .Values.drizzleStudio.resources | nindent 12 }}
       volumes:
+        - name: store
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-studio-store
         - name: config
           configMap:
             name: {{ .Release.Name }}-studio-config

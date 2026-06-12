@@ -6,16 +6,22 @@ metadata:
   labels:
     {{- include "t99-app.labels" . | nindent 4 }}
 data:
-  package.json: |
+  store.json: |
     {
-      "dependencies": {
-        "drizzle-kit": "latest",
-        "drizzle-orm": "latest"
-      }
+      "id": "a622cfdf-899c-4399-8085-ee1755d8d0d3",
+      "slots": [
+        [
+          "361a88b8-d973-4338-9cc1-aaa42ce5d326",
+          {
+            "id": "361a88b8-d973-4338-9cc1-aaa42ce5d326",
+            "name": "{{ .Values.drizzleStudio.database }}",
+            "dialect": "postgresql",
+            "credentials": {
+              "url": "postgresql://postgres:__DB_PASSWORD__@{{ .Release.Name }}-postgresql:5432/{{ .Values.drizzleStudio.database }}"
+            }
+          }
+        ]
+      ],
+      "name": "{{ .Release.Namespace }}"
     }
-  drizzle.config.js: |
-    export default {
-      dialect: 'postgresql',
-      dbCredentials: { url: process.env.DATABASE_URL },
-    };
 {{- end }}
