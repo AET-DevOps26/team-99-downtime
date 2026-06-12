@@ -41,21 +41,6 @@ await $`kubectl apply -f k8s/kargo/`;
 console.log('\nApplying ArgoCD root application...');
 await $`kubectl apply -f k8s/argocd/root-app.yaml`;
 
-console.log('\nArgoCD and Kargo are ready.');
-
-// 6. Create GHCR pull secret in both namespaces.
 // DB and JWT secrets are generated automatically by Helm on first ArgoCD sync.
-const ghcrToken = prompt('Paste your GHCR personal access token: ');
-if (!ghcrToken) {
-  console.error('GHCR token is required');
-  process.exit(1);
-}
-
-for (const ns of ['t99-stage', 't99-prod']) {
-  console.log(`\nApplying t99-ghcr-pull to ${ns}...`);
-  const yaml =
-    await $`kubectl create secret docker-registry t99-ghcr-pull --docker-server=ghcr.io --docker-username=aet-devops26 --docker-password=${ghcrToken} -n ${ns} --dry-run=client -o yaml`.text();
-  await $`kubectl apply -f -`.stdin(yaml);
-}
-
+// GHCR packages are public — no pull secret needed.
 console.log('\nBootstrap complete.');

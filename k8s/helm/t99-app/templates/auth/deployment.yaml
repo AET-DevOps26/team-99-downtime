@@ -17,8 +17,6 @@ spec:
         {{- include "t99-app.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: auth
     spec:
-      imagePullSecrets:
-        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
       initContainers:
         - name: migrate
           image: {{ include "t99-app.image" (dict "registry" .Values.global.imageRegistry "repo" .Values.authService.image.repository "tag" .Values.authService.image.tag) }}

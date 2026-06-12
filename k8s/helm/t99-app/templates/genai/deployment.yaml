@@ -17,8 +17,6 @@ spec:
         {{- include "t99-app.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: genai
     spec:
-      imagePullSecrets:
-        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
       containers:
         - name: genai
           image: {{ include "t99-app.image" (dict "registry" .Values.global.imageRegistry "repo" .Values.genaiService.image.repository "tag" .Values.genaiService.image.tag) }}

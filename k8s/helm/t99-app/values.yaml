@@ -1,7 +1,5 @@
 global:
   imageRegistry: ghcr.io/aet-devops26/team-99-downtime
-  imagePullSecrets:
-    - name: t99-ghcr-pull
 
 domain: ''
 clusterIssuer: letsencrypt-prod

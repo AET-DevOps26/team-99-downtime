@@ -209,15 +209,6 @@ jobs:
           mkdir -p ~/.kube
           echo "${{ secrets.KUBECONFIG_DATA }}" | base64 -d > ~/.kube/config
 
-      - name: Create GHCR pull secret
-        run: |
-          kubectl create secret docker-registry t99-ghcr-pull \
-            --docker-server=ghcr.io \
-            --docker-username=x-access-token \
-            --docker-password="${{ secrets.GITHUB_TOKEN }}" \
-            -n t99-stage \
-            --dry-run=client -o yaml | kubectl apply -f -
-
       - name: Deploy to t99-stage
         run: |
           VERSION=$(git describe --tags --abbrev=0)
