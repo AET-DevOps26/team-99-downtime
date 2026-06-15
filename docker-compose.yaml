@@ -45,6 +45,20 @@ services:
       retries: 10
     networks: [team99]
 
+  drizzle-studio:
+    image: ghcr.io/drizzle-team/gateway:latest
+    restart: unless-stopped
+    environment:
+      STORE_PATH: /app
+    ports:
+      - '4983:4983'
+    volumes:
+      - ./infra/drizzle-studio:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [team99]
+
   pgadmin:
     image: dpage/pgadmin4:8.12
     restart: unless-stopped
