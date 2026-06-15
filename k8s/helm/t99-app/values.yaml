@@ -106,7 +106,7 @@ drizzleStudio:
   storageClass: ''
   github:
     # GitHub org whose members are allowed in — strongly recommended
-    org: ''
+    org: 'aet-devops26'
     # Set via --set or CI secrets; never commit real values here
     clientId: ''
     clientSecret: ''
