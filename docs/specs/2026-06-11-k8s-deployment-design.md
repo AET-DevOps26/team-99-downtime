@@ -1,16 +1,15 @@
 # Kubernetes Deployment Design
 
 **Date:** 2026-06-11
-**Status:** Approved
+**Updated:** 2026-06-15
+**Status:** Implemented
 
 ## Context
 
-ExpenseFlow is a microservices monorepo (6 services + PostgreSQL) currently running locally via Docker Compose. The team needs a production-grade deployment to a shared university Kubernetes cluster (Rancher + cert-manager already installed). The goal is automated stage deployments on every merge to `main`, with manual promotion to production via a visual pipeline (Kargo).
+ExpenseFlow is a microservices monorepo (6 services + PostgreSQL) deployed to a shared university Kubernetes cluster (Rancher + nginx ingress + cert-manager). Stage is deployed automatically on every merge to `main`; production is promoted manually via a GitHub Actions workflow dispatch.
 
 Constraints:
 
-- `t99-argo-cd`: 1 GB RAM / 0.5 CPU
-- `t99-kargo`: 0.5 GB RAM / 0.5 CPU
 - `t99-stage`: 2 GB RAM / 1.5 CPU
 - `t99-prod`: 2.5 GB RAM / 1.5 CPU
 
@@ -18,87 +17,77 @@ Constraints:
 
 ### Tool Choices
 
-- **Helm** for Kubernetes manifests (single umbrella chart, per-env values files). First-class ArgoCD + Kargo support, no build step.
-- **ArgoCD** for GitOps sync (watches `k8s/` in this repo, applies changes on commit).
-- **Kargo** for promotion pipeline (Warehouse detects new images, auto-promotes to stage, manual promote to prod).
-- **Bun TypeScript scripts** for one-time bootstrap.
+- **Helm** for Kubernetes manifests (single umbrella chart, per-env values files).
+- **GitHub Actions** for CI/CD — direct `helm upgrade --install` from the pipeline, no GitOps controller needed.
+- **oauth2-proxy** for Drizzle Studio authentication (GitHub OAuth, repo-collaborator gate).
+- **Bun TypeScript scripts** for local deploys (`scripts/deploy-stage.ts`).
 
 ### Repository Layout
 
 ```
 k8s/
-  bootstrap/
-    argocd-values.yaml        # Helm overrides for ArgoCD (resource limits)
-    kargo-values.yaml         # Helm overrides for Kargo (resource limits)
-  argocd/
-    root-app.yaml             # App of Apps — ArgoCD watches k8s/argocd/
-    app-stage.yaml            # ArgoCD Application: t99-stage
-    app-prod.yaml             # ArgoCD Application: t99-prod
-  kargo/
-    project.yaml              # Kargo Project "t99"
-    warehouse.yaml            # Warehouse: subscribes to 6 GHCR image repos (v* tags)
-    stage-stage.yaml          # Stage t99-stage (auto-promote)
-    stage-prod.yaml           # Stage t99-prod (manual approval)
   helm/
     t99-app/
       Chart.yaml
       values.yaml             # Shared defaults
-      values.stage.yaml       # Stage: domain, image tags, resource limits
-      values.prod.yaml        # Prod: domain, image tags, resource limits
+      values.stage.yaml       # Stage overrides (domain, drizzleStudio.enabled)
+      values.prod.yaml        # Prod overrides (domain, drizzleStudio.enabled)
       templates/
         _helpers.tpl
-        auth/deployment.yaml
-        auth/service.yaml
-        auth/configmap.yaml
-        client/deployment.yaml
-        client/service.yaml
-        transaction/deployment.yaml
-        transaction/service.yaml
-        transaction/configmap.yaml
-        notification/deployment.yaml
-        notification/service.yaml
-        notification/configmap.yaml
-        budget/deployment.yaml
-        budget/service.yaml
-        budget/configmap.yaml
-        genai/deployment.yaml
-        genai/service.yaml
-        genai/configmap.yaml
-        postgresql/statefulset.yaml
-        postgresql/service.yaml
+        secrets.yaml          # DB password, JWT key, OAuth cookie — generate-once via lookup
         ingress.yaml
+        auth/deployment.yaml + service.yaml + configmap.yaml
+        client/deployment.yaml + service.yaml
+        transaction/deployment.yaml + service.yaml + configmap.yaml
+        notification/deployment.yaml + service.yaml + configmap.yaml
+        budget/deployment.yaml + service.yaml + configmap.yaml
+        genai/deployment.yaml + service.yaml + configmap.yaml
+        postgresql/statefulset.yaml + service.yaml
+        studio/deployment.yaml      # drizzle-gateway (Recreate strategy, RWO PVC)
+        studio/service.yaml
+        studio/configmap.yaml       # store.json with __DB_PASSWORD__ placeholder
+        studio/pvc.yaml             # 128 Mi, helm.sh/resource-policy: keep
+        studio/oauth2-proxy.yaml    # GitHub OAuth gate
+        studio/ingress.yaml
 
 scripts/
-  bootstrap-k8s.ts            # One-command install: ArgoCD + Kargo + root App
-  create-secrets.ts           # Generate + apply k8s Secrets; print values to stdout
+  deploy-stage.ts             # Local deploy: reads secrets from cluster or prompts
+  bootstrap-argocd-kargo.ts   # Optional: ArgoCD + Kargo alternative (commented out in cd.yml)
+
+infra/
+  drizzle-studio/
+    store.json                # Pre-configured connections for local Docker Compose
 ```
 
-### Promotion Pipeline
+### CI/CD Pipeline
 
 ```
 [cd.yml — on push to main]
-  1. Build and push Docker images to GHCR (existing)
-     Tags: ghcr.io/aet-devops26/team-99-downtime/t99-{service}:v{semver}
-  2. NEW: kargo refresh warehouse "t99-app-warehouse"
+  1. Build & publish affected Docker images to GHCR
+     Tags: ghcr.io/aet-devops26/team-99-downtime/t99-{service}:{semver} + :latest
+  2. Cut versioned release via nx release (conventional commits gate)
+  3. Attest build provenance (GitHub Attestations)
+  4. helm upgrade --install t99 → t99-stage (auto)
 
-[Kargo Warehouse: t99-app-warehouse]
-  → Polls all 6 GHCR image repos for new v* tags
-  → Creates Freight(images=[v1.2.3,...])
-
-[Kargo Stage: t99-stage]  ← auto-promote
-  → Updates image tags in k8s/helm/t99-app/values.stage.yaml
-  → Commits + pushes to main
-  → ArgoCD detects commit → syncs t99-stage namespace
-
-[Kargo Stage: t99-prod]  ← manual
-  → "Promote" in Kargo UI
-  → Updates k8s/helm/t99-app/values.prod.yaml
-  → ArgoCD syncs t99-prod namespace
+[deploy-prod.yml — manual workflow_dispatch]
+  Input: version tag (e.g. 0.3.1)
+  → helm upgrade --install t99 → t99-prod
 ```
 
-### Ingress (replaces Caddy)
+All Helm invocations use `--wait --timeout 5m --rollback-on-failure`.
 
-Nginx ingress controller (Rancher default), cert-manager `letsencrypt-prod` ClusterIssuer for TLS.
+### Local Deploy
+
+```sh
+bun deploy:k8s                    # → t99-stage (latest git tag)
+bun deploy:k8s -n t99-prod        # → any namespace
+```
+
+Reads GitHub OAuth credentials from the existing cluster secret if present; prompts on first run.
+
+### Ingress
+
+Nginx ingress controller, cert-manager `letsencrypt-prod` ClusterIssuer for TLS.
 
 | Path prefix       | Backend service      | Port |
 | ----------------- | -------------------- | ---- |
@@ -114,81 +103,82 @@ Domains:
 - Stage: `stage.t99.stud.k8s.aet.cit.tum.de`
 - Prod: `t99.stud.k8s.aet.cit.tum.de`
 
+### Drizzle Studio
+
+Live database inspector deployed per environment when `drizzleStudio.enabled: true`.
+
+- **Image:** `ghcr.io/drizzle-team/gateway:latest`
+- **Auth:** `oauth2-proxy` (quay.io/oauth2-proxy/oauth2-proxy:v7.7.1) in front of the gateway — GitHub OAuth, scoped to collaborators of `aet-devops26/team-99-downtime` (`read:org` scope required for session creation)
+- **DB connections:** `auth_db`, `transaction_db`, `budget_db` pre-configured via `store.json` ConfigMap; init container substitutes `__DB_PASSWORD__` at pod start
+- **Config persistence:** 128 Mi RWO PVC (`helm.sh/resource-policy: keep`); deployment strategy `Recreate` to avoid mount conflicts
+- **Separate OAuth Apps:** stage and prod use different GitHub OAuth Apps (different callback URLs)
+
+| Environment | Studio URL                                       |
+| ----------- | ------------------------------------------------ |
+| Stage       | https://studio.stage.t99.stud.k8s.aet.cit.tum.de |
+| Prod        | https://studio.t99.stud.k8s.aet.cit.tum.de       |
+
 ### Resource Allocation
 
 **t99-stage (2 GB / 1.5 CPU):**
 
-| Service              | RAM request → limit  | CPU request → limit |
-| -------------------- | -------------------- | ------------------- |
-| postgresql           | 128 Mi → 256 Mi      | 100m → 200m         |
-| auth-service         | 64 Mi → 128 Mi       | 50m → 100m          |
-| client               | 32 Mi → 64 Mi        | 10m → 50m           |
-| transaction-service  | 192 Mi → 384 Mi      | 100m → 300m         |
-| notification-service | 192 Mi → 384 Mi      | 100m → 300m         |
-| budget-service       | 192 Mi → 384 Mi      | 100m → 300m         |
-| genai-service        | 128 Mi → 256 Mi      | 50m → 150m          |
-| **Total**            | **928 Mi → 1856 Mi** | **510m → 1400m**    |
+| Service              | RAM request → limit   | CPU request → limit |
+| -------------------- | --------------------- | ------------------- |
+| postgresql           | 128 Mi → 256 Mi       | 100m → 200m         |
+| auth-service         | 64 Mi → 128 Mi        | 50m → 100m          |
+| client               | 32 Mi → 64 Mi         | 10m → 50m           |
+| transaction-service  | 192 Mi → 384 Mi       | 100m → 300m         |
+| notification-service | 192 Mi → 384 Mi       | 100m → 300m         |
+| budget-service       | 192 Mi → 384 Mi       | 100m → 300m         |
+| genai-service        | 128 Mi → 256 Mi       | 50m → 150m          |
+| drizzle-studio       | 64 Mi → 128 Mi        | 10m → 100m          |
+| oauth2-proxy         | 32 Mi → 64 Mi         | 10m → 50m           |
+| **Total**            | **1026 Mi → 2048 Mi** | **590m → 1550m**    |
 
 **t99-prod (2.5 GB / 1.5 CPU):** Same requests; wider limits. PostgreSQL: 256 Mi → 512 Mi.
 
 All Spring Boot services get `JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=75.0 -XX:+UseContainerSupport"`.
 
-### ArgoCD Installation (t99-argo-cd, 1 GB / 0.5 CPU)
-
-`k8s/bootstrap/argocd-values.yaml` overrides:
-
-- All components: 1 replica
-- Disable HA, metrics, notifications server, ApplicationSet controller (not needed)
-- Resource limits set per component to stay under 1 GB / 0.5 CPU total
-
-### Kargo Installation (t99-kargo, 0.5 GB / 0.5 CPU)
-
-`k8s/bootstrap/kargo-values.yaml` overrides:
-
-- Minimal deployment: API server + controller + garbage collector
-- Total target: ~320 Mi / 0.25 CPU
-
 ### Secrets Management
 
-All secrets are pre-created before first ArgoCD sync. The Helm chart references them by name — it does not create them.
+Secrets are generated by the Helm chart itself using the `lookup` pattern — stable across upgrades, never regenerated:
 
-Required secrets (per namespace: t99-stage and t99-prod):
+| Secret               | Key                         | Generated by                                    |
+| -------------------- | --------------------------- | ----------------------------------------------- |
+| `t99-db-credentials` | `password`                  | `randAlphaNum 32` on first install              |
+| `t99-app-secrets`    | `jwtSigningKey`             | `randAlphaNum 64` on first install              |
+| `t99-studio-oauth2`  | `cookieSecret`              | `randAlphaNum 32` on first install              |
+| `t99-studio-oauth2`  | `clientId` / `clientSecret` | Passed via `--set` (CI secrets or local prompt) |
 
-- `t99-ghcr-pull` — Docker pull secret for `ghcr.io` (GHCR token prompted interactively at bootstrap time)
-- `t99-db-credentials` — PostgreSQL password (auto-generated)
-- `t99-app-secrets` — JWT signing key (auto-generated)
+All secrets carry `helm.sh/resource-policy: keep` — they survive `helm uninstall`.
 
-`scripts/create-secrets.ts` auto-generates passwords, prompts the user to paste their GHCR token interactively (no env var required), applies all secrets to both namespaces via `kubectl`, and prints all generated values to stdout.
+Required GitHub Actions secrets:
+
+| Secret                             | Used by                                      |
+| ---------------------------------- | -------------------------------------------- |
+| `KUBECONFIG_DATA`                  | base64-encoded kubeconfig for cluster access |
+| `STUDIO_GITHUB_CLIENT_ID`          | Stage OAuth App client ID                    |
+| `STUDIO_GITHUB_CLIENT_SECRET`      | Stage OAuth App client secret                |
+| `STUDIO_GITHUB_CLIENT_ID_PROD`     | Prod OAuth App client ID                     |
+| `STUDIO_GITHUB_CLIENT_SECRET_PROD` | Prod OAuth App client secret                 |
 
 ### Bootstrap Procedure
 
 1. Ensure `kubectl` context is set to the cluster
-2. Run: `bun run scripts/bootstrap-k8s.ts` — installs ArgoCD + Kargo + root App of Apps, then automatically invokes `create-secrets.ts` (which prompts for the GHCR token interactively)
-3. Add `KARGO_API_TOKEN` (from Kargo UI → Service Accounts) as a GitHub Actions secret named `KARGO_API_TOKEN`
-4. Add `KARGO_SERVER=https://kargo.t99.stud.k8s.aet.cit.tum.de` as a GitHub Actions variable
-5. From this point, all subsequent config changes are applied automatically via ArgoCD
+2. Create the namespaces: `kubectl create namespace t99-stage t99-prod`
+3. Base64-encode the kubeconfig and add it as `KUBECONFIG_DATA` in GitHub Actions secrets
+4. Create two GitHub OAuth Apps (one for stage, one for prod) with callback URLs:
+   - Stage: `https://studio.stage.t99.stud.k8s.aet.cit.tum.de/oauth2/callback`
+   - Prod: `https://studio.t99.stud.k8s.aet.cit.tum.de/oauth2/callback`
+5. Add the four `STUDIO_GITHUB_*` secrets to GitHub Actions
+6. Push to `main` — the CD pipeline handles the rest
 
-### cd.yml Changes
-
-The existing `deploy` job stub is replaced with:
-
-```yaml
-- name: Trigger Kargo warehouse refresh
-  env:
-    KARGO_SERVER: ${{ vars.KARGO_SERVER }}
-    KARGO_TOKEN: ${{ secrets.KARGO_API_TOKEN }}
-  run: |
-    # Install kargo CLI, authenticate, refresh warehouse
-    kargo login $KARGO_SERVER --token $KARGO_TOKEN
-    kargo refresh warehouse t99-app-warehouse --project t99 --wait
-```
+For local/manual deploys: `bun deploy:k8s` (prompts for OAuth credentials on first run, then reads from cluster secret).
 
 ## Verification
 
-1. Run `bun run scripts/bootstrap-k8s.ts` — ArgoCD and Kargo pods become Ready
-2. Run `bun run scripts/create-secrets.ts` — secrets visible in both namespaces
-3. Push a commit to `main` — CD workflow completes, Kargo warehouse refresh triggers
-4. Kargo UI shows a new Freight and active promotion to t99-stage
-5. ArgoCD UI shows t99-stage synced and healthy
-6. `https://stage.t99.stud.k8s.aet.cit.tum.de` serves the app
-7. In Kargo UI, promote Freight to t99-prod → t99-prod syncs → prod domain serves the app
+1. Push a commit to `main` with a releasable conventional commit — CD workflow builds, releases, and deploys to stage
+2. `https://stage.t99.stud.k8s.aet.cit.tum.de` serves the app
+3. `https://studio.stage.t99.stud.k8s.aet.cit.tum.de` requires GitHub login (collaborators of `aet-devops26/team-99-downtime` only)
+4. All three databases visible and queryable in Drizzle Studio
+5. Trigger **Deploy to Production** workflow with a version tag → prod domain serves the app
