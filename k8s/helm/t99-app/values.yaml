@@ -105,8 +105,8 @@ drizzleStudio:
   database: auth_db
   storageClass: ''
   github:
-    # GitHub org whose members are allowed in
-    org: 'aet-devops26'
+    # Repo whose collaborators are allowed in (org/repo)
+    repo: 'aet-devops26/team-99-downtime'
     # Set via --set or CI secrets; never commit real values here
     clientId: ''
     clientSecret: ''

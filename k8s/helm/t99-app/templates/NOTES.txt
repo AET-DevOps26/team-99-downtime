@@ -5,6 +5,6 @@ App URL: https://{{ .Values.domain }}
 
 Drizzle Studio
   URL:      https://studio.{{ .Values.domain }}
-  Auth:     GitHub OAuth (org: {{ if .Values.drizzleStudio.github.org }}{{ .Values.drizzleStudio.github.org }}{{ else }}any GitHub user{{ end }})
+  Auth:     GitHub OAuth (repo: {{ if .Values.drizzleStudio.github.repo }}{{ .Values.drizzleStudio.github.repo }}{{ else }}any GitHub user{{ end }})
   Databases: auth_db, transaction_db, budget_db (pre-configured)
 {{- end }}

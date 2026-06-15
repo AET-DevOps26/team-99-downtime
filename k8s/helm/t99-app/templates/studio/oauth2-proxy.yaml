@@ -23,8 +23,8 @@ spec:
           image: quay.io/oauth2-proxy/oauth2-proxy:v7.7.1
           args:
             - --provider=github
-            {{- if .Values.drizzleStudio.github.org }}
-            - --github-org={{ .Values.drizzleStudio.github.org }}
+            {{- if .Values.drizzleStudio.github.repo }}
+            - --github-repo={{ .Values.drizzleStudio.github.repo }}
             {{- end }}
             - --upstream=http://{{ .Release.Name }}-studio:4983
             - --http-address=0.0.0.0:4180
@@ -33,7 +33,8 @@ spec:
             - --cookie-secure=true
             - --cookie-name=_t99_studio_oauth2
             - --reverse-proxy=true
-            - '--scope=user:email read:org'
+            - --banner=ExpenseFlow Drizzle Studio — members of aet-devops26 only
+            - '--scope=user:email'
           env:
             - name: OAUTH2_PROXY_CLIENT_ID
               valueFrom:

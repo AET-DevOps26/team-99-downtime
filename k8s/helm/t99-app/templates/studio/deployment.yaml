@@ -8,6 +8,8 @@ metadata:
     app.kubernetes.io/component: studio
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       {{- include "t99-app.selectorLabels" . | nindent 6 }}
@@ -25,8 +27,11 @@ spec:
             - sh
             - -c
             - |
-              sed "s/__DB_PASSWORD__/${DB_PASSWORD}/g" /config/store.json > /app/store.json
-              echo "store.json initialized"
+              set -e
+              echo "[configure] source: $(ls -lh /config/store.json)"
+              sed "s|__DB_PASSWORD__|${DB_PASSWORD}|g" /config/store.json > /app/store.json
+              echo "[configure] written: $(ls -lh /app/store.json)"
+              echo "[configure] done"
           env:
             - name: DB_PASSWORD
               valueFrom:
