@@ -25,10 +25,6 @@ spec:
             - sh
             - -c
             - |
-              if [ -f /app/store.json ]; then
-                echo "store.json already initialized, keeping existing config"
-                exit 0
-              fi
               sed "s/__DB_PASSWORD__/${DB_PASSWORD}/g" /config/store.json > /app/store.json
               echo "store.json initialized"
           env:
