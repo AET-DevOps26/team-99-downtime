@@ -101,10 +101,15 @@ genaiService:
 
 drizzleStudio:
   enabled: false
-  # Which PostgreSQL database to inspect (auth_db | transaction_db | budget_db | postgres)
+  # Which PostgreSQL database to use as the first pre-configured connection
   database: auth_db
-  username: admin
   storageClass: ''
+  github:
+    # GitHub org whose members are allowed in — strongly recommended
+    org: ''
+    # Set via --set or CI secrets; never commit real values here
+    clientId: ''
+    clientSecret: ''
   resources:
     requests:
       memory: 64Mi

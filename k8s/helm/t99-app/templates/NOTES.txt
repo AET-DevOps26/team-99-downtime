@@ -5,9 +5,6 @@ App URL: https://{{ .Values.domain }}
 
 Drizzle Studio
   URL:      https://studio.{{ .Values.domain }}
-  Database: {{ .Values.drizzleStudio.database }}
-  Username: {{ .Values.drizzleStudio.username }}
-  Password: kubectl get secret t99-studio-auth \
-              -n {{ .Release.Namespace }} \
-              -o jsonpath='{.data.password}' | base64 -d && echo
+  Auth:     GitHub OAuth (org: {{ if .Values.drizzleStudio.github.org }}{{ .Values.drizzleStudio.github.org }}{{ else }}any GitHub user{{ end }})
+  Databases: auth_db, transaction_db, budget_db (pre-configured)
 {{- end }}

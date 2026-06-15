@@ -43,6 +43,8 @@ spec:
             - name: config
               mountPath: /config
               readOnly: true
+          resources:
+            {{- toYaml .Values.drizzleStudio.resources | nindent 12 }}
       containers:
         - name: gateway
           image: ghcr.io/drizzle-team/gateway:latest

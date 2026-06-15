@@ -7,9 +7,6 @@ metadata:
     {{- include "t99-app.labels" . | nindent 4 }}
   annotations:
     cert-manager.io/cluster-issuer: {{ .Values.clusterIssuer | quote }}
-    nginx.ingress.kubernetes.io/auth-type: basic
-    nginx.ingress.kubernetes.io/auth-secret: t99-studio-auth
-    nginx.ingress.kubernetes.io/auth-realm: "Drizzle Studio"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
 spec:
@@ -26,7 +23,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ .Release.Name }}-studio
+                name: {{ .Release.Name }}-studio-oauth2
                 port:
-                  number: 4983
+                  number: 4180
 {{- end }}

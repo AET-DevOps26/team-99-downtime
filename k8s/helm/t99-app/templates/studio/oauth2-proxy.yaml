@@ -1,0 +1,81 @@
+{{- if .Values.drizzleStudio.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-studio-oauth2
+  labels:
+    {{- include "t99-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: studio-oauth2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "t99-app.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: studio-oauth2
+  template:
+    metadata:
+      labels:
+        {{- include "t99-app.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: studio-oauth2
+    spec:
+      containers:
+        - name: oauth2-proxy
+          image: quay.io/oauth2-proxy/oauth2-proxy:v7.7.1
+          args:
+            - --provider=github
+            {{- if .Values.drizzleStudio.github.org }}
+            - --github-org={{ .Values.drizzleStudio.github.org }}
+            {{- end }}
+            - --upstream=http://{{ .Release.Name }}-studio:4983
+            - --http-address=0.0.0.0:4180
+            - --redirect-url=https://studio.{{ .Values.domain }}/oauth2/callback
+            - --email-domain=*
+            - --cookie-secure=true
+            - --cookie-name=_t99_studio_oauth2
+            - --reverse-proxy=true
+          env:
+            - name: OAUTH2_PROXY_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: t99-studio-oauth2
+                  key: clientId
+            - name: OAUTH2_PROXY_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: t99-studio-oauth2
+                  key: clientSecret
+            - name: OAUTH2_PROXY_COOKIE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: t99-studio-oauth2
+                  key: cookieSecret
+          ports:
+            - containerPort: 4180
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: 4180
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              memory: 32Mi
+              cpu: 10m
+            limits:
+              memory: 64Mi
+              cpu: 50m
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-studio-oauth2
+  labels:
+    {{- include "t99-app.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "t99-app.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: studio-oauth2
+  ports:
+    - port: 4180
+      targetPort: 4180
+{{- end }}
