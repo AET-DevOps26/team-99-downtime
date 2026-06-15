@@ -59,21 +59,6 @@ services:
         condition: service_healthy
     networks: [team99]
 
-  pgadmin:
-    image: dpage/pgadmin4:8.12
-    restart: unless-stopped
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-dev@team99.dev}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-devpass}
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
-      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
-    ports:
-      - '${PGADMIN_PORT:-5050}:80'
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks: [team99]
-
   # Run-once migration job: applies the Better Auth schema to auth_db, then
   # exits. auth-service waits for this to finish (service_completed_successfully)
   # so no manual migrate step is needed. Mirrors a Kubernetes Job / initContainer
