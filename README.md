@@ -169,7 +169,7 @@ cd apps/client
 bunx shadcn@latest add <component>      # e.g. card, input, dialog
 ```
 
-Components land in `src/shared/ui/`. Configuration lives in [`apps/client/components.json`](apps/client/components.json). See [`apps/client/ARCHITECTURE.md`](apps/client/ARCHITECTURE.md) for the feature-first structure.
+Components land in `src/shared/ui/`. Configuration lives in [`apps/client/components.json`](apps/client/components.json). See [`apps/client/CLIENT_ARCHITECTURE.md`](apps/client/CLIENT_ARCHITECTURE.md) for the feature-first structure.
 
 **Theming:** Tailwind v4 uses CSS-first config - design tokens (colors, radius, dark mode) are in [`apps/client/src/styles.css`](apps/client/src/styles.css). Add a `.dark` class to `<html>` to toggle dark mode. No `tailwind.config.js`.
 
