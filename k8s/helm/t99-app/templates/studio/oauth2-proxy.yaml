@@ -34,7 +34,7 @@ spec:
             - --cookie-name=_t99_studio_oauth2
             - --reverse-proxy=true
             - --banner=ExpenseFlow Drizzle Studio — members of aet-devops26 only
-            - '--scope=user:email'
+            - '--scope=user:email read:org'
           env:
             - name: OAUTH2_PROXY_CLIENT_ID
               valueFrom:
