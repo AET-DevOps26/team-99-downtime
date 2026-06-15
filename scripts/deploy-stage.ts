@@ -71,18 +71,18 @@ if (clientId && clientSecret) {
 // Helm deploy
 // ---------------------------------------------------------------------------
 
-await $`helm upgrade --install t99 k8s/helm/t99-app/
-  -n ${namespace}
-  -f k8s/helm/t99-app/values.yaml
-  -f k8s/helm/t99-app/values.stage.yaml
-  --set ${'authService.image.tag=' + version}
-  --set ${'client.image.tag=' + version}
-  --set ${'transactionService.image.tag=' + version}
-  --set ${'notificationService.image.tag=' + version}
-  --set ${'budgetService.image.tag=' + version}
-  --set ${'genaiService.image.tag=' + version}
-  --set ${'drizzleStudio.github.clientId=' + clientId}
-  --set ${'drizzleStudio.github.clientSecret=' + clientSecret}
+await $`helm upgrade --install t99 k8s/helm/t99-app/ \
+  -n ${namespace} \
+  -f k8s/helm/t99-app/values.yaml \
+  -f k8s/helm/t99-app/values.stage.yaml \
+  --set ${'authService.image.tag=' + version} \
+  --set ${'client.image.tag=' + version} \
+  --set ${'transactionService.image.tag=' + version} \
+  --set ${'notificationService.image.tag=' + version} \
+  --set ${'budgetService.image.tag=' + version} \
+  --set ${'genaiService.image.tag=' + version} \
+  --set ${'drizzleStudio.github.clientId=' + clientId} \
+  --set ${'drizzleStudio.github.clientSecret=' + clientSecret} \
   --wait --timeout 5m --rollback-on-failure`;
 
 // ---------------------------------------------------------------------------

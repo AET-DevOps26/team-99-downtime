@@ -33,6 +33,7 @@ spec:
             - --cookie-secure=true
             - --cookie-name=_t99_studio_oauth2
             - --reverse-proxy=true
+            - '--scope=user:email read:org'
           env:
             - name: OAUTH2_PROXY_CLIENT_ID
               valueFrom:

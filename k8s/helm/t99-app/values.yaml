@@ -105,7 +105,7 @@ drizzleStudio:
   database: auth_db
   storageClass: ''
   github:
-    # GitHub org whose members are allowed in — strongly recommended
+    # GitHub org whose members are allowed in
     org: 'aet-devops26'
     # Set via --set or CI secrets; never commit real values here
     clientId: ''
