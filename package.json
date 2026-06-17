@@ -4,7 +4,8 @@
   "license": "MIT",
   "scripts": {
     "dev": "nx run-many -t serve --parallel",
-    "prepare": "husky"
+    "prepare": "husky",
+    "openapi": "node tools/openapi/generate.mjs"
   },
   "private": true,
   "commitlint": {
@@ -74,6 +75,7 @@
     "jsdom": "~22.1.0",
     "lint-staged": "^17.0.5",
     "nx": "22.7.1",
+    "openapi-typescript": "^7.13.0",
     "prettier": "~3.6.2",
     "tailwindcss": "^4.3.0",
     "tslib": "^2.3.0",

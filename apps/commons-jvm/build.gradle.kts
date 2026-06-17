@@ -31,6 +31,12 @@ dependencies {
 	api("org.springframework.boot:spring-boot-starter-web")
 	api("org.springframework.boot:spring-boot-starter-security")
 	api("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
+	// springdoc serves the OpenAPI 3 spec at /v3/api-docs for every consuming
+	// service. The `-api` starter (not `-ui`) deliberately omits the per-service
+	// Swagger UI webjar — the single aggregated Swagger UI (the swagger-ui
+	// container behind the gateway at /docs) is the one entry point. Not in the
+	// Spring Boot BOM, so the version is pinned explicitly (2.8.x tracks Boot 3.5).
+	api("org.springdoc:springdoc-openapi-starter-webmvc-api:2.8.9")
 	compileOnly("org.springframework.boot:spring-boot-autoconfigure")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.security:spring-security-test")

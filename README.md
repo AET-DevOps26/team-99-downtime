@@ -10,6 +10,7 @@
 - [Problem Statement](docs/problem/PROBLEM_STATEMENT.md)
 - [Service Overview](docs/architecture/SERVICE_OVERVIEW.md) - UML / component / service diagrams + API calls diagrams
 - [Developing with Auth](docs/development/AUTHENTICATION.md) - get a token, call secured endpoints, secure new ones
+- [OpenAPI & Generated Clients](docs/development/API_CLIENTS.md) - auto-generated specs + typed frontend client, how to regenerate
 
 ## Development Setup
 
@@ -146,6 +147,17 @@ curl http://localhost:8082/actuator/health   # budget-service
 Other Nx targets: `build`, `test` (e.g. `bunx nx build transaction-service`).
 
 **Authentication:** all endpoints except `/actuator/health` require a Bearer JWT (`401` otherwise). See [Verify it works](#verify-it-works) for a quick token+probe, or [Developing with Auth](docs/development/AUTHENTICATION.md) for the full dev guide (getting tokens, the gateway path quirk, securing new endpoints).
+
+### Changing an API? Regenerate the OpenAPI specs + client
+
+Every service auto-exposes an OpenAPI spec (browse them all in one Swagger UI at **http://localhost:9099/docs/**), and the frontend's typed client is generated from those specs. So whenever you add or change an endpoint or DTO:
+
+```sh
+docker compose up -d     # the stack must be running
+bun run openapi          # refresh openapi/*.json + apps/client/src/shared/api/generated
+```
+
+Then commit the regenerated `openapi/` and `generated/` files with your change. See [OpenAPI & Generated Clients](docs/development/API_CLIENTS.md) for details.
 
 ### Client (React + Vite + Tailwind v4 + shadcn/ui)
 

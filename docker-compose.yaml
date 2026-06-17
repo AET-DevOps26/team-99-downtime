@@ -23,6 +23,21 @@ services:
     depends_on:
       - client
       - auth-service
+      - swagger-ui
+    networks: [team99]
+  swagger-ui:
+    image: swaggerapi/swagger-ui:v5.17.14
+    restart: unless-stopped
+    environment:
+      BASE_URL: /docs
+      URLS_PRIMARY_NAME: budget-service
+      URLS: >-
+        [
+          {"url":"/budgets/v3/api-docs","name":"budget-service"},
+          {"url":"/transactions/v3/api-docs","name":"transaction-service"},
+          {"url":"/notifications/v3/api-docs","name":"notification-service"},
+          {"url":"/genai/openapi.json","name":"genai-service"}
+        ]
     networks: [team99]
 
   postgres:

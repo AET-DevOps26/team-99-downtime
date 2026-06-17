@@ -5,3 +5,5 @@ apps/*/build
 bun.lock
 *.java
 *.py
+apps/client/src/shared/api/generated
+openapi

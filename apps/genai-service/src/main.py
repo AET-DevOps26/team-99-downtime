@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 from .auth import CurrentUser, require_user
 
-app = FastAPI(title="ExpenseFlow AI Service")
+app = FastAPI(title="ExpenseFlow AI Service", docs_url=None, redoc_url=None)
 
 
 class ExpenseRequest(BaseModel):

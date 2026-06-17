@@ -34,6 +34,8 @@ export default tseslint.config(
       'build/**',
       'apps/*/build/**',
       '.nx/**',
+      // Auto-generated OpenAPI client types, never hand-edited
+      'apps/client/src/shared/api/generated/**',
       '**/*.java',
       '**/*.py',
     ],

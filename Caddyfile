@@ -29,6 +29,10 @@
 		reverse_proxy genai-service:8000
 	}
 
+	handle /docs* {
+		reverse_proxy swagger-ui:8080
+	}
+
 	# Everything else -> the React client (Vite dev server).
 	# reverse_proxy upgrades websockets, so Vite HMR works through Caddy.
 	handle {
