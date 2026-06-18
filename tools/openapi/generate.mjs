@@ -20,7 +20,6 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const specDir = join(repoRoot, 'openapi');
 const outDir = join(repoRoot, 'apps', 'client', 'src', 'shared', 'api', 'generated');
-const cli = join(repoRoot, 'node_modules', 'openapi-typescript', 'bin', 'cli.js');
 
 // name -> live spec URL (direct service ports, published by docker-compose).
 const services = {
@@ -49,9 +48,10 @@ for (const [name, url] of Object.entries(services)) {
     console.log(`  wrote openapi/${name}.json`);
 
     const out = join(outDir, `${name}.ts`);
-    execFileSync(process.execPath, [cli, specFile, '--output', out], {
+    execFileSync('bunx', ['openapi-typescript', specFile, '--output', out], {
       stdio: 'inherit',
       cwd: repoRoot,
+      shell: true,
     });
   } catch (error) {
     failures.push({ name, url, message: error.message });
