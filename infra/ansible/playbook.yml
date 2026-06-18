@@ -1,0 +1,14 @@
+---
+# Configures the Azure VM and (re)deploys the stack.
+#   - docker role: installs Docker Engine + the compose plugin.
+#   - app role:    renders the prod compose/Caddy/env + systemd unit, pulls the
+#                  released images from GHCR, and (re)starts the stack.
+#
+# Idempotent: a run with no image or config change leaves the stack untouched.
+- name: Provision and deploy team-99-downtime
+  hosts: t99
+  become: true
+  gather_facts: true
+  roles:
+    - docker
+    - app

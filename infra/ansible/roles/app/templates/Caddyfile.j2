@@ -1,0 +1,32 @@
+# Rendered by Ansible. Mirrors the dev Caddyfile but for prod ports.
+# With a domain set, Caddy auto-provisions a Let's Encrypt cert on :443 and
+# redirects :80 -> :443. With no domain it just serves plain HTTP on :80.
+{% if domain %}
+{{ domain }} {
+{% else %}
+:80 {
+{% endif %}
+	# Auth service — keep the /api/auth prefix (Better Auth owns it).
+	handle /api/auth/* {
+		reverse_proxy auth-service:3000
+	}
+
+	# Backend services — strip the prefix before forwarding.
+	handle_path /transactions/* {
+		reverse_proxy transaction-service:8080
+	}
+	handle_path /budgets/* {
+		reverse_proxy budget-service:8082
+	}
+	handle_path /notifications/* {
+		reverse_proxy notification-service:8081
+	}
+	handle_path /genai/* {
+		reverse_proxy genai-service:8000
+	}
+
+	# Everything else -> the static client (served on :80 in the prod image).
+	handle {
+		reverse_proxy client:80
+	}
+}

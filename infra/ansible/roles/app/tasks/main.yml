@@ -1,0 +1,72 @@
+---
+# Renders the prod stack onto the VM and (re)deploys it via a systemd unit.
+- name: Ensure app directory exists
+  file:
+    path: '{{ app_dir }}'
+    state: directory
+    mode: '0755'
+
+- name: Copy Postgres init scripts (per-service databases)
+  copy:
+    src: '{{ playbook_dir }}/../postgres/init/'
+    dest: '{{ app_dir }}/postgres-init/'
+    mode: '0644'
+  notify: restart t99
+
+- name: Render environment file
+  template:
+    src: app.env.j2
+    dest: '{{ app_dir }}/.env'
+    mode: '0600'
+  no_log: true
+  notify: restart t99
+
+# Plain copy (not template): the prod compose has no Jinja — it reads ${VARS}
+# from the .env that the task above renders. Lives at the repo root so it sits
+# beside docker-compose.yaml (dev) and stays lintable/runnable.
+- name: Copy docker-compose file
+  copy:
+    src: '{{ playbook_dir }}/../../docker-compose.prod.yaml'
+    dest: '{{ app_dir }}/docker-compose.yml'
+    mode: '0644'
+  notify: restart t99
+
+- name: Render Caddyfile
+  template:
+    src: Caddyfile.j2
+    dest: '{{ app_dir }}/Caddyfile'
+    mode: '0644'
+  notify: restart t99
+
+- name: Install systemd unit
+  template:
+    src: t99.service.j2
+    dest: /etc/systemd/system/t99.service
+    mode: '0644'
+  # The "enabled and started" task below runs daemon_reload, so no separate
+  # reload handler is needed here.
+  notify: restart t99
+
+- name: Log in to GHCR (to pull private images)
+  command: docker login ghcr.io -u {{ ghcr_user }} --password-stdin
+  args:
+    stdin: '{{ ghcr_token }}'
+  no_log: true
+  changed_when: false
+
+- name: Pull released images
+  command: docker compose pull
+  args:
+    chdir: '{{ app_dir }}'
+  register: compose_pull
+  changed_when: >-
+    'Pulled' in (compose_pull.stderr | default(''))
+    or 'Downloaded newer image' in (compose_pull.stdout | default(''))
+  notify: restart t99
+
+- name: Ensure the stack is enabled and started
+  systemd:
+    name: t99
+    enabled: true
+    state: started
+    daemon_reload: true
