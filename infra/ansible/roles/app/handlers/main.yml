@@ -1,0 +1,7 @@
+---
+# Restarting the oneshot unit runs `docker compose up -d` again, which recreates
+# only the containers whose image or config changed.
+- name: restart t99
+  systemd:
+    name: t99
+    state: restarted

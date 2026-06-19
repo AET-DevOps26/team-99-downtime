@@ -1,0 +1,12 @@
+---
+# Non-secret defaults. Always loaded (unlike the gitignored group_vars/all.yml),
+# so CI only has to pass the release tag + secrets via --extra-vars.
+app_dir: /opt/t99
+registry: ghcr.io/aet-devops26/team-99-downtime
+app_image_tag: latest
+
+# Empty -> serve plain HTTP on the bare IP. Set to the VM FQDN for auto-HTTPS.
+domain: ''
+
+postgres_user: t99
+postgres_db: postgres

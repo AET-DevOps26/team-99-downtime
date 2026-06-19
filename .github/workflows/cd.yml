@@ -14,6 +14,7 @@ jobs:
     name: Docker Build & Publish Affected Containers
     outputs:
       images: ${{ steps.image_refs.outputs.images }}
+      version: ${{ steps.image_refs.outputs.version }}
 
     permissions:
       # need write permissions for writing the tags
@@ -109,6 +110,8 @@ jobs:
         run: |
           images='[]'
           tag=$(git describe --tags --abbrev=0)
+          # Expose the released version (no leading v) for the deploy workflow.
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
           {
             echo "## Released Images"
             echo ""
@@ -187,6 +190,21 @@ jobs:
             echo "|-------|--------|--------|"
             echo "| \`${{ matrix.image.name }}\` | \`${{ matrix.image.digest }}\` | ✅ Verified |"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # Delegates to the reusable deploy workflow so the automatic (on-release) and
+  # manual (workflow_dispatch button) deploys share one set of steps.
+  deploy:
+    name: Deploy to Azure VM
+    needs: [build-and-publish, attest]
+    if: needs.build-and-publish.outputs.images != '' && needs.build-and-publish.outputs.images != '[]'
+    permissions:
+      contents: read
+      packages: read
+      deployments: write
+    uses: ./.github/workflows/deploy.yml
+    with:
+      image_tag: ${{ needs.build-and-publish.outputs.version }}
+    secrets: inherit
 
   # ============================================================
   # OPTION A — Direct Helm deploy (active)

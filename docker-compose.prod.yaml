@@ -1,2 +1,125 @@
-# TBD: production compose to be defined once a deploy target exists.
-# Focus is on docker-compose.yaml (dev) for now.
+# Production stack
+
+# ${VAR} are interpolated by Docker Compose from a sibling .env file. In
+# production that .env is rendered onto the VM by Ansible (infra/ansible); this
+name: team-99-downtime
+
+x-restart: &restart
+  restart: unless-stopped
+
+services:
+  # Single-origin gateway. The only service exposed to the internet.
+  caddy:
+    image: caddy:2-alpine
+    <<: *restart
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on:
+      - client
+      - auth-service
+    networks: [team99]
+
+  postgres:
+    image: postgres:16-alpine
+    <<: *restart
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [team99]
+
+  # Run-once Better Auth schema migration, then exits. auth-service waits for it.
+  auth-migrate:
+    image: ${REGISTRY}/t99-auth-service:${APP_IMAGE_TAG}
+    restart: 'no'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/auth_db
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+    command: ['bun', 'run', 'src/migrate.ts']
+    networks: [team99]
+
+  auth-service:
+    image: ${REGISTRY}/t99-auth-service:${APP_IMAGE_TAG}
+    <<: *restart
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth-migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/auth_db
+      BETTER_AUTH_URL: ${PUBLIC_ORIGIN}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      PORT: '3000'
+    networks: [team99]
+
+  transaction-service:
+    image: ${REGISTRY}/t99-transaction-service:${APP_IMAGE_TAG}
+    <<: *restart
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/transaction_db
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+    networks: [team99]
+
+  budget-service:
+    image: ${REGISTRY}/t99-budget-service:${APP_IMAGE_TAG}
+    <<: *restart
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/budget_db
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+    networks: [team99]
+
+  notification-service:
+    image: ${REGISTRY}/t99-notification-service:${APP_IMAGE_TAG}
+    <<: *restart
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+    networks: [team99]
+
+  # NOTE: if the genai service needs an LLM API key in prod, add it here and to
+  # infra/ansible/roles/app/templates/app.env.j2 (it had none in the dev compose).
+  genai-service:
+    image: ${REGISTRY}/t99-genai-service:${APP_IMAGE_TAG}
+    <<: *restart
+    networks: [team99]
+
+  client:
+    image: ${REGISTRY}/t99-client:${APP_IMAGE_TAG}
+    <<: *restart
+    networks: [team99]
+
+volumes:
+  postgres_data:
+  caddy_data:
+
+networks:
+  team99:

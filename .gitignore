@@ -102,3 +102,18 @@ out/
 
 ### VS Code ###
 .vscode/
+
+# --- Infra: Terraform ---
+**/.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars
+backend.hcl
+# Saved plan files — binary, stale immediately, must not be committed.
+tfplan
+*.tfplan
+
+# --- Infra: Ansible (carry secrets / host-specific) ---
+infra/ansible/inventory.ini
+*.retry
