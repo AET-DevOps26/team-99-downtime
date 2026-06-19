@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-postgresql-init
+  labels:
+    {{- include "t99-app.labels" . | nindent 4 }}
+data:
+  01-create-databases.sql: |
+{{ .Files.Get "files/init-databases.sql" | indent 4 }}

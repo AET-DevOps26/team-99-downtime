@@ -7,3 +7,5 @@ bun.lock
 *.py
 apps/client/src/shared/api/generated
 openapi
+k8s/helm/**/templates/**/*.yaml
+k8s/helm/**/templates/**/*.yml
