@@ -45,16 +45,15 @@ services:
       retries: 10
     networks: [team99]
 
-  pgadmin:
-    image: dpage/pgadmin4:8.12
+  drizzle-studio:
+    image: ghcr.io/drizzle-team/gateway:latest
     restart: unless-stopped
     environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-dev@team99.dev}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-devpass}
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
-      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+      STORE_PATH: /app
     ports:
-      - '${PGADMIN_PORT:-5050}:80'
+      - '4983:4983'
+    volumes:
+      - ./infra/drizzle-studio:/app
     depends_on:
       postgres:
         condition: service_healthy

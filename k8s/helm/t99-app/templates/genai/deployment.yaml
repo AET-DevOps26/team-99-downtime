@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-genai
+  labels:
+    {{- include "t99-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: genai
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "t99-app.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: genai
+  template:
+    metadata:
+      labels:
+        {{- include "t99-app.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: genai
+    spec:
+      containers:
+        - name: genai
+          image: {{ include "t99-app.image" (dict "registry" .Values.global.imageRegistry "repo" .Values.genaiService.image.repository "tag" .Values.genaiService.image.tag) }}
+          ports:
+            - name: http
+              containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-genai-config
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 6
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.genaiService.resources | nindent 12 }}

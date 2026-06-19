@@ -1,0 +1,15 @@
+{{- if .Values.drizzleStudio.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-studio
+  labels:
+    {{- include "t99-app.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "t99-app.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: studio
+  ports:
+    - port: 4983
+      targetPort: 4983
+{{- end }}
