@@ -1,0 +1,64 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-ingress
+  labels:
+    {{- include "t99-app.labels" . | nindent 4 }}
+  annotations:
+    cert-manager.io/cluster-issuer: {{ .Values.clusterIssuer | quote }}
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - {{ .Values.domain }}
+      secretName: {{ .Release.Name }}-tls
+  rules:
+    - host: {{ .Values.domain }}
+      http:
+        paths:
+          # API/backend paths FIRST (before the SPA catch-all)
+          - path: /api/auth/
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-auth
+                port:
+                  number: 3000
+          - path: /transactions/
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-transaction
+                port:
+                  number: 8080
+          - path: /budgets/
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-budget
+                port:
+                  number: 8082
+          - path: /notifications/
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-notification
+                port:
+                  number: 8081
+          - path: /genai/
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-genai
+                port:
+                  number: 8000
+          # SPA catch-all LAST
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-client
+                port:
+                  number: 80

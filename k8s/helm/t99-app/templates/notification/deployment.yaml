@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-notification
+  labels:
+    {{- include "t99-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: notification
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "t99-app.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: notification
+  template:
+    metadata:
+      labels:
+        {{- include "t99-app.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: notification
+    spec:
+      containers:
+        - name: notification
+          image: {{ include "t99-app.image" (dict "registry" .Values.global.imageRegistry "repo" .Values.notificationService.image.repository "tag" .Values.notificationService.image.tag) }}
+          ports:
+            - name: http
+              containerPort: 8081
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-notification-config
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8081
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            failureThreshold: 6
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8081
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.notificationService.resources | nindent 12 }}

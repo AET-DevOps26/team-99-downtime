@@ -1,0 +1,75 @@
+{{- if .Values.drizzleStudio.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-studio
+  labels:
+    {{- include "t99-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: studio
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "t99-app.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: studio
+  template:
+    metadata:
+      labels:
+        {{- include "t99-app.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: studio
+    spec:
+      initContainers:
+        - name: configure
+          image: busybox:1
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              echo "[configure] source: $(ls -lh /config/store.json)"
+              sed "s|__DB_PASSWORD__|${DB_PASSWORD}|g" /config/store.json > /app/store.json
+              echo "[configure] written: $(ls -lh /app/store.json)"
+              echo "[configure] done"
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: t99-db-credentials
+                  key: password
+          volumeMounts:
+            - name: store
+              mountPath: /app
+            - name: config
+              mountPath: /config
+              readOnly: true
+          resources:
+            {{- toYaml .Values.drizzleStudio.resources | nindent 12 }}
+      containers:
+        - name: gateway
+          image: ghcr.io/drizzle-team/gateway:latest
+          env:
+            - name: STORE_PATH
+              value: /app
+          ports:
+            - containerPort: 4983
+          volumeMounts:
+            - name: store
+              mountPath: /app
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 4983
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.drizzleStudio.resources | nindent 12 }}
+      volumes:
+        - name: store
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-studio-store
+        - name: config
+          configMap:
+            name: {{ .Release.Name }}-studio-config
+{{- end }}

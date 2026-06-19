@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-notification-config
+  labels:
+    {{- include "t99-app.labels" . | nindent 4 }}
+data:
+  AUTH_JWKS_URI: http://{{ .Release.Name }}-auth:3000/api/auth/jwks
+  AUTH_ISSUER: https://{{ .Values.domain }}
+  JAVA_TOOL_OPTIONS: {{ .Values.notificationService.javaOpts | quote }}

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: t99-app
+description: ExpenseFlow microservices — Team 99 Downtime
+type: application
+version: 0.1.0
+appVersion: '1.0.0'

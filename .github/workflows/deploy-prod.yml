@@ -1,0 +1,46 @@
+name: Deploy to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Image tag to deploy (e.g. 0.1.2, without the v) — find tags at Releases'
+        required: true
+        type: string
+
+jobs:
+  deploy-prod:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG_DATA }}" | base64 -d > ~/.kube/config
+
+      - name: Deploy to t99-prod
+        run: |
+          VERSION="${{ inputs.version }}"
+          VERSION=${VERSION#v}
+          helm upgrade --install t99 k8s/helm/t99-app/ \
+            -n t99-prod \
+            -f k8s/helm/t99-app/values.yaml \
+            -f k8s/helm/t99-app/values.prod.yaml \
+            --set authService.image.tag="$VERSION" \
+            --set client.image.tag="$VERSION" \
+            --set transactionService.image.tag="$VERSION" \
+            --set notificationService.image.tag="$VERSION" \
+            --set budgetService.image.tag="$VERSION" \
+            --set genaiService.image.tag="$VERSION" \
+            --set drizzleStudio.github.clientId="${{ secrets.STUDIO_GITHUB_CLIENT_ID_PROD }}" \
+            --set drizzleStudio.github.clientSecret="${{ secrets.STUDIO_GITHUB_CLIENT_SECRET_PROD }}" \
+            --wait --timeout 5m --rollback-on-failure
+
+      - name: Write deploy summary
+        run: |
+          echo "## Deployed to Production" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Version:** \`${{ inputs.version }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "**URL:** https://t99.stud.k8s.aet.cit.tum.de" >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,49 @@
+{{- if .Values.drizzleStudio.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-studio-config
+  labels:
+    {{- include "t99-app.labels" . | nindent 4 }}
+data:
+  store.json: |
+    {
+      "id": "a622cfdf-899c-4399-8085-ee1755d8d0d3",
+      "slots": [
+        [
+          "361a88b8-d973-4338-9cc1-aaa42ce5d326",
+          {
+            "id": "361a88b8-d973-4338-9cc1-aaa42ce5d326",
+            "name": "auth_db",
+            "dialect": "postgresql",
+            "credentials": {
+              "url": "postgresql://postgres:__DB_PASSWORD__@{{ .Release.Name }}-postgresql:5432/auth_db"
+            }
+          }
+        ],
+        [
+          "b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d5e",
+          {
+            "id": "b1c2d3e4-f5a6-4b7c-8d9e-0f1a2b3c4d5e",
+            "name": "transaction_db",
+            "dialect": "postgresql",
+            "credentials": {
+              "url": "postgresql://postgres:__DB_PASSWORD__@{{ .Release.Name }}-postgresql:5432/transaction_db"
+            }
+          }
+        ],
+        [
+          "f0e1d2c3-b4a5-4f6e-7d8c-9b0a1c2d3e4f",
+          {
+            "id": "f0e1d2c3-b4a5-4f6e-7d8c-9b0a1c2d3e4f",
+            "name": "budget_db",
+            "dialect": "postgresql",
+            "credentials": {
+              "url": "postgresql://postgres:__DB_PASSWORD__@{{ .Release.Name }}-postgresql:5432/budget_db"
+            }
+          }
+        ]
+      ],
+      "name": "{{ .Release.Namespace }}"
+    }
+{{- end }}

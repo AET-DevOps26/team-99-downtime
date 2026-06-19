@@ -17,7 +17,7 @@ There are two approaches to running the stack locally. Pick whichever fits your 
 
 ### Approach 1 - Docker
 
-Runs the full stack (Postgres, pgAdmin, the Caddy gateway, and all app services) in containers with hot reload. Only requires Docker installed.
+Runs the full stack (Postgres, Drizzle Studio, the Caddy gateway, and all app services) in containers with hot reload. Only requires Docker installed.
 
 First, create `.env` from the example and fill in the secrets — without them the auth-service won't start:
 
@@ -35,11 +35,11 @@ Then open **http://localhost:9099** (the gateway). On a fresh `auth_db` the `aut
 
 ### Approach 2 - Bun + Nx (native)
 
-Runs the apps natively on your host via Nx; only Postgres + pgAdmin in Docker. Faster startup and lighter on resources, but needs the toolchains installed (JDK 21, bun, uv for Python).
+Runs the apps natively on your host via Nx; only Postgres + Drizzle Studio in Docker. Faster startup and lighter on resources, but needs the toolchains installed (JDK 21, bun, uv for Python).
 
 ```sh
 # Infra only
-docker compose up -d postgres pgadmin
+docker compose up -d postgres drizzle-studio
 
 # Install deps (also sets up Git hooks via Husky) and launch all apps in parallel
 bun install
@@ -66,28 +66,39 @@ behind one origin (see [`Caddyfile`](Caddyfile)):
 
 Each service's own port is still published for debugging (`auth` 3000,
 `transaction` 8080, `notification` 8081, `budget` 8082, `genai` 8000),
-plus pgAdmin (5050) and Postgres (5432).
+plus Drizzle Studio (4983) and Postgres (5432).
 
 ### Verify it works
 
 Open **http://localhost:9099** and sign up. Every backend service requires a Bearer JWT (`401` otherwise) and exposes `GET /api/me` as a probe. For the terminal smoke test (get a token, call a protected route) and the full auth workflow, see [Developing with Auth](docs/development/AUTHENTICATION.md).
 
-### pgAdmin
+### Drizzle Studio
 
-Web UI for Postgres, included in the compose stack for browsing schemas and running ad-hoc queries. Open http://localhost:5050 and log in:
+Live database inspector included in the compose stack. Open **http://localhost:4983** — all three databases (`auth_db`, `transaction_db`, `budget_db`) are pre-configured and ready to browse.
 
-- **Email:** `dev@team99.dev`
-- **Password:** `devpass`
+## Deployment
 
-First time only, register the Postgres server: right-click **Servers** -> **Register** -> **Server...**
+### Stage (automatic)
 
-- **Name:** anything (e.g. `team99`)
-- **Connection** tab:
-  - Host: `postgres`
-  - Port: `5432`
-  - Maintenance database: `postgres`
-  - Username: `devuser`
-  - Password: `devpass`
+Every push to `main` that produces a new release is automatically deployed to stage by the CD pipeline.
+
+### Stage (manual)
+
+```sh
+bun deploy:k8s              # deploys latest git tag to t99-stage
+bun deploy:k8s -n t99-prod  # target a different namespace
+```
+
+Reads the GitHub OAuth credentials from the existing cluster secret if present; prompts on first run.
+
+### Production
+
+Use the **Deploy to Production** workflow dispatch in GitHub Actions — pick the version tag to promote.
+
+| Environment | App                                       | Studio                                           |
+| ----------- | ----------------------------------------- | ------------------------------------------------ |
+| Stage       | https://stage.t99.stud.k8s.aet.cit.tum.de | https://studio.stage.t99.stud.k8s.aet.cit.tum.de |
+| Prod        | https://t99.stud.k8s.aet.cit.tum.de       | https://studio.t99.stud.k8s.aet.cit.tum.de       |
 
 ## Git Hooks
 
