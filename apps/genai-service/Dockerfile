@@ -12,7 +12,7 @@ COPY apps/genai-service/pyproject.toml apps/genai-service/uv.lock ./
 RUN uv sync --frozen --no-install-project
 EXPOSE 8000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=10 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
 CMD ["uv", "run", "uvicorn", "src.main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"]
 
 # prod
