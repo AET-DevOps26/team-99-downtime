@@ -117,3 +117,4 @@ tfplan
 # --- Infra: Ansible (carry secrets / host-specific) ---
 infra/ansible/inventory.ini
 *.retry
+.react-router/
