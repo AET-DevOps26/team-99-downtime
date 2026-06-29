@@ -33,3 +33,16 @@ export function updateCategory(id: string, input: CategoryInput) {
 export function deleteCategory(id: string) {
   return apiFetch<void>(`${BASE}/${id}`, { method: 'DELETE' });
 }
+
+export interface CategoryStatus {
+  categoryId: string;
+  name: string;
+  monthlyLimit: number;
+  spent: number;
+  remaining: number;
+  percentUsed: number;
+}
+
+export function getBudgetStatus() {
+  return apiFetch<CategoryStatus[]>('/api/budgets/status');
+}
