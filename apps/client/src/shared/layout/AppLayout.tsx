@@ -1,12 +1,19 @@
-import type { ReactNode } from 'react';
+import { Outlet } from 'react-router';
+import { Sidebar } from './Sidebar';
+import { Header } from './Header';
 
-interface AppLayoutProps {
-  children: ReactNode;
-}
-
-export function AppLayout(_props: AppLayoutProps) {
-  // TODO: app shell — render Sidebar + Header around the active page
-  return null;
+export function AppLayout() {
+  return (
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar />
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <Header />
+        <main className="flex-1 overflow-auto p-6">
+          <Outlet />
+        </main>
+      </div>
+    </div>
+  );
 }
 
 export default AppLayout;
