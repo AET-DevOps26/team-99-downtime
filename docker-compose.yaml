@@ -157,6 +157,8 @@ services:
       target: dev
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/notification_db
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-devuser}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-devpass}
     ports:
       - '8081:8081'
     volumes:
