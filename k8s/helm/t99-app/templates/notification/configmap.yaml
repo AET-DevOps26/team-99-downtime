@@ -5,6 +5,8 @@ metadata:
   labels:
     {{- include "t99-app.labels" . | nindent 4 }}
 data:
+  SPRING_DATASOURCE_URL: jdbc:postgresql://{{ .Release.Name }}-postgresql:5432/notification_db
+  SPRING_DATASOURCE_USERNAME: postgres
   AUTH_JWKS_URI: http://{{ .Release.Name }}-auth:3000/api/auth/jwks
   AUTH_ISSUER: https://{{ .Values.domain }}
   JAVA_TOOL_OPTIONS: {{ .Values.notificationService.javaOpts | quote }}
