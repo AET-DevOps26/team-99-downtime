@@ -113,7 +113,7 @@ curl -s -o /dev/null -w "%{http_code}\n" \
 Frontend (same-origin, use a relative path):
 
 ```ts
-await fetch('/api/transactions/transactions', {
+await fetch('/api/transactions/', {
   headers: { Authorization: `Bearer ${jwt}` },
 });
 ```
