@@ -13,5 +13,11 @@ spring:
 
 # The issuer claim ("iss") tokens must carry: the browser-facing auth origin
 # (BETTER_AUTH_URL = the Caddy gateway), validated explicitly in SecurityConfig.
+server:
+  port: 8080
+
+service:
+  me-path: /api/transactions/me
+
 auth:
   issuer: ${AUTH_ISSUER:http://localhost:9099}

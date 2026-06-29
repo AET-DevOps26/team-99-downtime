@@ -26,6 +26,9 @@ spring:
 server:
   port: 8082
 
+service:
+  me-path: /api/budgets/me
+
 # The issuer claim ("iss") tokens must carry: BETTER_AUTH_URL = the Caddy
 # gateway, validated explicitly in SecurityConfig.
 auth:

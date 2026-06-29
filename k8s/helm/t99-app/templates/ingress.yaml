@@ -26,28 +26,28 @@ spec:
                 name: {{ .Release.Name }}-auth
                 port:
                   number: 3000
-          - path: /transactions/
+          - path: /api/transactions/
             pathType: Prefix
             backend:
               service:
                 name: {{ .Release.Name }}-transaction
                 port:
                   number: 8080
-          - path: /budgets/
+          - path: /api/budgets/
             pathType: Prefix
             backend:
               service:
                 name: {{ .Release.Name }}-budget
                 port:
                   number: 8082
-          - path: /notifications/
+          - path: /api/notifications/
             pathType: Prefix
             backend:
               service:
                 name: {{ .Release.Name }}-notification
                 port:
                   number: 8081
-          - path: /genai/
+          - path: /api/genai/
             pathType: Prefix
             backend:
               service:

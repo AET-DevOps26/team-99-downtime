@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class WhoAmIController {
 
-  @GetMapping("/api/me")
+  @GetMapping("${service.me-path:/api/me}")
   public Map<String, Object> me(@AuthenticationPrincipal Jwt jwt) {
     return Map.of(
         "userId", jwt.getSubject(),

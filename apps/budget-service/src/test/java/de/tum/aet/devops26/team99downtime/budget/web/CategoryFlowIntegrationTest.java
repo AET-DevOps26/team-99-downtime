@@ -36,7 +36,7 @@ class CategoryFlowIntegrationTest {
   @Test
   void seedsPredefinedCategoriesOnFirstList() throws Exception {
     mockMvc
-        .perform(get("/api/categories").with(asUser("seed-user")))
+        .perform(get("/api/budgets/categories").with(asUser("seed-user")))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.length()").value(11))
         .andExpect(jsonPath("$[?(@.name == 'Groceries')]").exists());
@@ -50,7 +50,7 @@ class CategoryFlowIntegrationTest {
     String created =
         mockMvc
             .perform(
-                post("/api/categories")
+                post("/api/budgets/categories")
                     .with(asUser(userId))
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("{\"name\":\"Coffee\",\"monthlyLimit\":50}"))
@@ -64,14 +64,14 @@ class CategoryFlowIntegrationTest {
 
     // List contains the new category (alongside the seeded ones)
     mockMvc
-        .perform(get("/api/categories").with(asUser(userId)))
+        .perform(get("/api/budgets/categories").with(asUser(userId)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[?(@.name == 'Coffee')]").exists());
 
     // Update
     mockMvc
         .perform(
-            patch("/api/categories/" + id)
+            patch("/api/budgets/categories/" + id)
                 .with(asUser(userId))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"Coffee\",\"monthlyLimit\":75}"))
@@ -80,12 +80,12 @@ class CategoryFlowIntegrationTest {
 
     // Delete
     mockMvc
-        .perform(delete("/api/categories/" + id).with(asUser(userId)))
+        .perform(delete("/api/budgets/categories/" + id).with(asUser(userId)))
         .andExpect(status().isNoContent());
 
     // Gone
     mockMvc
-        .perform(get("/api/categories").with(asUser(userId)))
+        .perform(get("/api/budgets/categories").with(asUser(userId)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[?(@.name == 'Coffee')]").doesNotExist());
   }
@@ -97,7 +97,7 @@ class CategoryFlowIntegrationTest {
 
     mockMvc
         .perform(
-            post("/api/categories")
+            post("/api/budgets/categories")
                 .with(asUser(userId))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
@@ -105,7 +105,7 @@ class CategoryFlowIntegrationTest {
 
     mockMvc
         .perform(
-            post("/api/categories")
+            post("/api/budgets/categories")
                 .with(asUser(userId))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
@@ -118,7 +118,7 @@ class CategoryFlowIntegrationTest {
     String created =
         mockMvc
             .perform(
-                post("/api/categories")
+                post("/api/budgets/categories")
                     .with(asUser("owner"))
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("{\"name\":\"Private\",\"monthlyLimit\":20}"))
@@ -131,7 +131,7 @@ class CategoryFlowIntegrationTest {
 
     // a different user cannot delete it
     mockMvc
-        .perform(delete("/api/categories/" + id).with(asUser("intruder")))
+        .perform(delete("/api/budgets/categories/" + id).with(asUser("intruder")))
         .andExpect(status().isNotFound());
   }
 }

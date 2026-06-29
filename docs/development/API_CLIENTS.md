@@ -56,10 +56,10 @@ codegen:
 
 | Service              | Raw spec (via gateway, same origin) |
 | -------------------- | ----------------------------------- |
-| budget-service       | `/budgets/v3/api-docs`              |
-| transaction-service  | `/transactions/v3/api-docs`         |
-| notification-service | `/notifications/v3/api-docs`        |
-| genai-service        | `/genai/openapi.json`               |
+| budget-service       | `/api/budgets/v3/api-docs`          |
+| transaction-service  | `/api/transactions/v3/api-docs`     |
+| notification-service | `/api/notifications/v3/api-docs`    |
+| genai-service        | `/api/genai/openapi.json`           |
 
 Use the **Authorize** button (scheme `bearerAuth`) to paste a JWT and try secured
 endpoints — get a token per [`AUTHENTICATION.md`](AUTHENTICATION.md).

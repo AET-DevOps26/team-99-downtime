@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
  * touch their own data.
  */
 @RestController
-@RequestMapping("/api/categories")
+@RequestMapping("/api/budgets/categories")
 public class CategoryController {
 
   private final CategoryService service;

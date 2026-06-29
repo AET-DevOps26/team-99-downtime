@@ -1,16 +1,18 @@
-from fastapi import Depends, FastAPI
+from fastapi import APIRouter, Depends, FastAPI
 from pydantic import BaseModel
 
 from .auth import CurrentUser, require_user
 
 app = FastAPI(title="ExpenseFlow AI Service", docs_url=None, redoc_url=None)
 
+router = APIRouter(prefix="/api/genai")
+
 
 class ExpenseRequest(BaseModel):
     text: str
 
 
-@app.post("/analyze")
+@router.post("/analyze")
 async def analyze_expense(
     request: ExpenseRequest,
     user: CurrentUser = Depends(require_user),
@@ -25,7 +27,7 @@ async def analyze_expense(
     }
 
 
-@app.get("/api/me")
+@router.get("/me")
 async def me(user: CurrentUser = Depends(require_user)):
     """Probe proving JWT validation works end-to-end."""
     return {"userId": user.user_id, "email": user.email}
@@ -35,3 +37,6 @@ async def me(user: CurrentUser = Depends(require_user)):
 def health_check():
     # Public: no auth, so the container healthcheck keeps working.
     return {"status": "healthy"}
+
+
+app.include_router(router)

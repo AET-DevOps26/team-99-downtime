@@ -17,7 +17,7 @@ apps/<name>-service/src/main/java/.../<name>/
 ```
 
 `budget-service` is the real example. copy its shape for new services.
-shared stuff (security, the `/api/me` probe) lives once in `commons-jvm` — depend on it, don't copy it.
+shared stuff (security, the `/{prefix}/me` probe) lives once in `commons-jvm` — depend on it, don't copy it.
 
 ## Where does my file go?
 
