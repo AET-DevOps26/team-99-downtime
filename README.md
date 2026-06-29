@@ -2,15 +2,15 @@
 
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/w/AET-DevOps26/team-99-downtime?style=for-the-badge) ![GitHub branch check runs](https://img.shields.io/github/check-runs/AET-DevOps26/team-99-downtime/main?style=for-the-badge)
 
-> [!WARNING]
-> This project is still in development.
-
 ## Docs
 
 - [Problem Statement](docs/problem/PROBLEM_STATEMENT.md)
 - [Service Overview](docs/architecture/SERVICE_OVERVIEW.md) - UML / component / service diagrams + API calls diagrams
 - [Developing with Auth](docs/development/AUTHENTICATION.md) - get a token, call secured endpoints, secure new ones
 - [OpenAPI & Generated Clients](docs/development/API_CLIENTS.md) - auto-generated specs + typed frontend client, how to regenerate
+- [Kubernetes Deployment](docs/deployment/KUBERNETES.md) - Helm chart, CI/CD pipeline, secrets, bootstrap
+- [VM / Docker Compose Deployment](docs/deployment/TERRAFORM.md) - Terraform, Ansible, Azure VM setup
+- [Scripts](docs/development/SCRIPTS.md) - helper scripts reference
 
 ## Development Setup
 
