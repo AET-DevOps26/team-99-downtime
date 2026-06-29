@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-    "/api/me": {
+    "/api/notifications/me": {
         parameters: {
             query?: never;
             header?: never;

@@ -16,7 +16,7 @@
     }
   ],
   "paths": {
-    "/api/categories": {
+    "/api/budgets/categories": {
       "get": {
         "tags": [
           "category-controller"
@@ -67,7 +67,7 @@
         }
       }
     },
-    "/api/categories/{id}": {
+    "/api/budgets/categories/{id}": {
       "delete": {
         "tags": [
           "category-controller"
@@ -130,7 +130,7 @@
         }
       }
     },
-    "/api/me": {
+    "/api/budgets/me": {
       "get": {
         "tags": [
           "who-am-i-controller"

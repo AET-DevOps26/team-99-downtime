@@ -4,7 +4,24 @@
  */
 
 export interface paths {
-    "/analyze": {
+    "/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Health Check */
+        get: operations["health_check_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/genai/analyze": {
         parameters: {
             query?: never;
             header?: never;
@@ -14,14 +31,14 @@ export interface paths {
         get?: never;
         put?: never;
         /** Analyze Expense */
-        post: operations["analyze_expense_analyze_post"];
+        post: operations["analyze_expense_api_genai_analyze_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/me": {
+    "/api/genai/me": {
         parameters: {
             query?: never;
             header?: never;
@@ -32,24 +49,7 @@ export interface paths {
          * Me
          * @description Probe proving JWT validation works end-to-end.
          */
-        get: operations["me_api_me_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/health": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Health Check */
-        get: operations["health_check_health_get"];
+        get: operations["me_api_genai_me_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -94,7 +94,27 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    analyze_expense_analyze_post: {
+    health_check_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    analyze_expense_api_genai_analyze_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -127,27 +147,7 @@ export interface operations {
             };
         };
     };
-    me_api_me_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    health_check_health_get: {
+    me_api_genai_me_get: {
         parameters: {
             query?: never;
             header?: never;

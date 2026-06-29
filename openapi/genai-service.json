@@ -5,10 +5,26 @@
     "version": "0.1.0"
   },
   "paths": {
-    "/analyze": {
+    "/health": {
+      "get": {
+        "summary": "Health Check",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/genai/analyze": {
       "post": {
         "summary": "Analyze Expense",
-        "operationId": "analyze_expense_analyze_post",
+        "operationId": "analyze_expense_api_genai_analyze_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -46,11 +62,11 @@
         ]
       }
     },
-    "/api/me": {
+    "/api/genai/me": {
       "get": {
         "summary": "Me",
         "description": "Probe proving JWT validation works end-to-end.",
-        "operationId": "me_api_me_get",
+        "operationId": "me_api_genai_me_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -66,22 +82,6 @@
             "HTTPBearer": []
           }
         ]
-      }
-    },
-    "/health": {
-      "get": {
-        "summary": "Health Check",
-        "operationId": "health_check_health_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
       }
     }
   },

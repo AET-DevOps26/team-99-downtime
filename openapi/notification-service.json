@@ -16,7 +16,7 @@
     }
   ],
   "paths": {
-    "/api/me": {
+    "/api/notifications/me": {
       "get": {
         "tags": [
           "who-am-i-controller"
