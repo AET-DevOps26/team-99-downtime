@@ -3,14 +3,14 @@ import { apiFetch } from '@/shared/lib/api';
 
 /**
  * api: thin wrappers over the budget-service category endpoints. Reaches the
- * service through the gateway, which strips the `/budgets` prefix — so this hits
- * budget-service as `/api/categories`. No React, no UI here.
+ * service through the gateway at its full path — budget-service owns /api/budgets.
+ * No React, no UI here.
  *
  * The request/response shapes are the auto-generated OpenAPI types
  * (apps/client/src/shared/api/generated, produced by `bun run openapi`), so they
  * track the backend contract instead of being hand-maintained here.
  */
-const BASE = '/budgets/api/categories';
+const BASE = '/api/budgets/categories';
 
 // A category response always carries every field; springdoc types them optional
 // (no @NonNull on the record), so re-require them for ergonomic consumers.
