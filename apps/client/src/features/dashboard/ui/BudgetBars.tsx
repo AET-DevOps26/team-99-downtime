@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Progress } from '@/shared/ui/progress';
 import { Skeleton } from '@/shared/ui/skeleton';
 import { cn } from '@/shared/lib/utils';
-import type { CategoryStatus } from '@/features/budgets';
+import { iconFor, type CategoryStatus } from '@/features/budgets';
 
 interface BudgetBarsProps {
   categories: CategoryStatus[];
@@ -45,10 +45,21 @@ export function BudgetBars({ categories, totalRemaining, loading, error }: Budge
               {categories.map((cat) => {
                 const pct = Math.min(cat.percentUsed, 100);
                 const isAlert = cat.percentUsed >= 80;
+                const { Icon, className: iconCn } = iconFor(cat.name);
                 return (
                   <div key={cat.categoryId} className="space-y-1.5">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium">{cat.name}</span>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={cn(
+                            'flex size-7 shrink-0 items-center justify-center rounded-md',
+                            iconCn
+                          )}
+                        >
+                          <Icon className="size-3.5" />
+                        </span>
+                        <span className="font-medium">{cat.name}</span>
+                      </div>
                       <span className="text-muted-foreground">
                         {euro.format(cat.spent)} / {euro.format(cat.monthlyLimit)}
                       </span>

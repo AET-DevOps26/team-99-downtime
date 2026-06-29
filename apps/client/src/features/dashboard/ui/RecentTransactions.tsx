@@ -2,8 +2,9 @@ import { ReceiptIcon } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Skeleton } from '@/shared/ui/skeleton';
+import { cn } from '@/shared/lib/utils';
+import { iconFor, type CategoryStatus } from '@/features/budgets';
 import type { Transaction } from '@/features/transactions';
-import type { CategoryStatus } from '@/features/budgets';
 
 interface RecentTransactionsProps {
   transactions: Transaction[];
@@ -42,8 +43,9 @@ export function RecentTransactions({
         ) : loading ? (
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-center justify-between">
-                <div className="space-y-1">
+              <div key={i} className="flex items-center gap-3">
+                <Skeleton className="size-8 shrink-0 rounded-md" />
+                <div className="flex-1 space-y-1">
                   <Skeleton className="h-4 w-36" />
                   <Skeleton className="h-3 w-20" />
                 </div>
@@ -57,17 +59,29 @@ export function RecentTransactions({
           </div>
         ) : (
           <div className="space-y-3">
-            {transactions.map((tx) => (
-              <div key={tx.id} className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium leading-none">{tx.description}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {categoryName(tx.categoryId)} · {dateLabel(tx.date)}
-                  </p>
+            {transactions.map((tx) => {
+              const name = categoryName(tx.categoryId);
+              const { Icon, className: iconCn } = iconFor(name);
+              return (
+                <div key={tx.id} className="flex items-center gap-3">
+                  <span
+                    className={cn(
+                      'flex size-8 shrink-0 items-center justify-center rounded-md',
+                      iconCn
+                    )}
+                  >
+                    <Icon className="size-3.5" />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium leading-none truncate">{tx.description}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {name} · {dateLabel(tx.date)}
+                    </p>
+                  </div>
+                  <span className="text-sm font-medium shrink-0">{euro.format(tx.amount)}</span>
                 </div>
-                <span className="text-sm font-medium">{euro.format(tx.amount)}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </CardContent>
