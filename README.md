@@ -31,7 +31,7 @@ All three members contributed across the full stack throughout the project. Resp
 | ------------------------------------------------------------------- | --------------------------------------------------------------------------- |
 | Daniel Günther ([@danielgnth](https://github.com/danielgnth))       | Monorepo tooling (NX), Kubernetes / Helm infrastructure, GenAI service      |
 | Stefania Mocan ([@stefaniamocan](https://github.com/stefaniamocan)) | Azure VM deployment, Java microservices (transaction, notification, budget) |
-| Bilgehan Savgu ([@bilgehansavgu](https://github.com/bilgehansavgu)) | React client, OpenAPI spec generation & CI integration                      |
+| Bilgehan Savgu ([@bilgehansavgu](https://github.com/bilgehansavgu)) | React client, budget service                                                |
 
 ## Docs
 
