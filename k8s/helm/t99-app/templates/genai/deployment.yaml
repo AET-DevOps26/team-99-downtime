@@ -7,6 +7,11 @@ metadata:
     app.kubernetes.io/component: genai
 spec:
   replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
   selector:
     matchLabels:
       {{- include "t99-app.selectorLabels" . | nindent 6 }}
