@@ -60,34 +60,37 @@ def test_health_is_public(client):
 
 
 def test_rejects_request_without_token(client):
-    assert client.get("/api/me").status_code == 401
+    assert client.get("/api/genai/me").status_code == 401
 
 
 def test_rejects_garbage_token(client):
-    res = client.get("/api/me", headers={"Authorization": "Bearer not.a.jwt"})
+    res = client.get("/api/genai/me", headers={"Authorization": "Bearer not.a.jwt"})
     assert res.status_code == 401
 
 
 def test_rejects_wrong_issuer(client, rsa_key):
     token = _token(rsa_key, iss="http://evil.example.com")
-    res = client.get("/api/me", headers={"Authorization": f"Bearer {token}"})
+    res = client.get("/api/genai/me", headers={"Authorization": f"Bearer {token}"})
     assert res.status_code == 401
 
 
 def test_accepts_valid_token(client, rsa_key):
     token = _token(rsa_key)
-    res = client.get("/api/me", headers={"Authorization": f"Bearer {token}"})
+    res = client.get("/api/genai/me", headers={"Authorization": f"Bearer {token}"})
     assert res.status_code == 200
     assert res.json() == {"userId": "user-123", "email": "user@team99.dev"}
 
 
 def test_protects_analyze_endpoint(client, rsa_key):
     # Without a token -> 401
-    assert client.post("/analyze", json={"text": "coffee 3 eur"}).status_code == 401
+    assert (
+        client.post("/api/genai/analyze", json={"text": "coffee 3 eur"}).status_code
+        == 401
+    )
     # With a valid token -> 200
     token = _token(rsa_key)
     res = client.post(
-        "/analyze",
+        "/api/genai/analyze",
         json={"text": "coffee 3 eur"},
         headers={"Authorization": f"Bearer {token}"},
     )
