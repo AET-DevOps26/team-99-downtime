@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-    "/api/categories": {
+    "/api/budgets/categories": {
         parameters: {
             query?: never;
             header?: never;
@@ -20,7 +20,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/categories/{id}": {
+    "/api/budgets/categories/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -36,7 +36,7 @@ export interface paths {
         patch: operations["update"];
         trace?: never;
     };
-    "/api/me": {
+    "/api/budgets/me": {
         parameters: {
             query?: never;
             header?: never;

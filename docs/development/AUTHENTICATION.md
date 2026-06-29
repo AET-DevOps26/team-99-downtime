@@ -92,38 +92,38 @@ header on subsequent requests.
 
 ## Calling a protected endpoint
 
-> **Gateway path quirk:** backend services are mounted under a short prefix that
-> Caddy _strips_. So `…/transactions/api/me` reaches transaction-service as
-> `/api/me`. auth-service is the exception — its `/api/auth` prefix is kept.
+All backend services are mounted under `/api/<service>` and know their own full
+path — no prefix stripping at the gateway.
 
-| Service      | Through the gateway | Reaches the service as |
-| ------------ | ------------------- | ---------------------- |
-| auth         | `…/api/auth/*`      | `/api/auth/*` (kept)   |
-| transaction  | `…/transactions/*`  | `/*`                   |
-| budget       | `…/budgets/*`       | `/*`                   |
-| notification | `…/notifications/*` | `/*`                   |
-| genai        | `…/genai/*`         | `/*`                   |
+| Service      | External path           | Controller path (same) |
+| ------------ | ----------------------- | ---------------------- |
+| auth         | `…/api/auth/*`          | `/api/auth/*`          |
+| transaction  | `…/api/transactions/*`  | `/api/transactions/*`  |
+| budget       | `…/api/budgets/*`       | `/api/budgets/*`       |
+| notification | `…/api/notifications/*` | `/api/notifications/*` |
+| genai        | `…/api/genai/*`         | `/api/genai/*`         |
 
 ```sh
 # 401 without a token, 200 with one
-curl -s -o /dev/null -w "%{http_code}\n" $BASE/transactions/api/me
+curl -s -o /dev/null -w "%{http_code}\n" $BASE/api/transactions/me
 curl -s -o /dev/null -w "%{http_code}\n" \
-  -H "Authorization: Bearer $TOKEN" $BASE/transactions/api/me
+  -H "Authorization: Bearer $TOKEN" $BASE/api/transactions/me
 ```
 
-Frontend (same-origin behind the gateway, so use a relative path):
+Frontend (same-origin, use a relative path):
 
 ```ts
-await fetch('/transactions/api/transactions', {
+await fetch('/api/transactions/', {
   headers: { Authorization: `Bearer ${jwt}` },
 });
 ```
 
 ### Quick probes
 
-Every backend exposes `GET /api/me` (returns the caller's `userId`/`email`) —
-the fastest way to prove auth works end-to-end. Swap the prefix:
-`/transactions /budgets /notifications /genai`.
+Every backend exposes `GET /<service-prefix>/me` (returns the caller's
+`userId`/`email`) — the fastest way to prove auth works end-to-end:
+`/api/transactions/me`, `/api/budgets/me`, `/api/notifications/me`,
+`/api/genai/me`.
 
 ---
 
@@ -159,8 +159,9 @@ with two changes — no security code to copy:
    ```
 
 The auto-configuration loads automatically (no component-scan needed) and brings
-the `/api/me` probe with it. **Every route is then protected by default**. Routes
-are opened explicitly via `permitAll()` — currently only `/actuator/health`.
+a `GET /{service-prefix}/me` probe with it (configured via `service.me-path` in
+`application.yaml`). **Every route is then protected by default**. Routes are
+opened explicitly via `permitAll()` — currently only `/actuator/health`.
 New endpoints need no extra code to be secured; the caller's identity is in the
 `Authentication` / JWT.
 
@@ -171,7 +172,7 @@ Declare the dependency on any route that needs auth:
 ```python
 from .auth import CurrentUser, require_user
 
-@app.post("/something")
+@router.post("/something")
 async def handler(user: CurrentUser = Depends(require_user)):
     ...  # user.user_id is the caller
 ```

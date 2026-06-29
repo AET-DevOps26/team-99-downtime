@@ -56,14 +56,14 @@ Run `bunx nx graph` to visually explore the workspace.
 Use the app at **http://localhost:9099** — the Caddy gateway. It routes everything
 behind one origin (see [`Caddyfile`](Caddyfile)):
 
-| Path (via gateway) | Goes to              |
-| ------------------ | -------------------- |
-| `/`                | client (React)       |
-| `/api/auth/*`      | auth-service         |
-| `/transactions/*`  | transaction-service  |
-| `/budgets/*`       | budget-service       |
-| `/notifications/*` | notification-service |
-| `/genai/*`         | genai-service        |
+| Path (via gateway)     | Goes to              |
+| ---------------------- | -------------------- |
+| `/`                    | client (React)       |
+| `/api/auth/*`          | auth-service         |
+| `/api/transactions/*`  | transaction-service  |
+| `/api/budgets/*`       | budget-service       |
+| `/api/notifications/*` | notification-service |
+| `/api/genai/*`         | genai-service        |
 
 Each service's own port is still published for debugging (`auth` 3000,
 `transaction` 8080, `notification` 8081, `budget` 8082, `genai` 8000),
@@ -71,7 +71,7 @@ plus Drizzle Studio (4983) and Postgres (5432).
 
 ### Verify it works
 
-Open **http://localhost:9099** and sign up. Every backend service requires a Bearer JWT (`401` otherwise) and exposes `GET /api/me` as a probe. For the terminal smoke test (get a token, call a protected route) and the full auth workflow, see [Developing with Auth](docs/development/AUTHENTICATION.md).
+Open **http://localhost:9099** and sign up. Every backend service requires a Bearer JWT (`401` otherwise) and exposes a `/me` probe at its own prefix (e.g. `GET /api/budgets/me`). For the terminal smoke test (get a token, call a protected route) and the full auth workflow, see [Developing with Auth](docs/development/AUTHENTICATION.md).
 
 ### Drizzle Studio
 
@@ -228,4 +228,4 @@ bunx nx serve genai-service   # uvicorn --reload, http://localhost:8000
 bunx nx test genai-service    # uv run pytest
 ```
 
-**Endpoints:** `POST /analyze` and `GET /api/me` require a Bearer JWT; `GET /health` is public (container probe). Like the Spring services, it validates RS256 tokens against the auth-service JWKS and checks the issuer — see [Developing with Auth](docs/development/AUTHENTICATION.md).
+**Endpoints:** `POST /api/genai/analyze` and `GET /api/genai/me` require a Bearer JWT; `GET /health` is public (container probe). Like the Spring services, it validates RS256 tokens against the auth-service JWKS and checks the issuer — see [Developing with Auth](docs/development/AUTHENTICATION.md).

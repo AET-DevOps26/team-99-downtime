@@ -44,7 +44,7 @@ class CategoryControllerTest {
   void rejectsRequestWithoutToken() throws Exception {
     mockMvc
         .perform(
-            post("/api/categories")
+            post("/api/budgets/categories")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"Coffee\",\"monthlyLimit\":50}"))
         .andExpect(status().isUnauthorized());
@@ -97,7 +97,7 @@ class CategoryControllerTest {
   }
 
   private static MockHttpServletRequestBuilder authedPost(String body) {
-    return post("/api/categories")
+    return post("/api/budgets/categories")
         .with(jwt().jwt(builder -> builder.subject("user-1")))
         .contentType(MediaType.APPLICATION_JSON)
         .content(body);

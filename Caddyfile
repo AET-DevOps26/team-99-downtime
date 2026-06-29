@@ -4,28 +4,27 @@
 # Caddy routes by path to the right service over the compose network. This
 # mirrors the production Kubernetes ingress; here it just runs locally.
 #
-# Auth note: Better Auth's routes are fixed under /api/auth, so that prefix is
-# forwarded as-is. The other services are mounted under a short prefix that is
-# stripped before forwarding (handle_path), so /transactions/api/me reaches
-# transaction-service as /api/me.
+# All backend services live under /api and know their own full path — no
+# prefix stripping needed. /api/auth is handled by Better Auth; every other
+# service owns its own /api/<service> subtree.
 
 :80 {
-	# Auth service — keep the /api/auth prefix (Better Auth owns it).
+	# Auth service — /api/auth is owned by Better Auth.
 	handle /api/auth/* {
 		reverse_proxy auth-service:3000
 	}
 
-	# Backend services — strip the prefix before forwarding.
-	handle_path /transactions/* {
+	# Backend services — forwarded as-is (services own their full path).
+	handle /api/transactions/* {
 		reverse_proxy transaction-service:8080
 	}
-	handle_path /budgets/* {
+	handle /api/budgets/* {
 		reverse_proxy budget-service:8082
 	}
-	handle_path /notifications/* {
+	handle /api/notifications/* {
 		reverse_proxy notification-service:8081
 	}
-	handle_path /genai/* {
+	handle /api/genai/* {
 		reverse_proxy genai-service:8000
 	}
 
