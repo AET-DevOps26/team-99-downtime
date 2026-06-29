@@ -16,6 +16,29 @@
     }
   ],
   "paths": {
+    "/api/budgets/threshold-check": {
+      "post": {
+        "tags": [
+          "threshold-check-controller"
+        ],
+        "operationId": "check",
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
     "/api/budgets/categories": {
       "get": {
         "tags": [
@@ -130,6 +153,39 @@
         }
       }
     },
+    "/api/budgets/status": {
+      "get": {
+        "tags": [
+          "budget-status-controller"
+        ],
+        "operationId": "status",
+        "parameters": [
+          {
+            "name": "Authorization",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BudgetStatusResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/budgets/me": {
       "get": {
         "tags": [
@@ -181,6 +237,30 @@
             "type": "string"
           },
           "monthlyLimit": {
+            "type": "number"
+          }
+        }
+      },
+      "BudgetStatusResponse": {
+        "type": "object",
+        "properties": {
+          "categoryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "monthlyLimit": {
+            "type": "number"
+          },
+          "spent": {
+            "type": "number"
+          },
+          "remaining": {
+            "type": "number"
+          },
+          "percentUsed": {
             "type": "number"
           }
         }
