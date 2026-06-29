@@ -1,13 +1,12 @@
-# ⚡ ExpenseFlow `v1.0` `by 99 Downtime`
+# ⚡ ExpenseFlow `by 99 Downtime`
 
-![GitHub commit activity](https://img.shields.io/github/commit-activity/w/AET-DevOps26/team-99-downtime?style=for-the-badge) ![GitHub branch check runs](https://img.shields.io/github/check-runs/AET-DevOps26/team-99-downtime/main?style=for-the-badge)
+![GitHub commit activity](https://img.shields.io/github/commit-activity/w/AET-DevOps26/team-99-downtime?style=for-the-badge) ![GitHub branch check runs](https://img.shields.io/github/check-runs/AET-DevOps26/team-99-downtime/main?style=for-the-badge) ![Latest Release](https://img.shields.io/github/v/release/AET-DevOps26/team-99-downtime?style=for-the-badge&label=release)
 
 Personal finance app — track expenses, manage budgets, and get spending alerts.
 
 ## Quick Start
 
 ```sh
-cp .env.example .env          # fill in BETTER_AUTH_SECRET + Google OAuth creds
 docker compose up -d --build
 ```
 
@@ -15,7 +14,7 @@ Open **http://localhost:9099**. See [Development Setup](docs/development/SETUP.m
 
 ## Live Environments
 
-| Environment | App                                       | Studio                                           |
+| Environment | App                                       | Drizzle Studio                                   |
 | ----------- | ----------------------------------------- | ------------------------------------------------ |
 | Stage       | https://stage.t99.stud.k8s.aet.cit.tum.de | https://studio.stage.t99.stud.k8s.aet.cit.tum.de |
 | Prod        | https://t99.stud.k8s.aet.cit.tum.de       | https://studio.t99.stud.k8s.aet.cit.tum.de       |
@@ -23,6 +22,16 @@ Open **http://localhost:9099**. See [Development Setup](docs/development/SETUP.m
 ## Deployment
 
 Every push to `main` is automatically deployed to **stage**. Promote to **prod** via the _Deploy to Production_ workflow dispatch in GitHub Actions. For manual deploys: `bun deploy:k8s`. See [Kubernetes Deployment](docs/deployment/KUBERNETES.md).
+
+## Team
+
+All three members contributed across the full stack throughout the project. Responsibilities rotated heavily — the areas below reflect where each person took the lead, not exclusive ownership.
+
+| Member                                                              | Primary focus                                                               |
+| ------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Daniel Günther ([@danielgnth](https://github.com/danielgnth))       | Monorepo tooling (NX), Kubernetes / Helm infrastructure, GenAI service      |
+| Stefania Mocan ([@stefaniamocan](https://github.com/stefaniamocan)) | Azure VM deployment, Java microservices (transaction, notification, budget) |
+| Bilgehan Savgu ([@bilgehansavgu](https://github.com/bilgehansavgu)) | React client, OpenAPI spec generation & CI integration                      |
 
 ## Docs
 
