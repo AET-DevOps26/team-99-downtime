@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.tum.aet.devops26.team99downtime.transaction.service.ThresholdCheckClient;
+import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -70,29 +71,35 @@ class TransactionFlowIntegrationTest {
   @Test
   void spendEndpointReturnsCurrentMonthOnly() throws Exception {
     String userId = "tx-spend-user";
+    String thisMonthDate = LocalDate.now().withDayOfMonth(15).toString();
+    String lastMonthDate = LocalDate.now().minusMonths(1).withDayOfMonth(15).toString();
     String thisMonth =
-        """
-        {"categoryId":"00000000-0000-0000-0000-000000000002",
-         "amount":100.00,"currency":"EUR",
-         "description":"Groceries","date":"2026-06-15"}
-        """;
+        String.format(
+            "{\"categoryId\":\"00000000-0000-0000-0000-000000000002\","
+                + " \"amount\":100.00,\"currency\":\"EUR\","
+                + " \"description\":\"Groceries\",\"date\":\"%s\"}",
+            thisMonthDate);
     String lastMonth =
-        """
-        {"categoryId":"00000000-0000-0000-0000-000000000002",
-         "amount":200.00,"currency":"EUR",
-         "description":"Old","date":"2026-05-15"}
-        """;
+        String.format(
+            "{\"categoryId\":\"00000000-0000-0000-0000-000000000002\","
+                + " \"amount\":200.00,\"currency\":\"EUR\","
+                + " \"description\":\"Old\",\"date\":\"%s\"}",
+            lastMonthDate);
 
-    mockMvc.perform(
-        post("/api/transactions")
-            .with(asUser(userId))
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(thisMonth));
-    mockMvc.perform(
-        post("/api/transactions")
-            .with(asUser(userId))
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(lastMonth));
+    mockMvc
+        .perform(
+            post("/api/transactions")
+                .with(asUser(userId))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(thisMonth))
+        .andExpect(status().isCreated());
+    mockMvc
+        .perform(
+            post("/api/transactions")
+                .with(asUser(userId))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(lastMonth))
+        .andExpect(status().isCreated());
 
     mockMvc
         .perform(get("/api/transactions/spend").with(asUser(userId)))

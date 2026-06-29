@@ -21,6 +21,10 @@ public class ThresholdCheckClient {
 
   @Async
   public void trigger(String authHeader) {
+    if (authHeader == null) {
+      LOG.warn("Threshold check skipped: no Authorization header");
+      return;
+    }
     try {
       restClient
           .post()
