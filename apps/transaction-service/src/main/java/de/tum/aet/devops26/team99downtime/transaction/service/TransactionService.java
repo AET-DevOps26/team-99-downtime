@@ -25,7 +25,7 @@ public class TransactionService {
   }
 
   public Page<Transaction> list(String userId, Pageable pageable) {
-    return repository.findByUserIdOrderByDateDesc(userId, pageable);
+    return repository.findByUserIdOrderByDateDescCreatedAtDesc(userId, pageable);
   }
 
   public Transaction create(String userId, TransactionRequest request, String authHeader) {

@@ -16,7 +16,8 @@ interface AddExpenseModalProps {
 }
 
 export function AddExpenseModal({ open, onOpenChange, onCreated }: AddExpenseModalProps) {
-  const today = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const [categoryId, setCategoryId] = useState('');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -74,13 +75,14 @@ export function AddExpenseModal({ open, onOpenChange, onCreated }: AddExpenseMod
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Category</Label>
-            <CategoryPicker value={categoryId} onChange={setCategoryId} />
+            <Label htmlFor="expense-category">Category</Label>
+            <CategoryPicker id="expense-category" value={categoryId} onChange={setCategoryId} />
           </div>
 
           <div className="space-y-1.5">
-            <Label>Amount (€)</Label>
+            <Label htmlFor="expense-amount">Amount (€)</Label>
             <Input
+              id="expense-amount"
               type="number"
               min="0.01"
               step="0.01"
@@ -91,8 +93,9 @@ export function AddExpenseModal({ open, onOpenChange, onCreated }: AddExpenseMod
           </div>
 
           <div className="space-y-1.5">
-            <Label>Description</Label>
+            <Label htmlFor="expense-description">Description</Label>
             <Input
+              id="expense-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What did you spend on?"
@@ -100,8 +103,13 @@ export function AddExpenseModal({ open, onOpenChange, onCreated }: AddExpenseMod
           </div>
 
           <div className="space-y-1.5">
-            <Label>Date</Label>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <Label htmlFor="expense-date">Date</Label>
+            <Input
+              id="expense-date"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
           </div>
         </div>
 

@@ -14,7 +14,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface TransactionRepository extends JpaRepository<Transaction, UUID> {
 
-  Page<Transaction> findByUserIdOrderByDateDesc(String userId, Pageable pageable);
+  Page<Transaction> findByUserIdOrderByDateDescCreatedAtDesc(String userId, Pageable pageable);
 
   Optional<Transaction> findByIdAndUserId(UUID id, String userId);
 

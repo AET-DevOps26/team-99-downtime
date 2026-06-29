@@ -10,7 +10,15 @@ export function useNotifications() {
     setLoading(true);
     try {
       const data = await listNotifications();
-      setNotifications(data);
+      setNotifications((prev) => {
+        const existingIds = new Set(prev.map((n) => n.id));
+        const incoming = data.filter((n) => !existingIds.has(n.id));
+        const merged = [...incoming, ...prev];
+        return merged.sort((a, b) => {
+          if ((a.readAt === null) !== (b.readAt === null)) return a.readAt === null ? -1 : 1;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+      });
     } catch {
       // non-critical: silently fail
     } finally {

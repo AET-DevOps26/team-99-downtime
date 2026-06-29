@@ -14,11 +14,10 @@ interface RecentTransactionsProps {
 }
 
 const euro = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
-const dateLabel = (iso: string) =>
-  new Date(iso).toLocaleDateString('de-DE', {
-    day: '2-digit',
-    month: 'short',
-  });
+const dateLabel = (iso: string) => {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' });
+};
 
 export function RecentTransactions({
   transactions,

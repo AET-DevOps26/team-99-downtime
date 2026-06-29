@@ -3,22 +3,34 @@ import { listCategories, type Category } from '@/features/budgets/api/budgetApi'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
 
 interface CategoryPickerProps {
+  id?: string;
   value?: string;
   onChange?: (categoryId: string) => void;
 }
 
-export function CategoryPicker({ value, onChange }: CategoryPickerProps) {
+export function CategoryPicker({ id, value, onChange }: CategoryPickerProps) {
   const [categories, setCategories] = useState<Category[]>([]);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     listCategories()
       .then(setCategories)
-      .catch(() => {});
+      .catch(() => setError(true));
   }, []);
+
+  if (error) {
+    return (
+      <Select disabled>
+        <SelectTrigger id={id}>
+          <SelectValue placeholder="Could not load categories" />
+        </SelectTrigger>
+      </Select>
+    );
+  }
 
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger>
+      <SelectTrigger id={id}>
         <SelectValue placeholder="Select category" />
       </SelectTrigger>
       <SelectContent>

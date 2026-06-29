@@ -7,8 +7,14 @@ import { Skeleton } from '@/shared/ui/skeleton';
 import { AddExpenseModal, useTransactions } from '@/features/transactions';
 
 const euro = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
-const dateLabel = (iso: string) =>
-  new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+const dateLabel = (iso: string) => {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+};
 
 export function TransactionsPage() {
   const { transactions, loading, error, page, setPage, totalPages, refresh } = useTransactions(20);

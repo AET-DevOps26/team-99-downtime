@@ -48,9 +48,11 @@ public class NotificationStreamService {
   }
 
   private void remove(String userId, SseEmitter emitter) {
-    List<SseEmitter> userEmitters = emitters.get(userId);
-    if (userEmitters != null) {
-      userEmitters.remove(emitter);
-    }
+    emitters.computeIfPresent(
+        userId,
+        (key, userEmitters) -> {
+          userEmitters.remove(emitter);
+          return userEmitters.isEmpty() ? null : userEmitters;
+        });
   }
 }

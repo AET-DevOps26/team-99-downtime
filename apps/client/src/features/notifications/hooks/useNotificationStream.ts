@@ -17,12 +17,24 @@ export function useNotificationStream(onNotification: (n: Notification) => void)
     async function connect() {
       if (cancelled) return;
 
-      const { data } = await authClient.token();
-      const token = data?.token;
-      if (!token || cancelled) return;
+      let token: string | undefined;
+      try {
+        const { data } = await authClient.token();
+        token = data?.token;
+      } catch {
+        if (!cancelled) reconnectTimer = setTimeout(() => void connect(), RECONNECT_DELAY_MS);
+        return;
+      }
+
+      if (!token || cancelled) {
+        if (!cancelled) reconnectTimer = setTimeout(() => void connect(), RECONNECT_DELAY_MS);
+        return;
+      }
 
       // EventSource cannot set Authorization headers; backend accepts ?access_token=
-      eventSource = new EventSource(`/api/notifications/stream?access_token=${token}`);
+      eventSource = new EventSource(
+        `/api/notifications/stream?access_token=${encodeURIComponent(token)}`
+      );
 
       eventSource.addEventListener('notification', (e) => {
         try {
