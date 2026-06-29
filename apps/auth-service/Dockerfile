@@ -2,12 +2,11 @@
 FROM oven/bun:1-alpine AS dev
 WORKDIR /workspace
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
 EXPOSE 3000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=10 \
   CMD wget -q --spider http://localhost:3000/api/auth/ok || exit 1
 # Source is bind-mounted in dev; Nx runs the serve target from apps/auth-service.
-CMD ["bun", "nx", "serve", "auth-service"]
+CMD ["sh", "-c", "bun install --frozen-lockfile && bun nx serve auth-service"]
 
 #prod
 FROM oven/bun:1-alpine AS prod
