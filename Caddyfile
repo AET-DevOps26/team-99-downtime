@@ -10,21 +10,21 @@
 
 :80 {
 	# Auth service — /api/auth is owned by Better Auth.
-	handle /api/auth/* {
+	handle /api/auth* {
 		reverse_proxy auth-service:3000
 	}
 
 	# Backend services — forwarded as-is (services own their full path).
-	handle /api/transactions/* {
+	handle /api/transactions* {
 		reverse_proxy transaction-service:8080
 	}
-	handle /api/budgets/* {
+	handle /api/budgets* {
 		reverse_proxy budget-service:8082
 	}
-	handle /api/notifications/* {
+	handle /api/notifications* {
 		reverse_proxy notification-service:8081
 	}
-	handle /api/genai/* {
+	handle /api/genai* {
 		reverse_proxy genai-service:8000
 	}
 
