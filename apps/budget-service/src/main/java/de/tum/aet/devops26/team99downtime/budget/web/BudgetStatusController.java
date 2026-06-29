@@ -22,7 +22,7 @@ public class BudgetStatusController {
   @GetMapping("/api/budgets/status")
   public List<BudgetStatusResponse> status(
       @AuthenticationPrincipal Jwt jwt,
-      @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader) {
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authHeader) {
     return service.getStatus(jwt.getSubject(), authHeader);
   }
 }
