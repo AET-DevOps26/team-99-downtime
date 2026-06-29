@@ -5,6 +5,40 @@
   "projectType": "application",
   "tags": [],
   "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/client",
+        "command": "vitest run --config vitest.config.ts"
+      },
+      "outputs": ["{workspaceRoot}/reports/apps/client"],
+      "cache": true,
+      "inputs": ["default", "^production"]
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/client",
+        "command": "react-router build"
+      },
+      "outputs": ["{workspaceRoot}/dist/apps/client"],
+      "cache": true,
+      "inputs": ["production", "^production"]
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/client",
+        "command": "react-router dev --port 4200"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/client",
+        "command": "tsc --noEmit -p tsconfig.app.json"
+      }
+    },
     "docker:run": {
       "options": {
         "args": ["-p", "8080:80", "--rm"]

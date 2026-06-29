@@ -17,5 +17,5 @@ ENV SERVER_ROOT=/public \
     SERVER_PAGE_FALLBACK=/public/index.html \
     SERVER_COMPRESSION=true \
     SERVER_CACHE_CONTROL_HEADERS=true
-COPY dist/apps/client /public
+COPY dist/apps/client/client /public
 EXPOSE 80
