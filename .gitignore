@@ -118,3 +118,8 @@ tfplan
 infra/ansible/inventory.ini
 *.retry
 .react-router/
+
+
+# AI stuff
+.superpowers
+docs/plans

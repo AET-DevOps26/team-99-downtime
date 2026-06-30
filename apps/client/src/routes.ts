@@ -6,8 +6,9 @@ export default [
     route('/signup', 'pages/SignupPage.tsx'),
   ]),
   layout('app/guards/ProtectedLayout.tsx', [
-    index('pages/HomePage.tsx'),
-    route('/dashboard', 'pages/DashboardPage.tsx'),
-    route('/transactions', 'pages/TransactionsPage.tsx'),
+    layout('shared/layout/AppLayout.tsx', [
+      index('pages/DashboardPage.tsx'),
+      route('/transactions', 'pages/TransactionsPage.tsx'),
+    ]),
   ]),
 ] satisfies RouteConfig;

@@ -33,3 +33,9 @@ service:
 # gateway, validated explicitly in SecurityConfig.
 auth:
   issuer: ${AUTH_ISSUER:http://localhost:9099}
+
+services:
+  transaction:
+    url: ${TRANSACTION_SERVICE_URL:http://transaction-service:8080}
+  notification:
+    url: ${NOTIFICATION_SERVICE_URL:http://notification-service:8081}

@@ -4,6 +4,22 @@
  */
 
 export interface paths {
+    "/api/budgets/threshold-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["check"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/budgets/categories": {
         parameters: {
             query?: never;
@@ -36,6 +52,22 @@ export interface paths {
         patch: operations["update"];
         trace?: never;
     };
+    "/api/budgets/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/budgets/me": {
         parameters: {
             query?: never;
@@ -66,6 +98,15 @@ export interface components {
             name?: string;
             monthlyLimit?: number;
         };
+        BudgetStatusResponse: {
+            /** Format: uuid */
+            categoryId?: string;
+            name?: string;
+            monthlyLimit?: number;
+            spent?: number;
+            remaining?: number;
+            percentUsed?: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -75,6 +116,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    check: {
+        parameters: {
+            query?: never;
+            header: {
+                Authorization: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     list: {
         parameters: {
             query?: never;
@@ -161,6 +222,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["CategoryResponse"];
+                };
+            };
+        };
+    };
+    status: {
+        parameters: {
+            query?: never;
+            header: {
+                Authorization: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BudgetStatusResponse"][];
                 };
             };
         };
