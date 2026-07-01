@@ -23,3 +23,7 @@ auth:
 services:
   budget:
     url: ${BUDGET_SERVICE_URL:http://budget-service:8082}
+
+springdoc:
+  api-docs:
+    path: /api/transactions/v3/api-docs

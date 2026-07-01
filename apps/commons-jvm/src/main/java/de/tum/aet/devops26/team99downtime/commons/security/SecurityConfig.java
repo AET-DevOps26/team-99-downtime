@@ -35,12 +35,15 @@ public class SecurityConfig {
 
   private final String jwkSetUri;
   private final String issuer;
+  private final String apiDocsPath;
 
   public SecurityConfig(
       @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}") String jwkSetUri,
-      @Value("${auth.issuer}") String issuer) {
+      @Value("${auth.issuer}") String issuer,
+      @Value("${springdoc.api-docs.path:/v3/api-docs}") String apiDocsPath) {
     this.jwkSetUri = jwkSetUri;
     this.issuer = issuer;
+    this.apiDocsPath = apiDocsPath;
   }
 
   @Bean
@@ -49,7 +52,7 @@ public class SecurityConfig {
             auth ->
                 auth.requestMatchers("/actuator/health", "/actuator/health/**")
                     .permitAll()
-                    .requestMatchers("/v3/api-docs", "/v3/api-docs/**", "/v3/api-docs.yaml")
+                    .requestMatchers(apiDocsPath, apiDocsPath + "/**", apiDocsPath + ".yaml")
                     .permitAll()
                     .anyRequest()
                     .authenticated())
