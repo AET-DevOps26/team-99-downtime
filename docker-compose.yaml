@@ -33,10 +33,10 @@ services:
       URLS_PRIMARY_NAME: budget-service
       URLS: >-
         [
-          {"url":"/budgets/v3/api-docs","name":"budget-service"},
-          {"url":"/transactions/v3/api-docs","name":"transaction-service"},
-          {"url":"/notifications/v3/api-docs","name":"notification-service"},
-          {"url":"/genai/openapi.json","name":"genai-service"}
+          {"url":"/api/budgets/v3/api-docs","name":"budget-service"},
+          {"url":"/api/transactions/v3/api-docs","name":"transaction-service"},
+          {"url":"/api/notifications/v3/api-docs","name":"notification-service"},
+          {"url":"/api/genai/openapi.json","name":"genai-service"}
         ]
     networks: [team99]
 

@@ -54,6 +54,13 @@ spec:
                 name: {{ .Release.Name }}-genai
                 port:
                   number: 8000
+          - path: /docs
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-swagger-ui
+                port:
+                  number: 8080
           # SPA catch-all LAST
           - path: /
             pathType: Prefix

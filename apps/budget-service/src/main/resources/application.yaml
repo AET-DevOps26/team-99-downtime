@@ -39,3 +39,7 @@ services:
     url: ${TRANSACTION_SERVICE_URL:http://transaction-service:8080}
   notification:
     url: ${NOTIFICATION_SERVICE_URL:http://notification-service:8081}
+
+springdoc:
+  api-docs:
+    path: /api/budgets/v3/api-docs

@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-swagger-ui
+  labels:
+    {{- include "t99-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: swagger-ui
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "t99-app.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: swagger-ui
+  template:
+    metadata:
+      labels:
+        {{- include "t99-app.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: swagger-ui
+    spec:
+      containers:
+        - name: swagger-ui
+          image: {{ .Values.swaggerUi.image.repository }}:{{ .Values.swaggerUi.image.tag }}
+          env:
+            - name: BASE_URL
+              value: /docs
+            - name: URLS_PRIMARY_NAME
+              value: budget-service
+            - name: URLS
+              value: >-
+                [
+                  {"url":"/api/budgets/v3/api-docs","name":"budget-service"},
+                  {"url":"/api/transactions/v3/api-docs","name":"transaction-service"},
+                  {"url":"/api/notifications/v3/api-docs","name":"notification-service"},
+                  {"url":"/api/genai/openapi.json","name":"genai-service"}
+                ]
+          ports:
+            - name: http
+              containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /docs/
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /docs/
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.swaggerUi.resources | nindent 12 }}

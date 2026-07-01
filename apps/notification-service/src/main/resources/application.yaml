@@ -19,3 +19,7 @@ service:
 
 auth:
   issuer: ${AUTH_ISSUER:http://localhost:9099}
+
+springdoc:
+  api-docs:
+    path: /api/notifications/v3/api-docs
