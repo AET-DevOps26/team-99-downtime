@@ -28,6 +28,14 @@ spec:
           ports:
             - name: http
               containerPort: 8081
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: t99-db-credentials
+                  key: password
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: "$(DB_PASSWORD)"
           envFrom:
             - configMapRef:
                 name: {{ .Release.Name }}-notification-config

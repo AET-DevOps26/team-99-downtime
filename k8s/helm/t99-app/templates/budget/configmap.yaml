@@ -10,3 +10,5 @@ data:
   AUTH_JWKS_URI: http://{{ .Release.Name }}-auth:3000/api/auth/jwks
   AUTH_ISSUER: https://{{ .Values.domain }}
   JAVA_TOOL_OPTIONS: {{ .Values.budgetService.javaOpts | quote }}
+  TRANSACTION_SERVICE_URL: http://{{ .Release.Name }}-transaction:8080
+  NOTIFICATION_SERVICE_URL: http://{{ .Release.Name }}-notification:8081
