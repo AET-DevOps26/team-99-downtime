@@ -8,6 +8,7 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.util.matcher.RegexRequestMatcher;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -35,15 +36,12 @@ public class SecurityConfig {
 
   private final String jwkSetUri;
   private final String issuer;
-  private final String apiDocsPath;
 
   public SecurityConfig(
       @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}") String jwkSetUri,
-      @Value("${auth.issuer}") String issuer,
-      @Value("${springdoc.api-docs.path:/v3/api-docs}") String apiDocsPath) {
+      @Value("${auth.issuer}") String issuer) {
     this.jwkSetUri = jwkSetUri;
     this.issuer = issuer;
-    this.apiDocsPath = apiDocsPath;
   }
 
   @Bean
@@ -52,7 +50,7 @@ public class SecurityConfig {
             auth ->
                 auth.requestMatchers("/actuator/health", "/actuator/health/**")
                     .permitAll()
-                    .requestMatchers(apiDocsPath, apiDocsPath + "/**", apiDocsPath + ".yaml")
+                    .requestMatchers(new RegexRequestMatcher(".*/v3/api-docs(/.*|\\.yaml)?", null))
                     .permitAll()
                     .anyRequest()
                     .authenticated())
