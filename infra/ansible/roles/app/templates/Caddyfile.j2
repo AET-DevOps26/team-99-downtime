@@ -6,22 +6,23 @@
 {% else %}
 :80 {
 {% endif %}
-	# Auth service — keep the /api/auth prefix (Better Auth owns it).
-	handle /api/auth/* {
+	# Auth service — /api/auth is owned by Better Auth.
+	handle /api/auth* {
 		reverse_proxy auth-service:3000
 	}
 
-	# Backend services — strip the prefix before forwarding.
-	handle_path /transactions/* {
+	# Backend services — forwarded as-is (services own their full path),
+	# mirroring the dev Caddyfile and the k8s ingress.
+	handle /api/transactions* {
 		reverse_proxy transaction-service:8080
 	}
-	handle_path /budgets/* {
+	handle /api/budgets* {
 		reverse_proxy budget-service:8082
 	}
-	handle_path /notifications/* {
+	handle /api/notifications* {
 		reverse_proxy notification-service:8081
 	}
-	handle_path /genai/* {
+	handle /api/genai* {
 		reverse_proxy genai-service:8000
 	}
 
