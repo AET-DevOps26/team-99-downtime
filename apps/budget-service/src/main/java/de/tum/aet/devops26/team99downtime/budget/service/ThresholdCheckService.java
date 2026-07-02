@@ -55,9 +55,8 @@ public class ThresholdCheckService {
 
       // Record a flag for every threshold crossed this month, but notify only for
       // the highest newly-crossed one: a jump straight to 100% sends a single
-      // 100% alert, not both 80% and 100%. THRESHOLDS is ascending, so the last
-      // flag recorded is the highest.
-      Integer highestNew = null;
+      // 100% alert, not both 80% and 100%.
+      int highestNew = -1;
       for (int threshold : THRESHOLDS) {
         if (percent.compareTo(BigDecimal.valueOf(threshold)) < 0) continue;
         if (thresholdFlagRepository.existsByUserIdAndCategoryIdAndMonthAndThreshold(
@@ -69,10 +68,10 @@ public class ThresholdCheckService {
         } catch (DataIntegrityViolationException e) {
           continue; // concurrent request already recorded it — skip
         }
-        highestNew = threshold;
+        highestNew = Math.max(highestNew, threshold);
       }
 
-      if (highestNew != null) {
+      if (highestNew != -1) {
         notificationClient.create(
             new NotificationRequest(
                 cat.getId(),

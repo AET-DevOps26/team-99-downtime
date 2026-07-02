@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import {
   PlusIcon,
   ChevronLeftIcon,
@@ -50,7 +51,10 @@ export function TransactionsPage() {
   useEffect(() => {
     listCategories()
       .then((cats) => setCategoryNames(new Map(cats.map((c) => [c.id, c.name]))))
-      .catch(() => setCategoryNames(new Map()));
+      .catch(() => {
+        toast.error('Could not load categories');
+        setCategoryNames(new Map());
+      });
   }, []);
 
   const openAction = (a: RowAction, tx: Transaction) => {

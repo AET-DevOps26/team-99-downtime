@@ -45,14 +45,16 @@ export function EditExpenseModal({
   const [date, setDate] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // Reset from the transaction each time the dialog opens, so reopening the same
+  // row after Cancel discards unsaved edits (the transaction ref alone is stable).
   useEffect(() => {
-    if (transaction) {
+    if (open && transaction) {
       setCategoryId(transaction.categoryId);
       setAmount(String(transaction.amount));
       setDescription(transaction.description);
       setDate(transaction.date);
     }
-  }, [transaction]);
+  }, [open, transaction]);
 
   const save = async () => {
     if (!transaction) return;
@@ -85,7 +87,14 @@ export function EditExpenseModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        // Ignore Radix dismiss (Escape/overlay) while a save is in flight.
+        if (!o && saving) return;
+        onOpenChange(o);
+      }}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Edit expense</DialogTitle>

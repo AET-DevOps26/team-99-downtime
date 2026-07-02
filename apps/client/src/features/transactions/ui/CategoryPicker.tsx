@@ -41,6 +41,7 @@ export function CategoryPicker({ id, value, onChange }: CategoryPickerProps) {
           return (
             <SelectItem key={cat.id} value={cat.id}>
               <span
+                aria-hidden="true"
                 className={cn(
                   'flex size-5 shrink-0 items-center justify-center rounded-full',
                   className

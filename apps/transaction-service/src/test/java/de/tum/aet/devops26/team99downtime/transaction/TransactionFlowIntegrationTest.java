@@ -23,6 +23,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.BiFunction;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -115,11 +116,12 @@ class TransactionFlowIntegrationTest {
     String categoryId = "00000000-0000-0000-0000-000000000009";
     String thisMonth = LocalDate.now().withDayOfMonth(10).toString();
 
-    String createBody =
-        String.format(
-            "{\"categoryId\":\"%s\",\"amount\":%s,\"currency\":\"EUR\","
-                + "\"description\":\"%s\",\"date\":\"%s\"}",
-            categoryId, "%s", "%s", thisMonth);
+    BiFunction<String, String, String> body =
+        (amount, description) ->
+            String.format(
+                "{\"categoryId\":\"%s\",\"amount\":%s,\"currency\":\"EUR\","
+                    + "\"description\":\"%s\",\"date\":\"%s\"}",
+                categoryId, amount, description, thisMonth);
 
     String first =
         mockMvc
@@ -127,7 +129,7 @@ class TransactionFlowIntegrationTest {
                 post("/api/transactions")
                     .with(asUser(userId))
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content(String.format(createBody, "30.00", "First")))
+                    .content(body.apply("30.00", "First")))
             .andExpect(status().isCreated())
             .andReturn()
             .getResponse()
@@ -137,7 +139,7 @@ class TransactionFlowIntegrationTest {
             post("/api/transactions")
                 .with(asUser(userId))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(String.format(createBody, "20.00", "Second")))
+                .content(body.apply("20.00", "Second")))
         .andExpect(status().isCreated());
 
     // Both transactions counted: 30 + 20 = 50.
