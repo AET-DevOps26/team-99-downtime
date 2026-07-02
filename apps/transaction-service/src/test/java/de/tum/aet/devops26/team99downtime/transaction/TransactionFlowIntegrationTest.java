@@ -88,6 +88,58 @@ class TransactionFlowIntegrationTest {
   }
 
   @Test
+  void deleteRecomputesSpendThatBudgetsReadFrom() throws Exception {
+    // The budget-service computes each category's spend live from GET
+    // /api/transactions/spend, so proving that endpoint drops after a delete
+    // proves budgets recompute (US-9). A threshold-check also fires per delete.
+    String userId = "tx-delete-budget";
+    String categoryId = "00000000-0000-0000-0000-000000000009";
+    String thisMonth = LocalDate.now().withDayOfMonth(10).toString();
+
+    String createBody =
+        String.format(
+            "{\"categoryId\":\"%s\",\"amount\":%s,\"currency\":\"EUR\","
+                + "\"description\":\"%s\",\"date\":\"%s\"}",
+            categoryId, "%s", "%s", thisMonth);
+
+    String first =
+        mockMvc
+            .perform(
+                post("/api/transactions")
+                    .with(asUser(userId))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(String.format(createBody, "30.00", "First")))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    mockMvc
+        .perform(
+            post("/api/transactions")
+                .with(asUser(userId))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(String.format(createBody, "20.00", "Second")))
+        .andExpect(status().isCreated());
+
+    // Both transactions counted: 30 + 20 = 50.
+    mockMvc
+        .perform(get("/api/transactions/spend").with(asUser(userId)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[?(@.categoryId=='" + categoryId + "')].totalSpent").value(50.0));
+
+    String firstId = objectMapper.readTree(first).get("id").asText();
+    mockMvc
+        .perform(delete("/api/transactions/" + firstId).with(asUser(userId)))
+        .andExpect(status().isNoContent());
+
+    // After deleting the 30.00 entry, spend recomputes down to 20.
+    mockMvc
+        .perform(get("/api/transactions/spend").with(asUser(userId)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[?(@.categoryId=='" + categoryId + "')].totalSpent").value(20.0));
+  }
+
+  @Test
   void freeTextSentenceBecomesTransactions() throws Exception {
     String userId = "tx-freetext-user";
     UUID diningId = UUID.randomUUID();

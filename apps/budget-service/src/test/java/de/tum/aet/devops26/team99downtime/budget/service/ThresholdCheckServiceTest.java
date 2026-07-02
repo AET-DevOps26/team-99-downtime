@@ -1,5 +1,6 @@
 package de.tum.aet.devops26.team99downtime.budget.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -19,6 +20,7 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -105,6 +107,33 @@ class ThresholdCheckServiceTest {
     service.check(userId, "Bearer token");
 
     verify(notificationClient, times(1)).create(any(NotificationRequest.class), any());
+  }
+
+  @Test
+  void firesOnly100WhenSpendJumpsStraightToLimit() {
+    String userId = "user-5";
+    UUID catId = UUID.randomUUID();
+    Category cat = categoryWithId(userId, "Groceries", "300", catId);
+
+    when(categoryRepository.findByUserId(userId)).thenReturn(List.of(cat));
+    when(transactionClient.getSpend(any()))
+        .thenReturn(List.of(new SpendEntry(catId, new BigDecimal("300.00")))); // 100%
+    // Neither threshold has fired yet — spend crossed both in one step.
+    when(thresholdFlagRepository.existsByUserIdAndCategoryIdAndMonthAndThreshold(
+            eq(userId), eq(catId), eq(YearMonth.now().toString()), eq(80)))
+        .thenReturn(false);
+    when(thresholdFlagRepository.existsByUserIdAndCategoryIdAndMonthAndThreshold(
+            eq(userId), eq(catId), eq(YearMonth.now().toString()), eq(100)))
+        .thenReturn(false);
+
+    service.check(userId, "Bearer token");
+
+    // Both thresholds are recorded so neither re-fires later,
+    verify(thresholdFlagRepository, times(2)).save(any(ThresholdFlag.class));
+    // but the user gets a single alert, for 100%.
+    ArgumentCaptor<NotificationRequest> captor = ArgumentCaptor.forClass(NotificationRequest.class);
+    verify(notificationClient, times(1)).create(captor.capture(), any());
+    assertThat(captor.getValue().threshold()).isEqualTo(100);
   }
 
   private static Category categoryWithId(String userId, String name, String limit, UUID id) {

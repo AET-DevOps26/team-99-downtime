@@ -49,14 +49,32 @@ public class CategoryService {
   }
 
   public Category create(String userId, CategoryRequest request) {
-    return repository.save(new Category(userId, request.name(), request.monthlyLimit()));
+    return repository.save(new Category(userId, titleCase(request.name()), request.monthlyLimit()));
   }
 
   public Category update(String userId, UUID id, CategoryRequest request) {
     Category category = requireOwned(userId, id);
-    category.setName(request.name());
+    category.setName(titleCase(request.name()));
     category.setMonthlyLimit(request.monthlyLimit());
     return repository.save(category);
+  }
+
+  /** Canonicalizes a category name to Title Case so casing is consistent however it was typed. */
+  static String titleCase(String raw) {
+    String collapsed = raw.trim().replaceAll("\\s+", " ");
+    StringBuilder out = new StringBuilder(collapsed.length());
+    boolean wordStart = true;
+    for (int i = 0; i < collapsed.length(); i++) {
+      char c = collapsed.charAt(i);
+      if (c == ' ') {
+        wordStart = true;
+        out.append(c);
+      } else {
+        out.append(wordStart ? Character.toUpperCase(c) : Character.toLowerCase(c));
+        wordStart = false;
+      }
+    }
+    return out.toString();
   }
 
   public void delete(String userId, UUID id) {

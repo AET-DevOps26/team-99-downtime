@@ -1,4 +1,5 @@
-import { ReceiptIcon } from 'lucide-react';
+import { ArrowRightIcon, ReceiptIcon } from 'lucide-react';
+import { Link } from 'react-router';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card';
 import { Skeleton } from '@/shared/ui/skeleton';
@@ -30,11 +31,18 @@ export function RecentTransactions({
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2 text-base">
           <ReceiptIcon className="size-4 text-muted-foreground" />
           Recent transactions
         </CardTitle>
+        <Link
+          to="/transactions"
+          className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+        >
+          See all
+          <ArrowRightIcon className="size-3.5" />
+        </Link>
       </CardHeader>
       <CardContent>
         {error ? (

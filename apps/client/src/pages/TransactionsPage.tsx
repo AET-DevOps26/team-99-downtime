@@ -1,10 +1,31 @@
-import { useState } from 'react';
-import { PlusIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import {
+  PlusIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  Trash2Icon,
+} from 'lucide-react';
 
+import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/shared/ui/dropdown-menu';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/ui/table';
 import { Skeleton } from '@/shared/ui/skeleton';
-import { AddExpenseModal, useTransactions } from '@/features/transactions';
+import { listCategories } from '@/features/budgets/api/budgetApi';
+import {
+  AddExpenseModal,
+  DeleteExpenseDialog,
+  EditExpenseModal,
+  useTransactions,
+  type Transaction,
+} from '@/features/transactions';
 
 const euro = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
 const dateLabel = (iso: string) => {
@@ -16,9 +37,30 @@ const dateLabel = (iso: string) => {
   });
 };
 
+type RowAction = 'edit' | 'delete';
+
 export function TransactionsPage() {
-  const { transactions, loading, error, page, setPage, totalPages, refresh } = useTransactions(20);
+  const { transactions, loading, error, page, setPage, totalPages, refresh, deleteOptimistic } =
+    useTransactions(20);
   const [addOpen, setAddOpen] = useState(false);
+  const [action, setAction] = useState<RowAction | null>(null);
+  const [actionTx, setActionTx] = useState<Transaction | null>(null);
+  const [categoryNames, setCategoryNames] = useState<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    listCategories()
+      .then((cats) => setCategoryNames(new Map(cats.map((c) => [c.id, c.name]))))
+      .catch(() => setCategoryNames(new Map()));
+  }, []);
+
+  const openAction = (a: RowAction, tx: Transaction) => {
+    setActionTx(tx);
+    setAction(a);
+  };
+
+  const closeAction = (open: boolean) => {
+    if (!open) setAction(null);
+  };
 
   return (
     <div className="space-y-4">
@@ -40,7 +82,11 @@ export function TransactionsPage() {
             <TableRow>
               <TableHead>Date</TableHead>
               <TableHead>Description</TableHead>
+              <TableHead>Category</TableHead>
               <TableHead className="text-right">Amount</TableHead>
+              <TableHead className="w-10">
+                <span className="sr-only">Actions</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -54,13 +100,17 @@ export function TransactionsPage() {
                     <Skeleton className="h-4 w-48" />
                   </TableCell>
                   <TableCell>
+                    <Skeleton className="h-4 w-20" />
+                  </TableCell>
+                  <TableCell>
                     <Skeleton className="h-4 w-16 ml-auto" />
                   </TableCell>
+                  <TableCell />
                 </TableRow>
               ))
             ) : transactions.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={3} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
                   No transactions yet. Add your first expense.
                 </TableCell>
               </TableRow>
@@ -71,7 +121,37 @@ export function TransactionsPage() {
                     {dateLabel(tx.date)}
                   </TableCell>
                   <TableCell>{tx.description}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">
+                      {categoryNames.get(tx.categoryId) ?? 'Uncategorized'}
+                    </Badge>
+                  </TableCell>
                   <TableCell className="text-right font-medium">{euro.format(tx.amount)}</TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8"
+                          aria-label={`Actions for ${tx.description}`}
+                        >
+                          <MoreHorizontalIcon className="size-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openAction('edit', tx)}>
+                          <PencilIcon /> Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onClick={() => openAction('delete', tx)}
+                        >
+                          <Trash2Icon /> Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
                 </TableRow>
               ))
             )}
@@ -104,6 +184,18 @@ export function TransactionsPage() {
       )}
 
       <AddExpenseModal open={addOpen} onOpenChange={setAddOpen} onCreated={refresh} />
+      <EditExpenseModal
+        transaction={actionTx}
+        open={action === 'edit'}
+        onOpenChange={closeAction}
+        onSaved={refresh}
+      />
+      <DeleteExpenseDialog
+        transaction={actionTx}
+        open={action === 'delete'}
+        onOpenChange={closeAction}
+        onConfirm={() => actionTx && void deleteOptimistic(actionTx.id)}
+      />
     </div>
   );
 }

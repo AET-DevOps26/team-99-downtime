@@ -53,6 +53,11 @@ public class ThresholdCheckService {
               .divide(cat.getMonthlyLimit(), 4, RoundingMode.HALF_UP)
               .multiply(BigDecimal.valueOf(100));
 
+      // Record a flag for every threshold crossed this month, but notify only for
+      // the highest newly-crossed one: a jump straight to 100% sends a single
+      // 100% alert, not both 80% and 100%. THRESHOLDS is ascending, so the last
+      // flag recorded is the highest.
+      Integer highestNew = null;
       for (int threshold : THRESHOLDS) {
         if (percent.compareTo(BigDecimal.valueOf(threshold)) < 0) continue;
         if (thresholdFlagRepository.existsByUserIdAndCategoryIdAndMonthAndThreshold(
@@ -62,14 +67,17 @@ public class ThresholdCheckService {
           thresholdFlagRepository.save(
               new ThresholdFlag(userId, cat.getId(), currentMonth, threshold));
         } catch (DataIntegrityViolationException e) {
-          continue; // concurrent request already fired — skip
+          continue; // concurrent request already recorded it — skip
         }
+        highestNew = threshold;
+      }
 
+      if (highestNew != null) {
         notificationClient.create(
             new NotificationRequest(
                 cat.getId(),
                 cat.getName(),
-                threshold,
+                highestNew,
                 percent.setScale(2, RoundingMode.HALF_UP),
                 cat.getMonthlyLimit().subtract(spent)),
             authHeader);
