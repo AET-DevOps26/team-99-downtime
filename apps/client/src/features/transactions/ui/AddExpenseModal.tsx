@@ -8,7 +8,7 @@ import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs';
 import { Textarea } from '@/shared/ui/textarea';
-import { ApiError } from '@/shared/lib/api';
+import { apiErrorInfo } from '@/shared/lib/api';
 import {
   createTransaction,
   createTransactionsFromText,
@@ -32,10 +32,10 @@ const INVALID_FILE_MESSAGE =
 const NO_EXPENSES_MESSAGE = 'No expenses could be recognized in that file.';
 
 /** The backend's 422 error code (`too_vague`, `no_categories`, `invalid_file`, …), if any. */
-const error422Code = (err: unknown) =>
-  err instanceof ApiError && err.status === 422
-    ? (err.body as { error?: string } | undefined)?.error
-    : undefined;
+const error422Code = (err: unknown) => {
+  const info = apiErrorInfo(err);
+  return info?.status === 422 ? info.code : undefined;
+};
 
 export function AddExpenseModal({ open, onOpenChange, onCreated }: AddExpenseModalProps) {
   const now = new Date();

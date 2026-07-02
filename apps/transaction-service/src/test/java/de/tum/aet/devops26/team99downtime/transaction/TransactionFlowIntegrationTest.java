@@ -23,6 +23,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -45,6 +46,24 @@ class TransactionFlowIntegrationTest {
 
   private static JwtRequestPostProcessor asUser(String userId) {
     return jwt().jwt(b -> b.subject(userId));
+  }
+
+  // The manual create/update path validates the category against the user's owned
+  // categories (budget-service). Stub the ids the create tests below use so they
+  // pass validation; free-text/import tests re-stub this with their own values.
+  @BeforeEach
+  void stubOwnedCategories() {
+    when(categoryClient.list(nullable(String.class)))
+        .thenReturn(
+            List.of(
+                new CategoryClient.CategoryDto(
+                    UUID.fromString("00000000-0000-0000-0000-000000000001"), "One"),
+                new CategoryClient.CategoryDto(
+                    UUID.fromString("00000000-0000-0000-0000-000000000002"), "Two"),
+                new CategoryClient.CategoryDto(
+                    UUID.fromString("00000000-0000-0000-0000-000000000003"), "Three"),
+                new CategoryClient.CategoryDto(
+                    UUID.fromString("00000000-0000-0000-0000-000000000009"), "Nine")));
   }
 
   @Test

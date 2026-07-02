@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { deleteTransaction, listTransactions, type Transaction } from '../api/transactionApi';
@@ -9,6 +9,11 @@ export function useTransactions(pageSize = 20) {
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+
+  // Live mirror of `page` for async handlers: a delete that resolves after the
+  // user has paged away can compare against this to tell it's on a stale page.
+  const pageRef = useRef(page);
+  pageRef.current = page;
 
   const load = useCallback(
     async (p: number) => {
@@ -34,26 +39,34 @@ export function useTransactions(pageSize = 20) {
 
   const refresh = useCallback(() => load(page), [load, page]);
 
-  /** Removes a transaction optimistically, restoring it if the delete fails. */
+  /**
+   * Removes a transaction optimistically, then reconciles against the server.
+   * Decisions use the live page (pageRef) and the reload response — never
+   * call-time closures — so a delete resolving after the user paged away won't
+   * yank them back or restore stale rows. Emptying a non-first page steps back.
+   */
   const deleteOptimistic = useCallback(
     async (id: string) => {
-      const previous = transactions;
+      const startPage = pageRef.current;
       setTransactions((txs) => txs.filter((t) => t.id !== id));
       try {
         await deleteTransaction(id);
         toast.success('Expense deleted');
-        // Emptied a non-first page? Step back; otherwise reload to fix counts.
-        if (previous.length === 1 && page > 0) {
-          setPage((p) => p - 1);
-        } else {
-          void load(page);
-        }
       } catch {
-        setTransactions(previous);
         toast.error('Could not delete expense');
       }
+      // Bow out if the user navigated mid-flight — their own load() owns state now.
+      if (pageRef.current !== startPage) return;
+      const result = await listTransactions(startPage, pageSize).catch(() => null);
+      if (!result || pageRef.current !== startPage) return;
+      if (result.content.length === 0 && startPage > 0) {
+        setPage((p) => p - 1);
+      } else {
+        setTransactions(result.content);
+        setTotalPages(result.totalPages);
+      }
     },
-    [transactions, page, load]
+    [pageSize]
   );
 
   return { transactions, loading, error, page, setPage, totalPages, refresh, deleteOptimistic };

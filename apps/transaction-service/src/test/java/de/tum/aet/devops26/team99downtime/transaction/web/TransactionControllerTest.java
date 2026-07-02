@@ -3,6 +3,7 @@ package de.tum.aet.devops26.team99downtime.transaction.web;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -13,6 +14,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import de.tum.aet.devops26.team99downtime.commons.security.SecurityConfig;
 import de.tum.aet.devops26.team99downtime.transaction.domain.Transaction;
+import de.tum.aet.devops26.team99downtime.transaction.domain.UnknownCategoryException;
+import de.tum.aet.devops26.team99downtime.transaction.dto.TransactionRequest;
 import de.tum.aet.devops26.team99downtime.transaction.service.TransactionService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -97,6 +100,22 @@ class TransactionControllerTest {
     assertThat(pageable.getValue().getPageNumber()).isEqualTo(1);
     assertThat(pageable.getValue().getPageSize()).isEqualTo(5);
     assertThat(pageable.getValue().getSort()).isEqualTo(Sort.by("date").descending());
+  }
+
+  @Test
+  void rejectsUnknownCategoryWith422() throws Exception {
+    when(service.create(eq("u1"), any(TransactionRequest.class), nullable(String.class)))
+        .thenThrow(
+            new UnknownCategoryException(UUID.fromString("00000000-0000-0000-0000-000000000001")));
+
+    mockMvc
+        .perform(
+            post("/api/transactions")
+                .with(jwt().jwt(b -> b.subject("u1")))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(validBody()))
+        .andExpect(status().isUnprocessableEntity())
+        .andExpect(jsonPath("$.error").value("unknown_category"));
   }
 
   private static String validBody() {

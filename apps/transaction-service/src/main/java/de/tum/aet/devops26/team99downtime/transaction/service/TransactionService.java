@@ -4,6 +4,7 @@ import de.tum.aet.devops26.team99downtime.transaction.domain.NoCategoriesExcepti
 import de.tum.aet.devops26.team99downtime.transaction.domain.NoExpensesException;
 import de.tum.aet.devops26.team99downtime.transaction.domain.Transaction;
 import de.tum.aet.devops26.team99downtime.transaction.domain.TransactionNotFoundException;
+import de.tum.aet.devops26.team99downtime.transaction.domain.UnknownCategoryException;
 import de.tum.aet.devops26.team99downtime.transaction.domain.UpstreamServiceException;
 import de.tum.aet.devops26.team99downtime.transaction.dto.SkippedRow;
 import de.tum.aet.devops26.team99downtime.transaction.dto.SpendEntry;
@@ -42,6 +43,7 @@ public class TransactionService {
   }
 
   public Transaction create(String userId, TransactionRequest request, String authHeader) {
+    requireCategoryExists(request.categoryId(), authHeader);
     Transaction transaction =
         new Transaction(
             userId,
@@ -148,6 +150,7 @@ public class TransactionService {
 
   public Transaction update(String userId, UUID id, TransactionRequest request, String authHeader) {
     Transaction transaction = requireOwned(userId, id);
+    requireCategoryExists(request.categoryId(), authHeader);
     transaction.setCategoryId(request.categoryId());
     transaction.setAmount(request.amount());
     transaction.setCurrency(request.currency());
@@ -171,5 +174,14 @@ public class TransactionService {
 
   private Transaction requireOwned(String userId, UUID id) {
     return repository.findByIdAndUserId(id, userId).orElseThrow(TransactionNotFoundException::new);
+  }
+
+  /** Rejects a category the user does not own — ids come from the client and can be stale. */
+  private void requireCategoryExists(UUID categoryId, String authHeader) {
+    boolean exists =
+        categoryClient.list(authHeader).stream().anyMatch(c -> c.id().equals(categoryId));
+    if (!exists) {
+      throw new UnknownCategoryException(categoryId);
+    }
   }
 }

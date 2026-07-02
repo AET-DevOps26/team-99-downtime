@@ -59,4 +59,29 @@ describe('useTransactions.deleteOptimistic', () => {
 
     expect(result.current.transactions.map((t) => t.id).sort()).toEqual(['a', 'b']);
   });
+
+  it('does not reconcile the page the user paged away from mid-delete', async () => {
+    let resolveDelete!: () => void;
+    const pending = new Promise<void>((r) => (resolveDelete = r));
+    vi.spyOn(api, 'listTransactions').mockResolvedValue(page([tx('a'), tx('b')]));
+    vi.spyOn(api, 'deleteTransaction').mockReturnValue(pending);
+
+    const { result } = renderHook(() => useTransactions(20));
+    await waitFor(() => expect(result.current.transactions).toHaveLength(2));
+
+    // Start a delete on page 0, then navigate to page 1 before it resolves.
+    let done!: Promise<void>;
+    act(() => {
+      done = result.current.deleteOptimistic('a');
+    });
+    act(() => result.current.setPage(1));
+
+    await act(async () => {
+      resolveDelete();
+      await done;
+    });
+
+    // The delete resolving must not yank the user back to page 0.
+    expect(result.current.page).toBe(1);
+  });
 });

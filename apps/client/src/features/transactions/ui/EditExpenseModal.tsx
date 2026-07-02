@@ -6,8 +6,25 @@ import { Button } from '@/shared/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/shared/ui/dialog';
 import { Input } from '@/shared/ui/input';
 import { Label } from '@/shared/ui/label';
+import { apiErrorInfo } from '@/shared/lib/api';
 import { updateTransaction, type Transaction } from '../api/transactionApi';
 import { CategoryPicker } from './CategoryPicker';
+
+/**
+ * Turns a backend rejection into a specific message: an unknown category (422)
+ * or a field validation error (400), else undefined for the generic fallback.
+ */
+function backendError(err: unknown): string | undefined {
+  const info = apiErrorInfo(err);
+  if (!info) return undefined;
+  if (info.status === 422 && info.code === 'unknown_category') {
+    return 'That category no longer exists — pick another one.';
+  }
+  if (info.status === 400 && info.fields) {
+    return Object.values(info.fields)[0];
+  }
+  return undefined;
+}
 
 interface EditExpenseModalProps {
   transaction: Transaction | null;
@@ -60,8 +77,8 @@ export function EditExpenseModal({
       toast.success('Expense updated');
       onOpenChange(false);
       onSaved?.();
-    } catch {
-      toast.error('Could not update expense');
+    } catch (err) {
+      toast.error(backendError(err) ?? 'Could not update expense');
     } finally {
       setSaving(false);
     }
