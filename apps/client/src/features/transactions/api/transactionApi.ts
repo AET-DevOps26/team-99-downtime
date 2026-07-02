@@ -44,6 +44,23 @@ export function createTransactionsFromText(text: string) {
   });
 }
 
+export interface SkippedRow {
+  row: number;
+  reason: string;
+}
+
+export interface ImportResult {
+  imported: Transaction[];
+  skipped: SkippedRow[];
+}
+
+/** Rejects with a 422 ApiError (`error: 'invalid_csv' | 'no_categories'`). */
+export function importTransactionsCsv(file: File) {
+  const form = new FormData();
+  form.append('file', file);
+  return apiFetch<ImportResult>(`${BASE}/import`, { method: 'POST', body: form });
+}
+
 export function updateTransaction(id: string, input: TransactionInput) {
   return apiFetch<Transaction>(`${BASE}/${id}`, {
     method: 'PATCH',

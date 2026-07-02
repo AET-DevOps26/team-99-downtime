@@ -1,10 +1,13 @@
 package de.tum.aet.devops26.team99downtime.transaction.service;
 
 import de.tum.aet.devops26.team99downtime.transaction.domain.FreeTextTooVagueException;
+import de.tum.aet.devops26.team99downtime.transaction.domain.InvalidCsvException;
 import de.tum.aet.devops26.team99downtime.transaction.domain.UpstreamServiceException;
+import de.tum.aet.devops26.team99downtime.transaction.dto.SkippedRow;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.function.Supplier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -29,33 +32,75 @@ public class GenAiClient {
 
   public List<CategorizedExpense> categorize(
       String text, List<String> categoryNames, String authHeader) {
-    CategorizeResponse response;
-    try {
-      response =
-          restClient
-              .post()
-              .uri("/api/genai/categorize")
-              .header(HttpHeaders.AUTHORIZATION, authHeader)
-              .contentType(MediaType.APPLICATION_JSON)
-              .body(new CategorizeRequest(text, categoryNames))
-              .retrieve()
-              .body(CategorizeResponse.class);
-    } catch (HttpClientErrorException.UnprocessableEntity e) {
-      throw new FreeTextTooVagueException();
-    } catch (RestClientException e) {
-      throw new UpstreamServiceException("genai-service call failed", e);
-    }
+    CategorizeResponse response =
+        post(
+            "/api/genai/categorize",
+            new CategorizeRequest(text, categoryNames),
+            authHeader,
+            CategorizeResponse.class,
+            FreeTextTooVagueException::new);
     if (response == null || response.expenses() == null || response.expenses().isEmpty()) {
       throw new FreeTextTooVagueException();
     }
     return response.expenses();
   }
 
+  /** Parses a raw bank CSV into per-row expenses; a 422 from genai means "not a CSV". */
+  public CsvParseResult parseCsv(String csv, List<String> categoryNames, String authHeader) {
+    CsvParseResult result =
+        post(
+            "/api/genai/parse-csv",
+            new ParseCsvRequest(csv, categoryNames),
+            authHeader,
+            CsvParseResult.class,
+            () -> new InvalidCsvException("The file could not be read as a CSV of transactions"));
+    if (result == null || result.expenses() == null || result.skipped() == null) {
+      throw new UpstreamServiceException("genai-service returned an empty CSV parse result");
+    }
+    return result;
+  }
+
+  /** POSTs to genai forwarding the bearer token; 422 maps to the endpoint's contract exception. */
+  private <T> T post(
+      String uri,
+      Object body,
+      String authHeader,
+      Class<T> responseType,
+      Supplier<RuntimeException> onUnprocessable) {
+    try {
+      return restClient
+          .post()
+          .uri(uri)
+          .header(HttpHeaders.AUTHORIZATION, authHeader)
+          .contentType(MediaType.APPLICATION_JSON)
+          .body(body)
+          .retrieve()
+          .body(responseType);
+    } catch (HttpClientErrorException.UnprocessableEntity e) {
+      throw onUnprocessable.get();
+    } catch (RestClientException e) {
+      throw new UpstreamServiceException("genai-service call failed", e);
+    }
+  }
+
   record CategorizeRequest(String text, List<String> categories) {}
 
   record CategorizeResponse(List<CategorizedExpense> expenses) {}
 
+  record ParseCsvRequest(String csv, List<String> categories) {}
+
   /** One expense as extracted by the AI; category is a name from the list we sent. */
   public record CategorizedExpense(
       BigDecimal amount, String currency, String merchant, String category, LocalDate date) {}
+
+  /** One expense extracted from a CSV data row ({@code row} is the 1-based line number). */
+  public record CsvExpense(
+      int row,
+      BigDecimal amount,
+      String currency,
+      String merchant,
+      String category,
+      LocalDate date) {}
+
+  public record CsvParseResult(List<CsvExpense> expenses, List<SkippedRow> skipped) {}
 }

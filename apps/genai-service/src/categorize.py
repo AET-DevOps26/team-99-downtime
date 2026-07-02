@@ -1,9 +1,9 @@
-"""Free-text expense extraction via the Logos LLM gateway.
+"""Expense extraction via the Logos LLM gateway: free-text sentences and bank CSVs.
 
-The model gets the user's sentence plus their existing category names and must
-answer with strict JSON: either a list of expenses or a too-vague marker. A
-deliberate model refusal surfaces as TooVagueError (the API's preset 422);
-network trouble or a malformed reply surfaces as LlmUnavailableError (502).
+The model gets the user's input plus their existing category names and must
+answer with strict JSON. A deliberate model refusal (too vague / not a CSV)
+surfaces as a dedicated error for the API's preset 422; network trouble or a
+malformed reply surfaces as LlmUnavailableError (502).
 """
 
 import datetime
@@ -25,8 +25,25 @@ class ParsedExpense(BaseModel):
     date: datetime.date
 
 
+class CsvRowExpense(ParsedExpense):
+    """One expense extracted from a CSV data row."""
+
+    row: int = Field(ge=1)
+
+
+class SkippedRow(BaseModel):
+    """A CSV row that could not be imported, with the reason why."""
+
+    row: int = Field(ge=1)
+    reason: str
+
+
 class TooVagueError(Exception):
     """The sentence lacks the detail needed to extract an expense."""
+
+
+class NotCsvError(Exception):
+    """The uploaded content is not interpretable as CSV/tabular data."""
 
 
 class LlmUnavailableError(Exception):
@@ -57,6 +74,34 @@ Rules:
 """
 
 
+_CSV_SYSTEM_PROMPT = """\
+You extract expense records from a raw bank-export CSV of unknown format.
+
+Today is {today}.
+The user's spending categories are: {categories}.
+
+Reply with ONLY a JSON object, no prose, in one of these two shapes:
+  {{"expenses": [{{"row": 2, "amount": 12.5, "currency": "EUR", "merchant": "Rewe",
+                   "category": "<a listed name>", "date": "2026-07-01"}}],
+    "skipped": [{{"row": 5, "reason": "incoming payment, not an expense"}}]}}
+  {{"not_csv": true}}
+
+Rules:
+- Banks differ: any delimiter, column order, header language, date format and
+  number format (1.234,56 or 1,234.56) may appear — infer them from the data.
+- One entry per data row that represents money SPENT (a debit). Use the
+  absolute amount; amount must be positive. Default currency is EUR.
+- row is the 1-based line number of that row in the input, counting every
+  line including the header.
+- merchant is the counterparty/description, short and cleaned up.
+- category MUST be one of the listed names, copied verbatim.
+- Skip rows that are credits/income or missing a usable amount, merchant or
+  date; report each under "skipped" with a short reason.
+- If the content is not interpretable as CSV/tabular data at all, reply
+  {{"not_csv": true}}.
+"""
+
+
 async def _chat(messages: list[dict]) -> str:
     """One chat-completions round-trip; returns the assistant message text."""
     async with httpx.AsyncClient(timeout=config.LLM_TIMEOUT_SECONDS) as client:
@@ -81,9 +126,9 @@ def _extract_json(text: str) -> dict:
     return json.loads(text[start : end + 1])
 
 
-async def categorize(text: str, categories: list[str]) -> list[ParsedExpense]:
-    """Extract one or more expenses from ``text``, filed into ``categories``."""
-    prompt = _SYSTEM_PROMPT.format(
+async def _ask(prompt_template: str, categories: list[str], user_content: str) -> dict:
+    """One prompt round-trip; returns the model's JSON reply as a dict."""
+    prompt = prompt_template.format(
         today=datetime.date.today().isoformat(),
         categories=", ".join(categories),
     )
@@ -91,16 +136,37 @@ async def categorize(text: str, categories: list[str]) -> list[ParsedExpense]:
         reply = await _chat(
             [
                 {"role": "system", "content": prompt},
-                {"role": "user", "content": text},
+                {"role": "user", "content": user_content},
             ]
         )
-        payload = _extract_json(reply)
+        return _extract_json(reply)
     except (httpx.HTTPError, ValueError, KeyError) as exc:
         raise LlmUnavailableError(str(exc)) from exc
 
+
+async def categorize(text: str, categories: list[str]) -> list[ParsedExpense]:
+    """Extract one or more expenses from ``text``, filed into ``categories``."""
+    payload = await _ask(_SYSTEM_PROMPT, categories, text)
     if payload.get("too_vague") or not payload.get("expenses"):
         raise TooVagueError
     try:
         return [ParsedExpense.model_validate(e) for e in payload["expenses"]]
     except ValidationError as exc:
         raise LlmUnavailableError(f"model returned an invalid expense: {exc}") from exc
+
+
+async def parse_csv(
+    csv_text: str, categories: list[str]
+) -> tuple[list[CsvRowExpense], list[SkippedRow]]:
+    """Extract expenses from a raw bank CSV, one per debit row."""
+    payload = await _ask(_CSV_SYSTEM_PROMPT, categories, csv_text)
+    rows, skips = payload.get("expenses") or [], payload.get("skipped") or []
+    # No usable rows *and* nothing skipped means the model saw no tabular data.
+    if payload.get("not_csv") or not (rows or skips):
+        raise NotCsvError
+    try:
+        expenses = [CsvRowExpense.model_validate(e) for e in rows]
+        skipped = [SkippedRow.model_validate(s) for s in skips]
+    except ValidationError as exc:
+        raise LlmUnavailableError(f"model returned an invalid row: {exc}") from exc
+    return expenses, skipped

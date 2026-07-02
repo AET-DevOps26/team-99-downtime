@@ -1,8 +1,8 @@
 """Extraction tests for /categorize.
 
-The LLM round-trip (``categorize._chat``) is stubbed with canned model
-replies, so these exercise the real prompt building, JSON parsing, validation
-and error mapping — offline, like the auth tests.
+The LLM round-trip is stubbed via the shared ``llm`` fixture (conftest.py), so
+these exercise the real prompt building, JSON parsing, validation and error
+mapping — offline, like the auth tests.
 """
 
 import json
@@ -10,7 +10,6 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from src import categorize as categorize_module
 from src.auth import CurrentUser, require_user
 from src.main import app
 
@@ -24,19 +23,6 @@ def _authenticated():
     )
     yield
     app.dependency_overrides.clear()
-
-
-@pytest.fixture
-def llm(monkeypatch):
-    """Stub the chat call: set ``llm["reply"]``, read back ``llm["messages"]``."""
-    state = {"reply": "", "messages": None}
-
-    async def fake_chat(messages):
-        state["messages"] = messages
-        return state["reply"]
-
-    monkeypatch.setattr(categorize_module, "_chat", fake_chat)
-    return state
 
 
 def _post(text="lunch at mensa 8.50", categories=("Dining", "Groceries")):

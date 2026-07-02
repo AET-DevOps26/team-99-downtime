@@ -4,11 +4,14 @@ import de.tum.aet.devops26.team99downtime.transaction.domain.NoCategoriesExcepti
 import de.tum.aet.devops26.team99downtime.transaction.domain.Transaction;
 import de.tum.aet.devops26.team99downtime.transaction.domain.TransactionNotFoundException;
 import de.tum.aet.devops26.team99downtime.transaction.domain.UpstreamServiceException;
+import de.tum.aet.devops26.team99downtime.transaction.dto.SkippedRow;
 import de.tum.aet.devops26.team99downtime.transaction.dto.SpendEntry;
 import de.tum.aet.devops26.team99downtime.transaction.dto.TransactionRequest;
 import de.tum.aet.devops26.team99downtime.transaction.repository.TransactionRepository;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -83,15 +86,62 @@ public class TransactionService {
   }
 
   private static UUID resolveCategoryId(List<CategoryClient.CategoryDto> categories, String name) {
-    return categories.stream()
-        .filter(category -> category.name().equalsIgnoreCase(name))
-        .findFirst()
-        .map(CategoryClient.CategoryDto::id)
+    return findCategoryId(categories, name)
         .orElseThrow(
             () ->
                 new UpstreamServiceException(
                     "genai-service returned unknown category '" + name + "'"));
   }
+
+  private static Optional<UUID> findCategoryId(
+      List<CategoryClient.CategoryDto> categories, String name) {
+    return categories.stream()
+        .filter(category -> category.name().equalsIgnoreCase(name))
+        .findFirst()
+        .map(CategoryClient.CategoryDto::id);
+  }
+
+  /**
+   * Imports a raw bank CSV: the genai-service parses and categorizes each debit row, every usable
+   * row becomes a transaction, unusable rows are collected as skipped (the import never fails
+   * row-by-row). One threshold check fires at the end if anything was imported.
+   */
+  public CsvImportOutcome importCsv(String userId, String csv, String authHeader) {
+    List<CategoryClient.CategoryDto> categories = categoryClient.list(authHeader);
+    if (categories.isEmpty()) {
+      throw new NoCategoriesException();
+    }
+    List<String> names = categories.stream().map(CategoryClient.CategoryDto::name).toList();
+    GenAiClient.CsvParseResult parsed = genAiClient.parseCsv(csv, names, authHeader);
+
+    List<Transaction> imported = new ArrayList<>();
+    List<SkippedRow> skipped = new ArrayList<>(parsed.skipped());
+    for (GenAiClient.CsvExpense expense : parsed.expenses()) {
+      Optional<UUID> categoryId = findCategoryId(categories, expense.category());
+      if (categoryId.isEmpty()) {
+        skipped.add(new SkippedRow(expense.row(), "unknown category '" + expense.category() + "'"));
+        continue;
+      }
+      imported.add(
+          repository.save(
+              new Transaction(
+                  userId,
+                  categoryId.get(),
+                  expense.amount(),
+                  expense.currency() == null || expense.currency().isBlank()
+                      ? "EUR"
+                      : expense.currency(),
+                  expense.merchant(),
+                  expense.date())));
+    }
+    if (!imported.isEmpty()) {
+      thresholdCheckClient.trigger(authHeader);
+    }
+    skipped.sort((a, b) -> Integer.compare(a.row(), b.row()));
+    return new CsvImportOutcome(imported, skipped);
+  }
+
+  public record CsvImportOutcome(List<Transaction> imported, List<SkippedRow> skipped) {}
 
   public Transaction update(String userId, UUID id, TransactionRequest request, String authHeader) {
     Transaction transaction = requireOwned(userId, id);

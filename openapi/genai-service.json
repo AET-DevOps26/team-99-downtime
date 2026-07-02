@@ -65,6 +65,50 @@
         ]
       }
     },
+    "/api/genai/parse-csv": {
+      "post": {
+        "summary": "Parse Csv Expenses",
+        "description": "Extract one expense per debit row from a raw bank CSV of any format.\n\n422 \"NOT_CSV\" is the contract for content that isn't tabular data at all;\nindividual unusable rows come back under \"skipped\" instead of failing.",
+        "operationId": "parse_csv_expenses_api_genai_parse_csv_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParseCsvRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParseCsvResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/genai/me": {
       "get": {
         "summary": "Me",
@@ -127,6 +171,48 @@
         ],
         "title": "CategorizeResponse"
       },
+      "CsvRowExpense": {
+        "properties": {
+          "amount": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "title": "Amount"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "default": "EUR"
+          },
+          "merchant": {
+            "type": "string",
+            "title": "Merchant"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "row": {
+            "type": "integer",
+            "minimum": 1,
+            "title": "Row"
+          }
+        },
+        "type": "object",
+        "required": [
+          "amount",
+          "merchant",
+          "category",
+          "date",
+          "row"
+        ],
+        "title": "CsvRowExpense",
+        "description": "One expense extracted from a CSV data row."
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -139,6 +225,51 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "ParseCsvRequest": {
+        "properties": {
+          "csv": {
+            "type": "string",
+            "title": "Csv"
+          },
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Categories",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "csv"
+        ],
+        "title": "ParseCsvRequest"
+      },
+      "ParseCsvResponse": {
+        "properties": {
+          "expenses": {
+            "items": {
+              "$ref": "#/components/schemas/CsvRowExpense"
+            },
+            "type": "array",
+            "title": "Expenses"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/SkippedRow"
+            },
+            "type": "array",
+            "title": "Skipped"
+          }
+        },
+        "type": "object",
+        "required": [
+          "expenses",
+          "skipped"
+        ],
+        "title": "ParseCsvResponse"
       },
       "ParsedExpense": {
         "properties": {
@@ -175,6 +306,26 @@
         ],
         "title": "ParsedExpense",
         "description": "One expense extracted from the sentence."
+      },
+      "SkippedRow": {
+        "properties": {
+          "row": {
+            "type": "integer",
+            "minimum": 1,
+            "title": "Row"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "row",
+          "reason"
+        ],
+        "title": "SkippedRow",
+        "description": "A CSV row that could not be imported, with the reason why."
       },
       "ValidationError": {
         "properties": {

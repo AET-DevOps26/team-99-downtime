@@ -2,7 +2,16 @@ from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from pydantic import BaseModel
 
 from .auth import CurrentUser, require_user
-from .categorize import LlmUnavailableError, ParsedExpense, TooVagueError, categorize
+from .categorize import (
+    CsvRowExpense,
+    LlmUnavailableError,
+    NotCsvError,
+    ParsedExpense,
+    SkippedRow,
+    TooVagueError,
+    categorize,
+    parse_csv,
+)
 
 app = FastAPI(
     title="ExpenseFlow AI Service",
@@ -40,6 +49,35 @@ async def categorize_expenses(
     except LlmUnavailableError as exc:
         raise HTTPException(status_code=502, detail="LLM_UNAVAILABLE") from exc
     return CategorizeResponse(expenses=expenses)
+
+
+class ParseCsvRequest(BaseModel):
+    csv: str
+    categories: list[str] = []
+
+
+class ParseCsvResponse(BaseModel):
+    expenses: list[CsvRowExpense]
+    skipped: list[SkippedRow]
+
+
+@router.post("/parse-csv", response_model=ParseCsvResponse)
+async def parse_csv_expenses(
+    request: ParseCsvRequest,
+    user: CurrentUser = Depends(require_user),
+):
+    """Extract one expense per debit row from a raw bank CSV of any format.
+
+    422 "NOT_CSV" is the contract for content that isn't tabular data at all;
+    individual unusable rows come back under "skipped" instead of failing.
+    """
+    try:
+        expenses, skipped = await parse_csv(request.csv, request.categories)
+    except NotCsvError:
+        raise HTTPException(status_code=422, detail="NOT_CSV") from None
+    except LlmUnavailableError as exc:
+        raise HTTPException(status_code=502, detail="LLM_UNAVAILABLE") from exc
+    return ParseCsvResponse(expenses=expenses, skipped=skipped)
 
 
 @router.get("/me")

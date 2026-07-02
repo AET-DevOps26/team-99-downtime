@@ -7,12 +7,14 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.tum.aet.devops26.team99downtime.transaction.domain.FreeTextTooVagueException;
+import de.tum.aet.devops26.team99downtime.transaction.dto.SkippedRow;
 import de.tum.aet.devops26.team99downtime.transaction.service.CategoryClient;
 import de.tum.aet.devops26.team99downtime.transaction.service.GenAiClient;
 import de.tum.aet.devops26.team99downtime.transaction.service.ThresholdCheckClient;
@@ -25,6 +27,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -132,6 +135,70 @@ class TransactionFlowIntegrationTest {
                 .content("{\"text\":\"spent 50 on stuff\"}"))
         .andExpect(status().isUnprocessableEntity())
         .andExpect(jsonPath("$.error").value("too_vague"));
+  }
+
+  @Test
+  void csvImportPersistsRowsAndReportsSkips() throws Exception {
+    String userId = "tx-import-user";
+    UUID groceriesId = UUID.randomUUID();
+    String csv = "Buchungstag;Auftraggeber;Betrag\n01.07.2026;REWE;-12,30\n01.07.2026;GEHALT;+2500";
+    when(categoryClient.list(nullable(String.class)))
+        .thenReturn(List.of(new CategoryClient.CategoryDto(groceriesId, "Groceries")));
+    when(genAiClient.parseCsv(eq(csv), anyList(), nullable(String.class)))
+        .thenReturn(
+            new GenAiClient.CsvParseResult(
+                List.of(
+                    new GenAiClient.CsvExpense(
+                        2,
+                        new BigDecimal("12.30"),
+                        "EUR",
+                        "Rewe",
+                        "Groceries",
+                        LocalDate.of(2026, 7, 1))),
+                List.of(new SkippedRow(3, "incoming payment"))));
+
+    mockMvc
+        .perform(
+            multipart("/api/transactions/import")
+                .file(new MockMultipartFile("file", "bank.csv", "text/csv", csv.getBytes()))
+                .with(asUser(userId)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.imported.length()").value(1))
+        .andExpect(jsonPath("$.imported[0].description").value("Rewe"))
+        .andExpect(jsonPath("$.imported[0].categoryId").value(groceriesId.toString()))
+        .andExpect(jsonPath("$.skipped[0].row").value(3))
+        .andExpect(jsonPath("$.skipped[0].reason").value("incoming payment"));
+
+    mockMvc
+        .perform(get("/api/transactions").with(asUser(userId)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content.length()").value(1));
+  }
+
+  @Test
+  void emptyCsvUploadIsRejectedWithPresetError() throws Exception {
+    mockMvc
+        .perform(
+            multipart("/api/transactions/import")
+                .file(new MockMultipartFile("file", "bank.csv", "text/csv", new byte[0]))
+                .with(asUser("tx-import-empty")))
+        .andExpect(status().isUnprocessableEntity())
+        .andExpect(jsonPath("$.error").value("invalid_csv"));
+  }
+
+  @Test
+  void binaryUploadIsRejectedWithPresetError() throws Exception {
+    when(categoryClient.list(nullable(String.class)))
+        .thenReturn(List.of(new CategoryClient.CategoryDto(UUID.randomUUID(), "Groceries")));
+    byte[] binary = {0x25, 0x50, 0x44, 0x46, 0x00, 0x01, 0x02};
+
+    mockMvc
+        .perform(
+            multipart("/api/transactions/import")
+                .file(new MockMultipartFile("file", "statement.pdf", "application/pdf", binary))
+                .with(asUser("tx-import-binary")))
+        .andExpect(status().isUnprocessableEntity())
+        .andExpect(jsonPath("$.error").value("invalid_csv"));
   }
 
   @Test

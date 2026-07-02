@@ -40,7 +40,9 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   for (const [key, value] of Object.entries(await authHeaders())) {
     headers.set(key, value);
   }
-  if (options.body && !headers.has('Content-Type')) {
+  // Only string bodies are JSON; for FormData the browser must set the
+  // multipart boundary itself, so never override its Content-Type.
+  if (typeof options.body === 'string' && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
 

@@ -43,6 +43,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/genai/parse-csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Parse Csv Expenses
+         * @description Extract one expense per debit row from a raw bank CSV of any format.
+         *
+         *     422 "NOT_CSV" is the contract for content that isn't tabular data at all;
+         *     individual unusable rows come back under "skipped" instead of failing.
+         */
+        post: operations["parse_csv_expenses_api_genai_parse_csv_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/genai/me": {
         parameters: {
             query?: never;
@@ -82,10 +105,51 @@ export interface components {
             /** Expenses */
             expenses: components["schemas"]["ParsedExpense"][];
         };
+        /**
+         * CsvRowExpense
+         * @description One expense extracted from a CSV data row.
+         */
+        CsvRowExpense: {
+            /** Amount */
+            amount: number;
+            /**
+             * Currency
+             * @default EUR
+             */
+            currency: string;
+            /** Merchant */
+            merchant: string;
+            /** Category */
+            category: string;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Row */
+            row: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** ParseCsvRequest */
+        ParseCsvRequest: {
+            /** Csv */
+            csv: string;
+            /**
+             * Categories
+             * @default []
+             */
+            categories: string[];
+        };
+        /** ParseCsvResponse */
+        ParseCsvResponse: {
+            /** Expenses */
+            expenses: components["schemas"]["CsvRowExpense"][];
+            /** Skipped */
+            skipped: components["schemas"]["SkippedRow"][];
         };
         /**
          * ParsedExpense
@@ -108,6 +172,16 @@ export interface components {
              * Format: date
              */
             date: string;
+        };
+        /**
+         * SkippedRow
+         * @description A CSV row that could not be imported, with the reason why.
+         */
+        SkippedRow: {
+            /** Row */
+            row: number;
+            /** Reason */
+            reason: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -171,6 +245,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CategorizeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    parse_csv_expenses_api_genai_parse_csv_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ParseCsvRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParseCsvResponse"];
                 };
             };
             /** @description Validation Error */

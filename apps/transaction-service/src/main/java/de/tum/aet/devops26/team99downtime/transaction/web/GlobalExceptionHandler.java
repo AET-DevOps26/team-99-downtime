@@ -1,6 +1,7 @@
 package de.tum.aet.devops26.team99downtime.transaction.web;
 
 import de.tum.aet.devops26.team99downtime.transaction.domain.FreeTextTooVagueException;
+import de.tum.aet.devops26.team99downtime.transaction.domain.InvalidCsvException;
 import de.tum.aet.devops26.team99downtime.transaction.domain.NoCategoriesException;
 import de.tum.aet.devops26.team99downtime.transaction.domain.TransactionNotFoundException;
 import de.tum.aet.devops26.team99downtime.transaction.domain.UpstreamServiceException;
@@ -43,6 +44,11 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(NoCategoriesException.class)
   public ResponseEntity<Map<String, Object>> handleNoCategories(NoCategoriesException ex) {
     return error(HttpStatus.UNPROCESSABLE_ENTITY, "no_categories", ex.getMessage());
+  }
+
+  @ExceptionHandler(InvalidCsvException.class)
+  public ResponseEntity<Map<String, Object>> handleInvalidCsv(InvalidCsvException ex) {
+    return error(HttpStatus.UNPROCESSABLE_ENTITY, "invalid_csv", ex.getMessage());
   }
 
   @ExceptionHandler(UpstreamServiceException.class)
