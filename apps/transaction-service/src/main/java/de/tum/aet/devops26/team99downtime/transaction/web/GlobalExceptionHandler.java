@@ -1,6 +1,9 @@
 package de.tum.aet.devops26.team99downtime.transaction.web;
 
+import de.tum.aet.devops26.team99downtime.transaction.domain.FreeTextTooVagueException;
+import de.tum.aet.devops26.team99downtime.transaction.domain.NoCategoriesException;
 import de.tum.aet.devops26.team99downtime.transaction.domain.TransactionNotFoundException;
+import de.tum.aet.devops26.team99downtime.transaction.domain.UpstreamServiceException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -27,9 +30,31 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(TransactionNotFoundException.class)
   public ResponseEntity<Map<String, Object>> handleNotFound(TransactionNotFoundException ex) {
+    return error(HttpStatus.NOT_FOUND, "transaction_not_found", ex.getMessage());
+  }
+
+  // Free-text entry: "too vague" / "no categories" are client-fixable (422),
+  // a failing genai- or budget-service is not (502).
+  @ExceptionHandler(FreeTextTooVagueException.class)
+  public ResponseEntity<Map<String, Object>> handleTooVague(FreeTextTooVagueException ex) {
+    return error(HttpStatus.UNPROCESSABLE_ENTITY, "too_vague", ex.getMessage());
+  }
+
+  @ExceptionHandler(NoCategoriesException.class)
+  public ResponseEntity<Map<String, Object>> handleNoCategories(NoCategoriesException ex) {
+    return error(HttpStatus.UNPROCESSABLE_ENTITY, "no_categories", ex.getMessage());
+  }
+
+  @ExceptionHandler(UpstreamServiceException.class)
+  public ResponseEntity<Map<String, Object>> handleUpstream(UpstreamServiceException ex) {
+    return error(HttpStatus.BAD_GATEWAY, "upstream_unavailable", ex.getMessage());
+  }
+
+  private static ResponseEntity<Map<String, Object>> error(
+      HttpStatus status, String error, String message) {
     Map<String, Object> body = new LinkedHashMap<>();
-    body.put("error", "transaction_not_found");
-    body.put("message", ex.getMessage());
-    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    body.put("error", error);
+    body.put("message", message);
+    return ResponseEntity.status(status).body(body);
   }
 }

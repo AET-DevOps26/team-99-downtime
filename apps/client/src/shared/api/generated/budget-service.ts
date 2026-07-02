@@ -229,8 +229,8 @@ export interface operations {
     status: {
         parameters: {
             query?: never;
-            header: {
-                Authorization: string;
+            header?: {
+                Authorization?: string;
             };
             path?: never;
             cookie?: never;

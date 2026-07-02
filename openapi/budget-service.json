@@ -163,7 +163,7 @@
           {
             "name": "Authorization",
             "in": "header",
-            "required": true,
+            "required": false,
             "schema": {
               "type": "string"
             }

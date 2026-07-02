@@ -59,7 +59,10 @@ def require_user(
             signing_key,
             algorithms=["RS256"],
             issuer=config.AUTH_ISSUER,
-            options={"require": ["exp", "iss", "sub"]},
+            # Better Auth tokens carry an `aud` claim; PyJWT rejects any token
+            # with `aud` unless we opt in or out. The Java services validate
+            # issuer only (Spring's default), so mirror that here.
+            options={"require": ["exp", "iss", "sub"], "verify_aud": False},
         )
     except jwt.InvalidTokenError as exc:
         raise _unauthorized("Invalid or expired token") from exc

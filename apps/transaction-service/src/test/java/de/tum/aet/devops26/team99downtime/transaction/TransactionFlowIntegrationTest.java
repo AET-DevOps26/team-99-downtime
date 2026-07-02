@@ -1,5 +1,9 @@
 package de.tum.aet.devops26.team99downtime.transaction;
 
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -8,8 +12,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import de.tum.aet.devops26.team99downtime.transaction.domain.FreeTextTooVagueException;
+import de.tum.aet.devops26.team99downtime.transaction.service.CategoryClient;
+import de.tum.aet.devops26.team99downtime.transaction.service.GenAiClient;
 import de.tum.aet.devops26.team99downtime.transaction.service.ThresholdCheckClient;
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -26,6 +36,8 @@ class TransactionFlowIntegrationTest {
   @Autowired private MockMvc mockMvc;
   @Autowired private ObjectMapper objectMapper;
   @MockitoBean private ThresholdCheckClient thresholdCheckClient;
+  @MockitoBean private CategoryClient categoryClient;
+  @MockitoBean private GenAiClient genAiClient;
 
   private static JwtRequestPostProcessor asUser(String userId) {
     return jwt().jwt(b -> b.subject(userId));
@@ -69,6 +81,57 @@ class TransactionFlowIntegrationTest {
         .perform(get("/api/transactions").with(asUser(userId)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content").isEmpty());
+  }
+
+  @Test
+  void freeTextSentenceBecomesTransactions() throws Exception {
+    String userId = "tx-freetext-user";
+    UUID diningId = UUID.randomUUID();
+    // No Authorization header in MockMvc tests (jwt() fills the security context
+    // directly), so the forwarded auth header is null here.
+    when(categoryClient.list(nullable(String.class)))
+        .thenReturn(List.of(new CategoryClient.CategoryDto(diningId, "Dining")));
+    when(genAiClient.categorize(
+            eq("coffee 3 and lunch 8.50 at mensa"), anyList(), nullable(String.class)))
+        .thenReturn(
+            List.of(
+                new GenAiClient.CategorizedExpense(
+                    new BigDecimal("3.00"), "EUR", "Coffee", "Dining", LocalDate.of(2026, 6, 1)),
+                new GenAiClient.CategorizedExpense(
+                    new BigDecimal("8.50"), "EUR", "Mensa", "Dining", LocalDate.of(2026, 6, 1))));
+
+    mockMvc
+        .perform(
+            post("/api/transactions/free-text")
+                .with(asUser(userId))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"text\":\"coffee 3 and lunch 8.50 at mensa\"}"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.length()").value(2))
+        .andExpect(jsonPath("$[0].description").value("Coffee"))
+        .andExpect(jsonPath("$[1].categoryId").value(diningId.toString()));
+
+    mockMvc
+        .perform(get("/api/transactions").with(asUser(userId)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content.length()").value(2));
+  }
+
+  @Test
+  void vagueFreeTextIs422WithPresetError() throws Exception {
+    when(categoryClient.list(nullable(String.class)))
+        .thenReturn(List.of(new CategoryClient.CategoryDto(UUID.randomUUID(), "Dining")));
+    when(genAiClient.categorize(eq("spent 50 on stuff"), anyList(), nullable(String.class)))
+        .thenThrow(new FreeTextTooVagueException());
+
+    mockMvc
+        .perform(
+            post("/api/transactions/free-text")
+                .with(asUser("tx-vague-user"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"text\":\"spent 50 on stuff\"}"))
+        .andExpect(status().isUnprocessableEntity())
+        .andExpect(jsonPath("$.error").value("too_vague"));
   }
 
   @Test

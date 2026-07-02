@@ -16,3 +16,5 @@ auth:
 services:
   budget:
     url: http://budget-service:8082
+  genai:
+    url: http://genai-service:8000

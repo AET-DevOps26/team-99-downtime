@@ -21,15 +21,16 @@
         }
       }
     },
-    "/api/genai/analyze": {
+    "/api/genai/categorize": {
       "post": {
-        "summary": "Analyze Expense",
-        "operationId": "analyze_expense_api_genai_analyze_post",
+        "summary": "Categorize Expenses",
+        "description": "Extract one or more structured expenses from a free-text sentence.\n\n422 \"TOO_VAGUE\" is the contract for a sentence the model cannot extract from.",
+        "operationId": "categorize_expenses_api_genai_categorize_post",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ExpenseRequest"
+                "$ref": "#/components/schemas/CategorizeRequest"
               }
             }
           },
@@ -40,7 +41,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/CategorizeResponse"
+                }
               }
             }
           },
@@ -87,18 +90,42 @@
   },
   "components": {
     "schemas": {
-      "ExpenseRequest": {
+      "CategorizeRequest": {
         "properties": {
           "text": {
             "type": "string",
             "title": "Text"
+          },
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Categories",
+            "default": []
           }
         },
         "type": "object",
         "required": [
           "text"
         ],
-        "title": "ExpenseRequest"
+        "title": "CategorizeRequest"
+      },
+      "CategorizeResponse": {
+        "properties": {
+          "expenses": {
+            "items": {
+              "$ref": "#/components/schemas/ParsedExpense"
+            },
+            "type": "array",
+            "title": "Expenses"
+          }
+        },
+        "type": "object",
+        "required": [
+          "expenses"
+        ],
+        "title": "CategorizeResponse"
       },
       "HTTPValidationError": {
         "properties": {
@@ -112,6 +139,42 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "ParsedExpense": {
+        "properties": {
+          "amount": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "title": "Amount"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "default": "EUR"
+          },
+          "merchant": {
+            "type": "string",
+            "title": "Merchant"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "amount",
+          "merchant",
+          "category",
+          "date"
+        ],
+        "title": "ParsedExpense",
+        "description": "One expense extracted from the sentence."
       },
       "ValidationError": {
         "properties": {

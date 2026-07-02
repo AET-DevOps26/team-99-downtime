@@ -1,5 +1,6 @@
 package de.tum.aet.devops26.team99downtime.transaction.web;
 
+import de.tum.aet.devops26.team99downtime.transaction.dto.FreeTextRequest;
 import de.tum.aet.devops26.team99downtime.transaction.dto.SpendEntry;
 import de.tum.aet.devops26.team99downtime.transaction.dto.TransactionRequest;
 import de.tum.aet.devops26.team99downtime.transaction.dto.TransactionResponse;
@@ -53,6 +54,17 @@ public class TransactionController {
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authHeader,
       @Valid @RequestBody TransactionRequest request) {
     return TransactionResponse.from(service.create(jwt.getSubject(), request, authHeader));
+  }
+
+  @PostMapping("/free-text")
+  @ResponseStatus(HttpStatus.CREATED)
+  public List<TransactionResponse> createFromFreeText(
+      @AuthenticationPrincipal Jwt jwt,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authHeader,
+      @Valid @RequestBody FreeTextRequest request) {
+    return service.createFromFreeText(jwt.getSubject(), request.text(), authHeader).stream()
+        .map(TransactionResponse::from)
+        .toList();
   }
 
   @PatchMapping("/{id}")

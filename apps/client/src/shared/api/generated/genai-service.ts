@@ -21,7 +21,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/genai/analyze": {
+    "/api/genai/categorize": {
         parameters: {
             query?: never;
             header?: never;
@@ -30,8 +30,13 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Analyze Expense */
-        post: operations["analyze_expense_api_genai_analyze_post"];
+        /**
+         * Categorize Expenses
+         * @description Extract one or more structured expenses from a free-text sentence.
+         *
+         *     422 "TOO_VAGUE" is the contract for a sentence the model cannot extract from.
+         */
+        post: operations["categorize_expenses_api_genai_categorize_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -62,15 +67,47 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** ExpenseRequest */
-        ExpenseRequest: {
+        /** CategorizeRequest */
+        CategorizeRequest: {
             /** Text */
             text: string;
+            /**
+             * Categories
+             * @default []
+             */
+            categories: string[];
+        };
+        /** CategorizeResponse */
+        CategorizeResponse: {
+            /** Expenses */
+            expenses: components["schemas"]["ParsedExpense"][];
         };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * ParsedExpense
+         * @description One expense extracted from the sentence.
+         */
+        ParsedExpense: {
+            /** Amount */
+            amount: number;
+            /**
+             * Currency
+             * @default EUR
+             */
+            currency: string;
+            /** Merchant */
+            merchant: string;
+            /** Category */
+            category: string;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -114,7 +151,7 @@ export interface operations {
             };
         };
     };
-    analyze_expense_api_genai_analyze_post: {
+    categorize_expenses_api_genai_categorize_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -123,7 +160,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ExpenseRequest"];
+                "application/json": components["schemas"]["CategorizeRequest"];
             };
         };
         responses: {
@@ -133,7 +170,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["CategorizeResponse"];
                 };
             };
             /** @description Validation Error */

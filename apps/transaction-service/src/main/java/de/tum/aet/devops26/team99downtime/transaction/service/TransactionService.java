@@ -1,7 +1,9 @@
 package de.tum.aet.devops26.team99downtime.transaction.service;
 
+import de.tum.aet.devops26.team99downtime.transaction.domain.NoCategoriesException;
 import de.tum.aet.devops26.team99downtime.transaction.domain.Transaction;
 import de.tum.aet.devops26.team99downtime.transaction.domain.TransactionNotFoundException;
+import de.tum.aet.devops26.team99downtime.transaction.domain.UpstreamServiceException;
 import de.tum.aet.devops26.team99downtime.transaction.dto.SpendEntry;
 import de.tum.aet.devops26.team99downtime.transaction.dto.TransactionRequest;
 import de.tum.aet.devops26.team99downtime.transaction.repository.TransactionRepository;
@@ -17,11 +19,18 @@ public class TransactionService {
 
   private final TransactionRepository repository;
   private final ThresholdCheckClient thresholdCheckClient;
+  private final CategoryClient categoryClient;
+  private final GenAiClient genAiClient;
 
   public TransactionService(
-      TransactionRepository repository, ThresholdCheckClient thresholdCheckClient) {
+      TransactionRepository repository,
+      ThresholdCheckClient thresholdCheckClient,
+      CategoryClient categoryClient,
+      GenAiClient genAiClient) {
     this.repository = repository;
     this.thresholdCheckClient = thresholdCheckClient;
+    this.categoryClient = categoryClient;
+    this.genAiClient = genAiClient;
   }
 
   public Page<Transaction> list(String userId, Pageable pageable) {
@@ -40,6 +49,48 @@ public class TransactionService {
     Transaction saved = repository.save(transaction);
     thresholdCheckClient.trigger(authHeader);
     return saved;
+  }
+
+  /**
+   * Turns a free-text sentence into one or more persisted transactions. The genai-service extracts
+   * amount/merchant/category/date, choosing among the user's existing category names. One threshold
+   * check fires at the end, so the budget-service sees the complete new spend.
+   */
+  public List<Transaction> createFromFreeText(String userId, String text, String authHeader) {
+    List<CategoryClient.CategoryDto> categories = categoryClient.list(authHeader);
+    if (categories.isEmpty()) {
+      throw new NoCategoriesException();
+    }
+    List<String> names = categories.stream().map(CategoryClient.CategoryDto::name).toList();
+    List<GenAiClient.CategorizedExpense> expenses = genAiClient.categorize(text, names, authHeader);
+    List<Transaction> saved =
+        expenses.stream()
+            .map(
+                expense ->
+                    repository.save(
+                        new Transaction(
+                            userId,
+                            resolveCategoryId(categories, expense.category()),
+                            expense.amount(),
+                            expense.currency() == null || expense.currency().isBlank()
+                                ? "EUR"
+                                : expense.currency(),
+                            expense.merchant(),
+                            expense.date())))
+            .toList();
+    thresholdCheckClient.trigger(authHeader);
+    return saved;
+  }
+
+  private static UUID resolveCategoryId(List<CategoryClient.CategoryDto> categories, String name) {
+    return categories.stream()
+        .filter(category -> category.name().equalsIgnoreCase(name))
+        .findFirst()
+        .map(CategoryClient.CategoryDto::id)
+        .orElseThrow(
+            () ->
+                new UpstreamServiceException(
+                    "genai-service returned unknown category '" + name + "'"));
   }
 
   public Transaction update(String userId, UUID id, TransactionRequest request, String authHeader) {
