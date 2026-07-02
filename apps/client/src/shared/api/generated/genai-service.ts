@@ -43,7 +43,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/genai/parse-csv": {
+    "/api/genai/parse-file": {
         parameters: {
             query?: never;
             header?: never;
@@ -53,13 +53,13 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Parse Csv Expenses
-         * @description Extract one expense per debit row from a raw bank CSV of any format.
+         * Parse File Expenses
+         * @description Extract one expense per row/line from a bank CSV or free-text notes file.
          *
-         *     422 "NOT_CSV" is the contract for content that isn't tabular data at all;
-         *     individual unusable rows come back under "skipped" instead of failing.
+         *     422 "UNREADABLE_FILE" is the contract for content with no expense data at
+         *     all; individually unusable rows come back under "skipped" instead.
          */
-        post: operations["parse_csv_expenses_api_genai_parse_csv_post"];
+        post: operations["parse_file_expenses_api_genai_parse_file_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -105,49 +105,25 @@ export interface components {
             /** Expenses */
             expenses: components["schemas"]["ParsedExpense"][];
         };
-        /**
-         * CsvRowExpense
-         * @description One expense extracted from a CSV data row.
-         */
-        CsvRowExpense: {
-            /** Amount */
-            amount: number;
-            /**
-             * Currency
-             * @default EUR
-             */
-            currency: string;
-            /** Merchant */
-            merchant: string;
-            /** Category */
-            category: string;
-            /**
-             * Date
-             * Format: date
-             */
-            date: string;
-            /** Row */
-            row: number;
-        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
-        /** ParseCsvRequest */
-        ParseCsvRequest: {
-            /** Csv */
-            csv: string;
+        /** ParseFileRequest */
+        ParseFileRequest: {
+            /** Content */
+            content: string;
             /**
              * Categories
              * @default []
              */
             categories: string[];
         };
-        /** ParseCsvResponse */
-        ParseCsvResponse: {
+        /** ParseFileResponse */
+        ParseFileResponse: {
             /** Expenses */
-            expenses: components["schemas"]["CsvRowExpense"][];
+            expenses: components["schemas"]["RowExpense"][];
             /** Skipped */
             skipped: components["schemas"]["SkippedRow"][];
         };
@@ -174,8 +150,32 @@ export interface components {
             date: string;
         };
         /**
+         * RowExpense
+         * @description One expense extracted from a row/line of an uploaded file.
+         */
+        RowExpense: {
+            /** Amount */
+            amount: number;
+            /**
+             * Currency
+             * @default EUR
+             */
+            currency: string;
+            /** Merchant */
+            merchant: string;
+            /** Category */
+            category: string;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Row */
+            row: number;
+        };
+        /**
          * SkippedRow
-         * @description A CSV row that could not be imported, with the reason why.
+         * @description A row/line that could not be imported, with the reason why.
          */
         SkippedRow: {
             /** Row */
@@ -258,7 +258,7 @@ export interface operations {
             };
         };
     };
-    parse_csv_expenses_api_genai_parse_csv_post: {
+    parse_file_expenses_api_genai_parse_file_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -267,7 +267,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ParseCsvRequest"];
+                "application/json": components["schemas"]["ParseFileRequest"];
             };
         };
         responses: {
@@ -277,7 +277,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ParseCsvResponse"];
+                    "application/json": components["schemas"]["ParseFileResponse"];
                 };
             };
             /** @description Validation Error */

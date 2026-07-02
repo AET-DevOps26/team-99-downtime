@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import de.tum.aet.devops26.team99downtime.transaction.domain.NoCategoriesException;
+import de.tum.aet.devops26.team99downtime.transaction.domain.NoExpensesException;
 import de.tum.aet.devops26.team99downtime.transaction.domain.Transaction;
 import de.tum.aet.devops26.team99downtime.transaction.dto.SkippedRow;
 import de.tum.aet.devops26.team99downtime.transaction.repository.TransactionRepository;
@@ -42,20 +43,20 @@ class TransactionServiceImportTest {
         .thenReturn(List.of(new CategoryClient.CategoryDto(GROCERIES, "Groceries")));
   }
 
-  private static GenAiClient.CsvExpense expense(int row, String category) {
-    return new GenAiClient.CsvExpense(row, new BigDecimal("12.30"), "EUR", "Rewe", category, DATE);
+  private static GenAiClient.RowExpense expense(int row, String category) {
+    return new GenAiClient.RowExpense(row, new BigDecimal("12.30"), "EUR", "Rewe", category, DATE);
   }
 
   @Test
   void importsRowsAndKeepsGenAiSkips() {
     givenCategories();
-    when(genAiClient.parseCsv(anyString(), anyList(), anyString()))
+    when(genAiClient.parseFile(anyString(), anyList(), anyString()))
         .thenReturn(
-            new GenAiClient.CsvParseResult(
+            new GenAiClient.FileParseResult(
                 List.of(expense(2, "groceries")), List.of(new SkippedRow(3, "incoming payment"))));
     when(repository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
 
-    TransactionService.CsvImportOutcome outcome = service.importCsv("u1", "csv...", AUTH);
+    TransactionService.FileImportOutcome outcome = service.importFile("u1", "file...", AUTH);
 
     assertEquals(1, outcome.imported().size());
     assertEquals(GROCERIES, outcome.imported().get(0).getCategoryId());
@@ -66,13 +67,13 @@ class TransactionServiceImportTest {
   @Test
   void unknownCategoryRowIsSkippedNotFatal() {
     givenCategories();
-    when(genAiClient.parseCsv(anyString(), anyList(), anyString()))
+    when(genAiClient.parseFile(anyString(), anyList(), anyString()))
         .thenReturn(
-            new GenAiClient.CsvParseResult(
+            new GenAiClient.FileParseResult(
                 List.of(expense(2, "Groceries"), expense(4, "Travel")), List.of()));
     when(repository.save(any(Transaction.class))).thenAnswer(inv -> inv.getArgument(0));
 
-    TransactionService.CsvImportOutcome outcome = service.importCsv("u1", "csv...", AUTH);
+    TransactionService.FileImportOutcome outcome = service.importFile("u1", "file...", AUTH);
 
     assertEquals(1, outcome.imported().size());
     assertEquals(1, outcome.skipped().size());
@@ -81,15 +82,13 @@ class TransactionServiceImportTest {
   }
 
   @Test
-  void noImportedRowsSkipsThresholdCheck() {
+  void rejectsFileWhereNothingCouldBeImported() {
     givenCategories();
-    when(genAiClient.parseCsv(anyString(), anyList(), anyString()))
+    when(genAiClient.parseFile(anyString(), anyList(), anyString()))
         .thenReturn(
-            new GenAiClient.CsvParseResult(List.of(), List.of(new SkippedRow(2, "no amount"))));
+            new GenAiClient.FileParseResult(List.of(), List.of(new SkippedRow(2, "no amount"))));
 
-    TransactionService.CsvImportOutcome outcome = service.importCsv("u1", "csv...", AUTH);
-
-    assertTrue(outcome.imported().isEmpty());
+    assertThrows(NoExpensesException.class, () -> service.importFile("u1", "file...", AUTH));
     verifyNoInteractions(thresholdCheckClient, repository);
   }
 
@@ -97,7 +96,7 @@ class TransactionServiceImportTest {
   void rejectsWhenUserHasNoCategories() {
     when(categoryClient.list(AUTH)).thenReturn(List.of());
 
-    assertThrows(NoCategoriesException.class, () -> service.importCsv("u1", "csv...", AUTH));
+    assertThrows(NoCategoriesException.class, () -> service.importFile("u1", "file...", AUTH));
     verifyNoInteractions(genAiClient, repository);
   }
 }

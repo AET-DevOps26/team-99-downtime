@@ -101,7 +101,7 @@
         "tags": [
           "transaction-controller"
         ],
-        "operationId": "importCsv",
+        "operationId": "importFile",
         "parameters": [
           {
             "name": "Authorization",
@@ -433,12 +433,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
           "size": {
             "type": "integer",
             "format": "int32"
@@ -456,6 +450,12 @@
           "sort": {
             "$ref": "#/components/schemas/SortObject"
           },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
+          },
           "empty": {
             "type": "boolean"
           }
@@ -464,14 +464,14 @@
       "PageableObject": {
         "type": "object",
         "properties": {
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
           "paged": {
             "type": "boolean"
           },
           "pageSize": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "pageNumber": {
             "type": "integer",
             "format": "int32"
           },

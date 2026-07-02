@@ -1,6 +1,7 @@
 package de.tum.aet.devops26.team99downtime.transaction.service;
 
 import de.tum.aet.devops26.team99downtime.transaction.domain.NoCategoriesException;
+import de.tum.aet.devops26.team99downtime.transaction.domain.NoExpensesException;
 import de.tum.aet.devops26.team99downtime.transaction.domain.Transaction;
 import de.tum.aet.devops26.team99downtime.transaction.domain.TransactionNotFoundException;
 import de.tum.aet.devops26.team99downtime.transaction.domain.UpstreamServiceException;
@@ -75,9 +76,7 @@ public class TransactionService {
                             userId,
                             resolveCategoryId(categories, expense.category()),
                             expense.amount(),
-                            expense.currency() == null || expense.currency().isBlank()
-                                ? "EUR"
-                                : expense.currency(),
+                            currencyOrEur(expense.currency()),
                             expense.merchant(),
                             expense.date())))
             .toList();
@@ -93,6 +92,10 @@ public class TransactionService {
                     "genai-service returned unknown category '" + name + "'"));
   }
 
+  private static String currencyOrEur(String currency) {
+    return currency == null || currency.isBlank() ? "EUR" : currency;
+  }
+
   private static Optional<UUID> findCategoryId(
       List<CategoryClient.CategoryDto> categories, String name) {
     return categories.stream()
@@ -102,21 +105,22 @@ public class TransactionService {
   }
 
   /**
-   * Imports a raw bank CSV: the genai-service parses and categorizes each debit row, every usable
-   * row becomes a transaction, unusable rows are collected as skipped (the import never fails
-   * row-by-row). One threshold check fires at the end if anything was imported.
+   * Imports an uploaded expense file (bank CSV or free-text notes): the genai-service parses and
+   * categorizes each row/line, every usable one becomes a transaction, unusable ones are collected
+   * as skipped. A file where nothing at all could be imported is rejected (US-4), but a single bad
+   * row never fails the rest.
    */
-  public CsvImportOutcome importCsv(String userId, String csv, String authHeader) {
+  public FileImportOutcome importFile(String userId, String content, String authHeader) {
     List<CategoryClient.CategoryDto> categories = categoryClient.list(authHeader);
     if (categories.isEmpty()) {
       throw new NoCategoriesException();
     }
     List<String> names = categories.stream().map(CategoryClient.CategoryDto::name).toList();
-    GenAiClient.CsvParseResult parsed = genAiClient.parseCsv(csv, names, authHeader);
+    GenAiClient.FileParseResult parsed = genAiClient.parseFile(content, names, authHeader);
 
     List<Transaction> imported = new ArrayList<>();
     List<SkippedRow> skipped = new ArrayList<>(parsed.skipped());
-    for (GenAiClient.CsvExpense expense : parsed.expenses()) {
+    for (GenAiClient.RowExpense expense : parsed.expenses()) {
       Optional<UUID> categoryId = findCategoryId(categories, expense.category());
       if (categoryId.isEmpty()) {
         skipped.add(new SkippedRow(expense.row(), "unknown category '" + expense.category() + "'"));
@@ -128,20 +132,19 @@ public class TransactionService {
                   userId,
                   categoryId.get(),
                   expense.amount(),
-                  expense.currency() == null || expense.currency().isBlank()
-                      ? "EUR"
-                      : expense.currency(),
+                  currencyOrEur(expense.currency()),
                   expense.merchant(),
                   expense.date())));
     }
-    if (!imported.isEmpty()) {
-      thresholdCheckClient.trigger(authHeader);
+    if (imported.isEmpty()) {
+      throw new NoExpensesException();
     }
+    thresholdCheckClient.trigger(authHeader);
     skipped.sort((a, b) -> Integer.compare(a.row(), b.row()));
-    return new CsvImportOutcome(imported, skipped);
+    return new FileImportOutcome(imported, skipped);
   }
 
-  public record CsvImportOutcome(List<Transaction> imported, List<SkippedRow> skipped) {}
+  public record FileImportOutcome(List<Transaction> imported, List<SkippedRow> skipped) {}
 
   public Transaction update(String userId, UUID id, TransactionRequest request, String authHeader) {
     Transaction transaction = requireOwned(userId, id);

@@ -29,7 +29,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["importCsv"];
+        post: operations["importFile"];
         delete?: never;
         options?: never;
         head?: never;
@@ -146,22 +146,22 @@ export interface components {
             pageable?: components["schemas"]["PageableObject"];
             /** Format: int32 */
             numberOfElements?: number;
-            first?: boolean;
-            last?: boolean;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["TransactionResponse"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
+            first?: boolean;
+            last?: boolean;
             empty?: boolean;
         };
         PageableObject: {
+            /** Format: int32 */
+            pageNumber?: number;
             paged?: boolean;
             /** Format: int32 */
             pageSize?: number;
-            /** Format: int32 */
-            pageNumber?: number;
             unpaged?: boolean;
             /** Format: int64 */
             offset?: number;
@@ -235,7 +235,7 @@ export interface operations {
             };
         };
     };
-    importCsv: {
+    importFile: {
         parameters: {
             query?: never;
             header?: {

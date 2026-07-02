@@ -81,6 +81,7 @@ await $`helm upgrade --install t99 k8s/helm/t99-app/ \
   --set ${'notificationService.image.tag=' + version} \
   --set ${'budgetService.image.tag=' + version} \
   --set ${'genaiService.image.tag=' + version} \
+  --set ${'genaiService.llmApiKey=' + (process.env.LLM_API_KEY ?? '')} \
   --set ${'drizzleStudio.github.clientId=' + clientId} \
   --set ${'drizzleStudio.github.clientSecret=' + clientSecret} \
   --wait --timeout 5m --rollback-on-failure`;

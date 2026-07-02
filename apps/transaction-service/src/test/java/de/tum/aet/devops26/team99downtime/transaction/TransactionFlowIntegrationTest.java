@@ -1,6 +1,7 @@
 package de.tum.aet.devops26.team99downtime.transaction;
 
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.when;
@@ -144,11 +145,11 @@ class TransactionFlowIntegrationTest {
     String csv = "Buchungstag;Auftraggeber;Betrag\n01.07.2026;REWE;-12,30\n01.07.2026;GEHALT;+2500";
     when(categoryClient.list(nullable(String.class)))
         .thenReturn(List.of(new CategoryClient.CategoryDto(groceriesId, "Groceries")));
-    when(genAiClient.parseCsv(eq(csv), anyList(), nullable(String.class)))
+    when(genAiClient.parseFile(eq(csv), anyList(), nullable(String.class)))
         .thenReturn(
-            new GenAiClient.CsvParseResult(
+            new GenAiClient.FileParseResult(
                 List.of(
-                    new GenAiClient.CsvExpense(
+                    new GenAiClient.RowExpense(
                         2,
                         new BigDecimal("12.30"),
                         "EUR",
@@ -176,14 +177,64 @@ class TransactionFlowIntegrationTest {
   }
 
   @Test
-  void emptyCsvUploadIsRejectedWithPresetError() throws Exception {
+  void textNotesImportKeepsValidLinesAndSkipsVagueOnes() throws Exception {
+    String userId = "tx-import-notes";
+    UUID diningId = UUID.randomUUID();
+    String notes = "lunch at mensa 8.50\nbought some stuff\ncoffee 3 euro";
+    when(categoryClient.list(nullable(String.class)))
+        .thenReturn(List.of(new CategoryClient.CategoryDto(diningId, "Dining")));
+    when(genAiClient.parseFile(eq(notes), anyList(), nullable(String.class)))
+        .thenReturn(
+            new GenAiClient.FileParseResult(
+                List.of(
+                    new GenAiClient.RowExpense(
+                        1, new BigDecimal("8.50"), "EUR", "Mensa", "Dining", LocalDate.now()),
+                    new GenAiClient.RowExpense(
+                        3, new BigDecimal("3.00"), "EUR", "Coffee", "Dining", LocalDate.now())),
+                List.of(new SkippedRow(2, "too vague"))));
+
+    mockMvc
+        .perform(
+            multipart("/api/transactions/import")
+                .file(new MockMultipartFile("file", "notes.txt", "text/plain", notes.getBytes()))
+                .with(asUser(userId)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.imported.length()").value(2))
+        .andExpect(jsonPath("$.skipped[0].row").value(2))
+        .andExpect(jsonPath("$.skipped[0].reason").value("too vague"));
+
+    mockMvc
+        .perform(get("/api/transactions").with(asUser(userId)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content.length()").value(2));
+  }
+
+  @Test
+  void fileWithNoRecognizableExpensesIsRejected() throws Exception {
+    when(categoryClient.list(nullable(String.class)))
+        .thenReturn(List.of(new CategoryClient.CategoryDto(UUID.randomUUID(), "Dining")));
+    when(genAiClient.parseFile(anyString(), anyList(), nullable(String.class)))
+        .thenReturn(
+            new GenAiClient.FileParseResult(List.of(), List.of(new SkippedRow(1, "too vague"))));
+
+    mockMvc
+        .perform(
+            multipart("/api/transactions/import")
+                .file(new MockMultipartFile("file", "notes.txt", "text/plain", "stuff".getBytes()))
+                .with(asUser("tx-import-nothing")))
+        .andExpect(status().isUnprocessableEntity())
+        .andExpect(jsonPath("$.error").value("no_expenses"));
+  }
+
+  @Test
+  void emptyUploadIsRejectedWithPresetError() throws Exception {
     mockMvc
         .perform(
             multipart("/api/transactions/import")
                 .file(new MockMultipartFile("file", "bank.csv", "text/csv", new byte[0]))
                 .with(asUser("tx-import-empty")))
         .andExpect(status().isUnprocessableEntity())
-        .andExpect(jsonPath("$.error").value("invalid_csv"));
+        .andExpect(jsonPath("$.error").value("invalid_file"));
   }
 
   @Test
@@ -198,7 +249,7 @@ class TransactionFlowIntegrationTest {
                 .file(new MockMultipartFile("file", "statement.pdf", "application/pdf", binary))
                 .with(asUser("tx-import-binary")))
         .andExpect(status().isUnprocessableEntity())
-        .andExpect(jsonPath("$.error").value("invalid_csv"));
+        .andExpect(jsonPath("$.error").value("invalid_file"));
   }
 
   @Test

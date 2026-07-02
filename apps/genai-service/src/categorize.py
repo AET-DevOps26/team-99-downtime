@@ -25,14 +25,14 @@ class ParsedExpense(BaseModel):
     date: datetime.date
 
 
-class CsvRowExpense(ParsedExpense):
-    """One expense extracted from a CSV data row."""
+class RowExpense(ParsedExpense):
+    """One expense extracted from a row/line of an uploaded file."""
 
     row: int = Field(ge=1)
 
 
 class SkippedRow(BaseModel):
-    """A CSV row that could not be imported, with the reason why."""
+    """A row/line that could not be imported, with the reason why."""
 
     row: int = Field(ge=1)
     reason: str
@@ -42,8 +42,8 @@ class TooVagueError(Exception):
     """The sentence lacks the detail needed to extract an expense."""
 
 
-class NotCsvError(Exception):
-    """The uploaded content is not interpretable as CSV/tabular data."""
+class UnreadableFileError(Exception):
+    """Nothing in the uploaded content looks like expense data."""
 
 
 class LlmUnavailableError(Exception):
@@ -74,8 +74,9 @@ Rules:
 """
 
 
-_CSV_SYSTEM_PROMPT = """\
-You extract expense records from a raw bank-export CSV of unknown format.
+_FILE_SYSTEM_PROMPT = """\
+You extract expense records from an uploaded file: either a bank-export CSV
+or free-text notes with roughly one expense per line.
 
 Today is {today}.
 The user's spending categories are: {categories}.
@@ -84,21 +85,23 @@ Reply with ONLY a JSON object, no prose, in one of these two shapes:
   {{"expenses": [{{"row": 2, "amount": 12.5, "currency": "EUR", "merchant": "Rewe",
                    "category": "<a listed name>", "date": "2026-07-01"}}],
     "skipped": [{{"row": 5, "reason": "incoming payment, not an expense"}}]}}
-  {{"not_csv": true}}
+  {{"unreadable": true}}
 
 Rules:
 - Banks differ: any delimiter, column order, header language, date format and
   number format (1.234,56 or 1,234.56) may appear — infer them from the data.
-- One entry per data row that represents money SPENT (a debit). Use the
-  absolute amount; amount must be positive. Default currency is EUR.
-- row is the 1-based line number of that row in the input, counting every
-  line including the header.
+- For free-text notes, resolve relative dates against today; a line without a
+  date means today.
+- One entry per row/line that represents money SPENT. Use the absolute
+  amount; amount must be positive. Default currency is EUR.
+- row is the 1-based line number in the input, counting every line including
+  any header.
 - merchant is the counterparty/description, short and cleaned up.
 - category MUST be one of the listed names, copied verbatim.
-- Skip rows that are credits/income or missing a usable amount, merchant or
-  date; report each under "skipped" with a short reason.
-- If the content is not interpretable as CSV/tabular data at all, reply
-  {{"not_csv": true}}.
+- Skip rows/lines that are credits/income, too vague, or missing a usable
+  amount; report each under "skipped" with a short reason.
+- If nothing in the content looks like expense data at all, reply
+  {{"unreadable": true}}.
 """
 
 
@@ -155,17 +158,17 @@ async def categorize(text: str, categories: list[str]) -> list[ParsedExpense]:
         raise LlmUnavailableError(f"model returned an invalid expense: {exc}") from exc
 
 
-async def parse_csv(
-    csv_text: str, categories: list[str]
-) -> tuple[list[CsvRowExpense], list[SkippedRow]]:
-    """Extract expenses from a raw bank CSV, one per debit row."""
-    payload = await _ask(_CSV_SYSTEM_PROMPT, categories, csv_text)
+async def parse_file(
+    content: str, categories: list[str]
+) -> tuple[list[RowExpense], list[SkippedRow]]:
+    """Extract expenses from an uploaded bank CSV or free-text notes file."""
+    payload = await _ask(_FILE_SYSTEM_PROMPT, categories, content)
     rows, skips = payload.get("expenses") or [], payload.get("skipped") or []
-    # No usable rows *and* nothing skipped means the model saw no tabular data.
-    if payload.get("not_csv") or not (rows or skips):
-        raise NotCsvError
+    # No usable rows *and* nothing skipped means the model saw no expense data.
+    if payload.get("unreadable") or not (rows or skips):
+        raise UnreadableFileError
     try:
-        expenses = [CsvRowExpense.model_validate(e) for e in rows]
+        expenses = [RowExpense.model_validate(e) for e in rows]
         skipped = [SkippedRow.model_validate(s) for s in skips]
     except ValidationError as exc:
         raise LlmUnavailableError(f"model returned an invalid row: {exc}") from exc

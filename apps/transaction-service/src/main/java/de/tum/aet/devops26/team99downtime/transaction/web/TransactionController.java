@@ -1,6 +1,6 @@
 package de.tum.aet.devops26.team99downtime.transaction.web;
 
-import de.tum.aet.devops26.team99downtime.transaction.domain.InvalidCsvException;
+import de.tum.aet.devops26.team99downtime.transaction.domain.InvalidFileException;
 import de.tum.aet.devops26.team99downtime.transaction.dto.FreeTextRequest;
 import de.tum.aet.devops26.team99downtime.transaction.dto.ImportResult;
 import de.tum.aet.devops26.team99downtime.transaction.dto.SpendEntry;
@@ -73,33 +73,33 @@ public class TransactionController {
   }
 
   @PostMapping(path = "/import", consumes = "multipart/form-data")
-  public ImportResult importCsv(
+  public ImportResult importFile(
       @AuthenticationPrincipal Jwt jwt,
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authHeader,
       @RequestParam("file") MultipartFile file) {
-    TransactionService.CsvImportOutcome outcome =
-        service.importCsv(jwt.getSubject(), readCsv(file), authHeader);
+    TransactionService.FileImportOutcome outcome =
+        service.importFile(jwt.getSubject(), readTextFile(file), authHeader);
     return new ImportResult(
         outcome.imported().stream().map(TransactionResponse::from).toList(), outcome.skipped());
   }
 
-  private static String readCsv(MultipartFile file) {
+  private static String readTextFile(MultipartFile file) {
     if (file == null || file.isEmpty()) {
-      throw new InvalidCsvException("The uploaded file is empty");
+      throw new InvalidFileException("The uploaded file is empty");
     }
     if (file.getSize() > 200 * 1024) {
-      throw new InvalidCsvException("The file is too large (max 200 KB)");
+      throw new InvalidFileException("The file is too large (max 200 KB)");
     }
-    String csv;
+    String content;
     try {
-      csv = new String(file.getBytes(), StandardCharsets.UTF_8);
+      content = new String(file.getBytes(), StandardCharsets.UTF_8);
     } catch (IOException e) {
-      throw new InvalidCsvException("The file could not be read");
+      throw new InvalidFileException("The file could not be read");
     }
-    if (csv.indexOf('\0') >= 0) {
-      throw new InvalidCsvException("The file is not a text CSV");
+    if (content.indexOf('\0') >= 0) {
+      throw new InvalidFileException("The file is not a text file");
     }
-    return csv;
+    return content;
   }
 
   @PatchMapping("/{id}")

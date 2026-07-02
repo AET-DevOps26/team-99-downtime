@@ -3,14 +3,14 @@ from pydantic import BaseModel
 
 from .auth import CurrentUser, require_user
 from .categorize import (
-    CsvRowExpense,
     LlmUnavailableError,
-    NotCsvError,
     ParsedExpense,
+    RowExpense,
     SkippedRow,
     TooVagueError,
+    UnreadableFileError,
     categorize,
-    parse_csv,
+    parse_file,
 )
 
 app = FastAPI(
@@ -51,33 +51,33 @@ async def categorize_expenses(
     return CategorizeResponse(expenses=expenses)
 
 
-class ParseCsvRequest(BaseModel):
-    csv: str
+class ParseFileRequest(BaseModel):
+    content: str
     categories: list[str] = []
 
 
-class ParseCsvResponse(BaseModel):
-    expenses: list[CsvRowExpense]
+class ParseFileResponse(BaseModel):
+    expenses: list[RowExpense]
     skipped: list[SkippedRow]
 
 
-@router.post("/parse-csv", response_model=ParseCsvResponse)
-async def parse_csv_expenses(
-    request: ParseCsvRequest,
+@router.post("/parse-file", response_model=ParseFileResponse)
+async def parse_file_expenses(
+    request: ParseFileRequest,
     user: CurrentUser = Depends(require_user),
 ):
-    """Extract one expense per debit row from a raw bank CSV of any format.
+    """Extract one expense per row/line from a bank CSV or free-text notes file.
 
-    422 "NOT_CSV" is the contract for content that isn't tabular data at all;
-    individual unusable rows come back under "skipped" instead of failing.
+    422 "UNREADABLE_FILE" is the contract for content with no expense data at
+    all; individually unusable rows come back under "skipped" instead.
     """
     try:
-        expenses, skipped = await parse_csv(request.csv, request.categories)
-    except NotCsvError:
-        raise HTTPException(status_code=422, detail="NOT_CSV") from None
+        expenses, skipped = await parse_file(request.content, request.categories)
+    except UnreadableFileError:
+        raise HTTPException(status_code=422, detail="UNREADABLE_FILE") from None
     except LlmUnavailableError as exc:
         raise HTTPException(status_code=502, detail="LLM_UNAVAILABLE") from exc
-    return ParseCsvResponse(expenses=expenses, skipped=skipped)
+    return ParseFileResponse(expenses=expenses, skipped=skipped)
 
 
 @router.get("/me")

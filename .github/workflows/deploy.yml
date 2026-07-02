@@ -71,6 +71,7 @@ jobs:
             --extra-vars "better_auth_secret=${{ secrets.BETTER_AUTH_SECRET }}" \
             --extra-vars "google_client_id=${{ secrets.GOOGLE_CLIENT_ID }}" \
             --extra-vars "google_client_secret=${{ secrets.GOOGLE_CLIENT_SECRET }}" \
+            --extra-vars "llm_api_key=${{ secrets.LLM_API_KEY }}" \
             --extra-vars "ghcr_user=${{ github.actor }}" \
             --extra-vars "ghcr_token=${{ secrets.GITHUB_TOKEN }}"
 

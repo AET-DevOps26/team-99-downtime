@@ -65,16 +65,16 @@
         ]
       }
     },
-    "/api/genai/parse-csv": {
+    "/api/genai/parse-file": {
       "post": {
-        "summary": "Parse Csv Expenses",
-        "description": "Extract one expense per debit row from a raw bank CSV of any format.\n\n422 \"NOT_CSV\" is the contract for content that isn't tabular data at all;\nindividual unusable rows come back under \"skipped\" instead of failing.",
-        "operationId": "parse_csv_expenses_api_genai_parse_csv_post",
+        "summary": "Parse File Expenses",
+        "description": "Extract one expense per row/line from a bank CSV or free-text notes file.\n\n422 \"UNREADABLE_FILE\" is the contract for content with no expense data at\nall; individually unusable rows come back under \"skipped\" instead.",
+        "operationId": "parse_file_expenses_api_genai_parse_file_post",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ParseCsvRequest"
+                "$ref": "#/components/schemas/ParseFileRequest"
               }
             }
           },
@@ -86,7 +86,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ParseCsvResponse"
+                  "$ref": "#/components/schemas/ParseFileResponse"
                 }
               }
             }
@@ -171,7 +171,101 @@
         ],
         "title": "CategorizeResponse"
       },
-      "CsvRowExpense": {
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "ParseFileRequest": {
+        "properties": {
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Categories",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "content"
+        ],
+        "title": "ParseFileRequest"
+      },
+      "ParseFileResponse": {
+        "properties": {
+          "expenses": {
+            "items": {
+              "$ref": "#/components/schemas/RowExpense"
+            },
+            "type": "array",
+            "title": "Expenses"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/SkippedRow"
+            },
+            "type": "array",
+            "title": "Skipped"
+          }
+        },
+        "type": "object",
+        "required": [
+          "expenses",
+          "skipped"
+        ],
+        "title": "ParseFileResponse"
+      },
+      "ParsedExpense": {
+        "properties": {
+          "amount": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "title": "Amount"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "default": "EUR"
+          },
+          "merchant": {
+            "type": "string",
+            "title": "Merchant"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "amount",
+          "merchant",
+          "category",
+          "date"
+        ],
+        "title": "ParsedExpense",
+        "description": "One expense extracted from the sentence."
+      },
+      "RowExpense": {
         "properties": {
           "amount": {
             "type": "number",
@@ -210,102 +304,8 @@
           "date",
           "row"
         ],
-        "title": "CsvRowExpense",
-        "description": "One expense extracted from a CSV data row."
-      },
-      "HTTPValidationError": {
-        "properties": {
-          "detail": {
-            "items": {
-              "$ref": "#/components/schemas/ValidationError"
-            },
-            "type": "array",
-            "title": "Detail"
-          }
-        },
-        "type": "object",
-        "title": "HTTPValidationError"
-      },
-      "ParseCsvRequest": {
-        "properties": {
-          "csv": {
-            "type": "string",
-            "title": "Csv"
-          },
-          "categories": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Categories",
-            "default": []
-          }
-        },
-        "type": "object",
-        "required": [
-          "csv"
-        ],
-        "title": "ParseCsvRequest"
-      },
-      "ParseCsvResponse": {
-        "properties": {
-          "expenses": {
-            "items": {
-              "$ref": "#/components/schemas/CsvRowExpense"
-            },
-            "type": "array",
-            "title": "Expenses"
-          },
-          "skipped": {
-            "items": {
-              "$ref": "#/components/schemas/SkippedRow"
-            },
-            "type": "array",
-            "title": "Skipped"
-          }
-        },
-        "type": "object",
-        "required": [
-          "expenses",
-          "skipped"
-        ],
-        "title": "ParseCsvResponse"
-      },
-      "ParsedExpense": {
-        "properties": {
-          "amount": {
-            "type": "number",
-            "exclusiveMinimum": 0,
-            "title": "Amount"
-          },
-          "currency": {
-            "type": "string",
-            "title": "Currency",
-            "default": "EUR"
-          },
-          "merchant": {
-            "type": "string",
-            "title": "Merchant"
-          },
-          "category": {
-            "type": "string",
-            "title": "Category"
-          },
-          "date": {
-            "type": "string",
-            "format": "date",
-            "title": "Date"
-          }
-        },
-        "type": "object",
-        "required": [
-          "amount",
-          "merchant",
-          "category",
-          "date"
-        ],
-        "title": "ParsedExpense",
-        "description": "One expense extracted from the sentence."
+        "title": "RowExpense",
+        "description": "One expense extracted from a row/line of an uploaded file."
       },
       "SkippedRow": {
         "properties": {
@@ -325,7 +325,7 @@
           "reason"
         ],
         "title": "SkippedRow",
-        "description": "A CSV row that could not be imported, with the reason why."
+        "description": "A row/line that could not be imported, with the reason why."
       },
       "ValidationError": {
         "properties": {

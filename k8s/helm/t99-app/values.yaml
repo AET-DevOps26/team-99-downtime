@@ -91,6 +91,8 @@ genaiService:
     repository: t99-genai-service
     tag: ''
   port: 8000
+  # Logos key; set via --set from CI secrets. Empty keeps the cluster's value.
+  llmApiKey: ''
   resources:
     requests:
       memory: 128Mi

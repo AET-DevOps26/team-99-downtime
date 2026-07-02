@@ -1,7 +1,7 @@
 package de.tum.aet.devops26.team99downtime.transaction.service;
 
 import de.tum.aet.devops26.team99downtime.transaction.domain.FreeTextTooVagueException;
-import de.tum.aet.devops26.team99downtime.transaction.domain.InvalidCsvException;
+import de.tum.aet.devops26.team99downtime.transaction.domain.InvalidFileException;
 import de.tum.aet.devops26.team99downtime.transaction.domain.UpstreamServiceException;
 import de.tum.aet.devops26.team99downtime.transaction.dto.SkippedRow;
 import java.math.BigDecimal;
@@ -45,17 +45,17 @@ public class GenAiClient {
     return response.expenses();
   }
 
-  /** Parses a raw bank CSV into per-row expenses; a 422 from genai means "not a CSV". */
-  public CsvParseResult parseCsv(String csv, List<String> categoryNames, String authHeader) {
-    CsvParseResult result =
+  /** Parses a bank CSV or free-text notes file; a 422 from genai means "no expense data". */
+  public FileParseResult parseFile(String content, List<String> categoryNames, String authHeader) {
+    FileParseResult result =
         post(
-            "/api/genai/parse-csv",
-            new ParseCsvRequest(csv, categoryNames),
+            "/api/genai/parse-file",
+            new ParseFileRequest(content, categoryNames),
             authHeader,
-            CsvParseResult.class,
-            () -> new InvalidCsvException("The file could not be read as a CSV of transactions"));
+            FileParseResult.class,
+            () -> new InvalidFileException("The file could not be read as expenses"));
     if (result == null || result.expenses() == null || result.skipped() == null) {
-      throw new UpstreamServiceException("genai-service returned an empty CSV parse result");
+      throw new UpstreamServiceException("genai-service returned an empty file parse result");
     }
     return result;
   }
@@ -87,14 +87,14 @@ public class GenAiClient {
 
   record CategorizeResponse(List<CategorizedExpense> expenses) {}
 
-  record ParseCsvRequest(String csv, List<String> categories) {}
+  record ParseFileRequest(String content, List<String> categories) {}
 
   /** One expense as extracted by the AI; category is a name from the list we sent. */
   public record CategorizedExpense(
       BigDecimal amount, String currency, String merchant, String category, LocalDate date) {}
 
-  /** One expense extracted from a CSV data row ({@code row} is the 1-based line number). */
-  public record CsvExpense(
+  /** One expense extracted from a file row/line ({@code row} is the 1-based line number). */
+  public record RowExpense(
       int row,
       BigDecimal amount,
       String currency,
@@ -102,5 +102,5 @@ public class GenAiClient {
       String category,
       LocalDate date) {}
 
-  public record CsvParseResult(List<CsvExpense> expenses, List<SkippedRow> skipped) {}
+  public record FileParseResult(List<RowExpense> expenses, List<SkippedRow> skipped) {}
 }

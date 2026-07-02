@@ -54,8 +54,8 @@ export interface ImportResult {
   skipped: SkippedRow[];
 }
 
-/** Rejects with a 422 ApiError (`error: 'invalid_csv' | 'no_categories'`). */
-export function importTransactionsCsv(file: File) {
+/** Rejects with a 422 ApiError (`error: 'invalid_file' | 'no_expenses' | 'no_categories'`). */
+export function importTransactionsFile(file: File) {
   const form = new FormData();
   form.append('file', file);
   return apiFetch<ImportResult>(`${BASE}/import`, { method: 'POST', body: form });

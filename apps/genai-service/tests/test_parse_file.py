@@ -1,8 +1,9 @@
-"""Parsing tests for /parse-csv.
+"""Parsing tests for /parse-file.
 
-The LLM round-trip is stubbed via the shared ``llm`` fixture (conftest.py);
-the two bank-format cases pin down that the raw CSV reaches the model verbatim
-and that per-row results (imported vs skipped) flow through unchanged.
+The LLM round-trip is stubbed via the shared ``llm`` fixture (conftest.py).
+The cases pin down that the raw file content reaches the model verbatim and
+that per-row results (imported vs skipped) flow through unchanged — for two
+different bank CSV formats and for free-text notes with mixed lines.
 """
 
 import json
@@ -29,6 +30,12 @@ Date,Description,Amount
 2026-07-02,PAYCHECK,3000.00
 """
 
+NOTES_TXT = """\
+lunch at mensa 8.50
+bought some stuff
+coffee 3 euro yesterday
+"""
+
 
 @pytest.fixture(autouse=True)
 def _authenticated():
@@ -39,9 +46,10 @@ def _authenticated():
     app.dependency_overrides.clear()
 
 
-def _post(csv, categories=("Groceries", "Dining")):
+def _post(content, categories=("Groceries", "Dining")):
     return client.post(
-        "/api/genai/parse-csv", json={"csv": csv, "categories": list(categories)}
+        "/api/genai/parse-file",
+        json={"content": content, "categories": list(categories)},
     )
 
 
@@ -49,18 +57,21 @@ def _reply(expenses=(), skipped=()):
     return json.dumps({"expenses": list(expenses), "skipped": list(skipped)})
 
 
+def _expense(row, **overrides):
+    return {
+        "row": row,
+        "amount": 12.30,
+        "currency": "EUR",
+        "merchant": "Rewe Markt",
+        "category": "Groceries",
+        "date": "2026-07-01",
+        **overrides,
+    }
+
+
 def test_german_bank_format(llm):
     llm["reply"] = _reply(
-        expenses=[
-            {
-                "row": 2,
-                "amount": 12.30,
-                "currency": "EUR",
-                "merchant": "Rewe Markt",
-                "category": "Groceries",
-                "date": "2026-07-01",
-            }
-        ],
+        expenses=[_expense(2)],
         skipped=[{"row": 3, "reason": "incoming payment, not an expense"}],
     )
     res = _post(DKB_CSV)
@@ -69,29 +80,36 @@ def test_german_bank_format(llm):
     assert body["expenses"][0]["amount"] == 12.30
     assert body["expenses"][0]["row"] == 2
     assert body["skipped"] == [{"row": 3, "reason": "incoming payment, not an expense"}]
-    # The raw CSV must reach the model verbatim as the user message.
+    # The raw file content must reach the model verbatim as the user message.
     assert llm["messages"][1] == {"role": "user", "content": DKB_CSV}
     assert "Groceries, Dining" in llm["messages"][0]["content"]
 
 
 def test_us_bank_format(llm):
     llm["reply"] = _reply(
-        expenses=[
-            {
-                "row": 2,
-                "amount": 4.50,
-                "currency": "USD",
-                "merchant": "Starbucks",
-                "category": "Dining",
-                "date": "2026-07-01",
-            }
-        ],
+        expenses=[_expense(2, amount=4.50, currency="USD", merchant="Starbucks")],
         skipped=[{"row": 3, "reason": "credit"}],
     )
     res = _post(CHASE_CSV)
     assert res.status_code == 200
     assert res.json()["expenses"][0]["currency"] == "USD"
     assert llm["messages"][1]["content"] == CHASE_CSV
+
+
+def test_free_text_notes_with_mixed_lines(llm):
+    llm["reply"] = _reply(
+        expenses=[
+            _expense(1, amount=8.50, merchant="Mensa", category="Dining"),
+            _expense(3, amount=3.00, merchant="Coffee", category="Dining"),
+        ],
+        skipped=[{"row": 2, "reason": "too vague"}],
+    )
+    res = _post(NOTES_TXT)
+    assert res.status_code == 200
+    body = res.json()
+    assert [e["row"] for e in body["expenses"]] == [1, 3]
+    assert body["skipped"] == [{"row": 2, "reason": "too vague"}]
+    assert llm["messages"][1]["content"] == NOTES_TXT
 
 
 def test_all_rows_skipped_is_still_a_result(llm):
@@ -104,11 +122,11 @@ def test_all_rows_skipped_is_still_a_result(llm):
     }
 
 
-def test_non_csv_content_is_422(llm):
-    llm["reply"] = json.dumps({"not_csv": True})
-    res = _post("this is just prose, not a table")
+def test_unreadable_content_is_422(llm):
+    llm["reply"] = json.dumps({"unreadable": True})
+    res = _post("chapter one: it was a dark and stormy night")
     assert res.status_code == 422
-    assert res.json()["detail"] == "NOT_CSV"
+    assert res.json()["detail"] == "UNREADABLE_FILE"
 
 
 def test_empty_model_result_is_422(llm):
