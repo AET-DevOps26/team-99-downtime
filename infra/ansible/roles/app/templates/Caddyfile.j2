@@ -11,8 +11,7 @@
 		reverse_proxy auth-service:3000
 	}
 
-	# Backend services — forwarded as-is (services own their full path),
-	# mirroring the dev Caddyfile and the k8s ingress.
+	# Backend services — forwarded as-is (services own their full path).
 	handle /api/transactions* {
 		reverse_proxy transaction-service:8080
 	}
