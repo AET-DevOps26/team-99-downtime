@@ -23,6 +23,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.BiFunction;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -45,6 +47,24 @@ class TransactionFlowIntegrationTest {
 
   private static JwtRequestPostProcessor asUser(String userId) {
     return jwt().jwt(b -> b.subject(userId));
+  }
+
+  // The manual create/update path validates the category against the user's owned
+  // categories (budget-service). Stub the ids the create tests below use so they
+  // pass validation; free-text/import tests re-stub this with their own values.
+  @BeforeEach
+  void stubOwnedCategories() {
+    when(categoryClient.list(nullable(String.class)))
+        .thenReturn(
+            List.of(
+                new CategoryClient.CategoryDto(
+                    UUID.fromString("00000000-0000-0000-0000-000000000001"), "One"),
+                new CategoryClient.CategoryDto(
+                    UUID.fromString("00000000-0000-0000-0000-000000000002"), "Two"),
+                new CategoryClient.CategoryDto(
+                    UUID.fromString("00000000-0000-0000-0000-000000000003"), "Three"),
+                new CategoryClient.CategoryDto(
+                    UUID.fromString("00000000-0000-0000-0000-000000000009"), "Nine")));
   }
 
   @Test
@@ -85,6 +105,59 @@ class TransactionFlowIntegrationTest {
         .perform(get("/api/transactions").with(asUser(userId)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content").isEmpty());
+  }
+
+  @Test
+  void deleteRecomputesSpendThatBudgetsReadFrom() throws Exception {
+    // The budget-service computes each category's spend live from GET
+    // /api/transactions/spend, so proving that endpoint drops after a delete
+    // proves budgets recompute (US-9). A threshold-check also fires per delete.
+    String userId = "tx-delete-budget";
+    String categoryId = "00000000-0000-0000-0000-000000000009";
+    String thisMonth = LocalDate.now().withDayOfMonth(10).toString();
+
+    BiFunction<String, String, String> body =
+        (amount, description) ->
+            String.format(
+                "{\"categoryId\":\"%s\",\"amount\":%s,\"currency\":\"EUR\","
+                    + "\"description\":\"%s\",\"date\":\"%s\"}",
+                categoryId, amount, description, thisMonth);
+
+    String first =
+        mockMvc
+            .perform(
+                post("/api/transactions")
+                    .with(asUser(userId))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(body.apply("30.00", "First")))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    mockMvc
+        .perform(
+            post("/api/transactions")
+                .with(asUser(userId))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body.apply("20.00", "Second")))
+        .andExpect(status().isCreated());
+
+    // Both transactions counted: 30 + 20 = 50.
+    mockMvc
+        .perform(get("/api/transactions/spend").with(asUser(userId)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[?(@.categoryId=='" + categoryId + "')].totalSpent").value(50.0));
+
+    String firstId = objectMapper.readTree(first).get("id").asText();
+    mockMvc
+        .perform(delete("/api/transactions/" + firstId).with(asUser(userId)))
+        .andExpect(status().isNoContent());
+
+    // After deleting the 30.00 entry, spend recomputes down to 20.
+    mockMvc
+        .perform(get("/api/transactions/spend").with(asUser(userId)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[?(@.categoryId=='" + categoryId + "')].totalSpent").value(20.0));
   }
 
   @Test

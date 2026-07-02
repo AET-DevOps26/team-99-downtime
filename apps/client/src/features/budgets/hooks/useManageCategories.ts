@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
-import { ApiError } from '@/shared/lib/api';
+import { ApiError, apiErrorInfo } from '@/shared/lib/api';
 
 import { createCategory, deleteCategory, listCategories, updateCategory } from '../api/budgetApi';
 import { categorySchema } from '../schemas/categorySchemas';
@@ -28,13 +28,11 @@ function newKey() {
 }
 
 function messageFor(error: unknown): string {
-  if (error instanceof ApiError) {
-    if (error.status === 409) return 'A category with this name already exists';
-    if (error.status === 400) {
-      const fields = (error.body as { fields?: Record<string, string> })?.fields;
-      const first = fields && Object.values(fields)[0];
-      if (first) return first;
-    }
+  const info = apiErrorInfo(error);
+  if (info?.status === 409) return 'A category with this name already exists';
+  if (info?.status === 400) {
+    const first = info.fields && Object.values(info.fields)[0];
+    if (first) return first;
   }
   return 'Could not save this category';
 }

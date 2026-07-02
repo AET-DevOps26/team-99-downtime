@@ -5,6 +5,7 @@ import de.tum.aet.devops26.team99downtime.transaction.domain.InvalidFileExceptio
 import de.tum.aet.devops26.team99downtime.transaction.domain.NoCategoriesException;
 import de.tum.aet.devops26.team99downtime.transaction.domain.NoExpensesException;
 import de.tum.aet.devops26.team99downtime.transaction.domain.TransactionNotFoundException;
+import de.tum.aet.devops26.team99downtime.transaction.domain.UnknownCategoryException;
 import de.tum.aet.devops26.team99downtime.transaction.domain.UpstreamServiceException;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -45,6 +46,11 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(NoCategoriesException.class)
   public ResponseEntity<Map<String, Object>> handleNoCategories(NoCategoriesException ex) {
     return error(HttpStatus.UNPROCESSABLE_ENTITY, "no_categories", ex.getMessage());
+  }
+
+  @ExceptionHandler(UnknownCategoryException.class)
+  public ResponseEntity<Map<String, Object>> handleUnknownCategory(UnknownCategoryException ex) {
+    return error(HttpStatus.UNPROCESSABLE_ENTITY, "unknown_category", ex.getMessage());
   }
 
   @ExceptionHandler(InvalidFileException.class)

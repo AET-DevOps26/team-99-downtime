@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { listCategories, type Category } from '@/features/budgets/api/budgetApi';
+import { iconFor } from '@/features/budgets/lib/categoryIcons';
+import { cn } from '@/shared/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select';
 
 interface CategoryPickerProps {
@@ -34,11 +36,23 @@ export function CategoryPicker({ id, value, onChange }: CategoryPickerProps) {
         <SelectValue placeholder="Select category" />
       </SelectTrigger>
       <SelectContent>
-        {categories.map((cat) => (
-          <SelectItem key={cat.id} value={cat.id}>
-            {cat.name}
-          </SelectItem>
-        ))}
+        {categories.map((cat) => {
+          const { Icon, className } = iconFor(cat.name);
+          return (
+            <SelectItem key={cat.id} value={cat.id}>
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'flex size-5 shrink-0 items-center justify-center rounded-full',
+                  className
+                )}
+              >
+                <Icon className="size-3" />
+              </span>
+              {cat.name}
+            </SelectItem>
+          );
+        })}
       </SelectContent>
     </Select>
   );
