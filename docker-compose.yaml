@@ -5,6 +5,8 @@ x-java-dev: &java-dev
   depends_on:
     postgres:
       condition: service_healthy
+    db-init:
+      condition: service_completed_successfully
   networks: [team99]
   environment:
     SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-devuser}
@@ -58,6 +60,24 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks: [team99]
+
+  # Creates missing per-service databases, then exits (init scripts alone only
+  # run on a fresh volume).
+  db-init:
+    image: postgres:16-alpine
+    restart: 'no'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-devuser}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-devpass}
+      PGDATABASE: ${POSTGRES_DB:-postgres}
+    volumes:
+      - ./infra/postgres/init/01-create-databases.sql:/create-databases.sql:ro
+    command: ['psql', '-v', 'ON_ERROR_STOP=1', '-f', '/create-databases.sql']
     networks: [team99]
 
   drizzle-studio:
@@ -189,6 +209,11 @@ services:
       dockerfile: apps/genai-service/Dockerfile
       target: dev
     restart: unless-stopped
+    environment:
+      # Logos LLM gateway; the key lives in the gitignored .env only.
+      LLM_API_KEY: ${LLM_API_KEY}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://logos.aet.cit.tum.de:8080/v1}
+      LLM_MODEL: ${LLM_MODEL:-openai/gpt-oss-120b}
     ports:
       - '8000:8000'
     volumes:

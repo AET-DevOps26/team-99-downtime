@@ -14,10 +14,11 @@ Open **http://localhost:9099**. See [Development Setup](docs/development/SETUP.m
 
 ## Live Environments
 
-| Environment | App                                       | Drizzle Studio                                   |
-| ----------- | ----------------------------------------- | ------------------------------------------------ |
-| Stage       | https://stage.t99.stud.k8s.aet.cit.tum.de | https://studio.stage.t99.stud.k8s.aet.cit.tum.de |
-| Prod        | https://t99.stud.k8s.aet.cit.tum.de       | https://studio.t99.stud.k8s.aet.cit.tum.de       |
+| Environment | App                                                       | Drizzle Studio                                   |
+| ----------- | --------------------------------------------------------- | ------------------------------------------------ |
+| Stage       | https://stage.t99.stud.k8s.aet.cit.tum.de                 | https://studio.stage.t99.stud.k8s.aet.cit.tum.de |
+| Prod        | https://t99.stud.k8s.aet.cit.tum.de                       | https://studio.t99.stud.k8s.aet.cit.tum.de       |
+| Azure VM    | https://expenseflow.spaincentral.cloudapp.azure.com/login | —                                                |
 
 ## Deployment
 

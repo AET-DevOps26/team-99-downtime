@@ -246,6 +246,7 @@ jobs:
             --set notificationService.image.tag="$VERSION" \
             --set budgetService.image.tag="$VERSION" \
             --set genaiService.image.tag="$VERSION" \
+            --set genaiService.llmApiKey="${{ secrets.LLM_API_KEY }}" \
             --set drizzleStudio.github.clientId="${{ secrets.STUDIO_GITHUB_CLIENT_ID }}" \
             --set drizzleStudio.github.clientSecret="${{ secrets.STUDIO_GITHUB_CLIENT_SECRET }}" \
             --wait --timeout 5m --rollback-on-failure

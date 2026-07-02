@@ -22,11 +22,12 @@ const specDir = join(repoRoot, 'openapi');
 const outDir = join(repoRoot, 'apps', 'client', 'src', 'shared', 'api', 'generated');
 
 // name -> live spec URL (direct service ports, published by docker-compose).
+// Spec paths live under each service's /api prefix since the routing unification (#96/#111).
 const services = {
-  'budget-service': 'http://localhost:8082/v3/api-docs',
-  'transaction-service': 'http://localhost:8080/v3/api-docs',
-  'notification-service': 'http://localhost:8081/v3/api-docs',
-  'genai-service': 'http://localhost:8000/openapi.json',
+  'budget-service': 'http://localhost:8082/api/budgets/v3/api-docs',
+  'transaction-service': 'http://localhost:8080/api/transactions/v3/api-docs',
+  'notification-service': 'http://localhost:8081/api/notifications/v3/api-docs',
+  'genai-service': 'http://localhost:8000/api/genai/openapi.json',
 };
 
 mkdirSync(specDir, { recursive: true });

@@ -40,6 +40,24 @@ services:
       retries: 10
     networks: [team99]
 
+  # Creates missing per-service databases, then exits (init scripts alone only
+  # run on a fresh volume).
+  db-init:
+    image: postgres:16-alpine
+    restart: 'no'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+    volumes:
+      - ./postgres-init/01-create-databases.sql:/create-databases.sql:ro
+    command: ['psql', '-v', 'ON_ERROR_STOP=1', '-f', '/create-databases.sql']
+    networks: [team99]
+
   # Run-once Better Auth schema migration, then exits. auth-service waits for it.
   auth-migrate:
     image: ${REGISTRY}/t99-auth-service:${APP_IMAGE_TAG}
@@ -47,6 +65,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/auth_db
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
@@ -76,6 +96,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/transaction_db
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
@@ -88,6 +110,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/budget_db
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
@@ -100,16 +124,22 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
     environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/notification_db
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
     networks: [team99]
 
-  # NOTE: if the genai service needs an LLM API key in prod, add it here and to
-  # infra/ansible/roles/app/templates/app.env.j2 (it had none in the dev compose).
   genai-service:
     image: ${REGISTRY}/t99-genai-service:${APP_IMAGE_TAG}
     <<: *restart
+    environment:
+      # Key rendered into the VM's .env by Ansible (app.env.j2).
+      LLM_API_KEY: ${LLM_API_KEY}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://logos.aet.cit.tum.de:8080/v1}
+      LLM_MODEL: ${LLM_MODEL:-openai/gpt-oss-120b}
     networks: [team99]
 
   client:

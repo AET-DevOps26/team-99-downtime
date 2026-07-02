@@ -1,6 +1,6 @@
--- Create a separate database per microservice.
--- Each service connects only to its own database (no cross-service queries).
-CREATE DATABASE transaction_db;
-CREATE DATABASE budget_db;
-CREATE DATABASE auth_db;
-CREATE DATABASE notification_db;
+-- One database per microservice. Idempotent so the db-init service can re-run
+-- it on every startup — Postgres init scripts only run on a fresh volume.
+SELECT format('CREATE DATABASE %I', service_db)
+FROM unnest(ARRAY['transaction_db', 'budget_db', 'auth_db', 'notification_db']) AS t(service_db)
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = service_db)
+\gexec

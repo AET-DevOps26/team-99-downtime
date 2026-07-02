@@ -21,7 +21,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/genai/analyze": {
+    "/api/genai/categorize": {
         parameters: {
             query?: never;
             header?: never;
@@ -30,8 +30,36 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Analyze Expense */
-        post: operations["analyze_expense_api_genai_analyze_post"];
+        /**
+         * Categorize Expenses
+         * @description Extract one or more structured expenses from a free-text sentence.
+         *
+         *     422 "TOO_VAGUE" is the contract for a sentence the model cannot extract from.
+         */
+        post: operations["categorize_expenses_api_genai_categorize_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/genai/parse-file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Parse File Expenses
+         * @description Extract one expense per row/line from a bank CSV or free-text notes file.
+         *
+         *     422 "UNREADABLE_FILE" is the contract for content with no expense data at
+         *     all; individually unusable rows come back under "skipped" instead.
+         */
+        post: operations["parse_file_expenses_api_genai_parse_file_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -62,15 +90,98 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** ExpenseRequest */
-        ExpenseRequest: {
+        /** CategorizeRequest */
+        CategorizeRequest: {
             /** Text */
             text: string;
+            /**
+             * Categories
+             * @default []
+             */
+            categories: string[];
+        };
+        /** CategorizeResponse */
+        CategorizeResponse: {
+            /** Expenses */
+            expenses: components["schemas"]["ParsedExpense"][];
         };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** ParseFileRequest */
+        ParseFileRequest: {
+            /** Content */
+            content: string;
+            /**
+             * Categories
+             * @default []
+             */
+            categories: string[];
+        };
+        /** ParseFileResponse */
+        ParseFileResponse: {
+            /** Expenses */
+            expenses: components["schemas"]["RowExpense"][];
+            /** Skipped */
+            skipped: components["schemas"]["SkippedRow"][];
+        };
+        /**
+         * ParsedExpense
+         * @description One expense extracted from the sentence.
+         */
+        ParsedExpense: {
+            /** Amount */
+            amount: number;
+            /**
+             * Currency
+             * @default EUR
+             */
+            currency: string;
+            /** Merchant */
+            merchant: string;
+            /** Category */
+            category: string;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+        };
+        /**
+         * RowExpense
+         * @description One expense extracted from a row/line of an uploaded file.
+         */
+        RowExpense: {
+            /** Amount */
+            amount: number;
+            /**
+             * Currency
+             * @default EUR
+             */
+            currency: string;
+            /** Merchant */
+            merchant: string;
+            /** Category */
+            category: string;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Row */
+            row: number;
+        };
+        /**
+         * SkippedRow
+         * @description A row/line that could not be imported, with the reason why.
+         */
+        SkippedRow: {
+            /** Row */
+            row: number;
+            /** Reason */
+            reason: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -114,7 +225,7 @@ export interface operations {
             };
         };
     };
-    analyze_expense_api_genai_analyze_post: {
+    categorize_expenses_api_genai_categorize_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -123,7 +234,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ExpenseRequest"];
+                "application/json": components["schemas"]["CategorizeRequest"];
             };
         };
         responses: {
@@ -133,7 +244,40 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["CategorizeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    parse_file_expenses_api_genai_parse_file_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ParseFileRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParseFileResponse"];
                 };
             };
             /** @description Validation Error */

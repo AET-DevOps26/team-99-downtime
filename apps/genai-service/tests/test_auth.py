@@ -81,16 +81,30 @@ def test_accepts_valid_token(client, rsa_key):
     assert res.json() == {"userId": "user-123", "email": "user@team99.dev"}
 
 
-def test_protects_analyze_endpoint(client, rsa_key):
+def test_accepts_token_with_audience_claim(client, rsa_key):
+    # Real Better Auth tokens carry `aud`; PyJWT rejects those unless audience
+    # verification is explicitly configured. Regression test for that footgun.
+    token = _token(rsa_key, aud=ISSUER)
+    res = client.get("/api/genai/me", headers={"Authorization": f"Bearer {token}"})
+    assert res.status_code == 200
+
+
+def test_protects_categorize_endpoint(client, rsa_key, monkeypatch):
+    # Stub the extraction so the authorized path never talks to the LLM.
+    async def fake_categorize(text, categories):
+        return []
+
+    monkeypatch.setattr("src.main.categorize", fake_categorize)
+
     # Without a token -> 401
     assert (
-        client.post("/api/genai/analyze", json={"text": "coffee 3 eur"}).status_code
+        client.post("/api/genai/categorize", json={"text": "coffee 3 eur"}).status_code
         == 401
     )
-    # With a valid token -> 200
+    # With a valid token -> past auth, into the handler
     token = _token(rsa_key)
     res = client.post(
-        "/api/genai/analyze",
+        "/api/genai/categorize",
         json={"text": "coffee 3 eur"},
         headers={"Authorization": f"Bearer {token}"},
     )

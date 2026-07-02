@@ -5,8 +5,10 @@ ENV JAVA_HOME=/usr/lib/jvm/default-jvm \
     PATH="/usr/lib/jvm/default-jvm/bin:$PATH"
 WORKDIR /workspace
 EXPOSE 4200
+# 127.0.0.1, not localhost: in-container localhost resolves to ::1 first, but
+# the dev server binds IPv4 only, so the probe would always fail.
 HEALTHCHECK --interval=10s --timeout=3s --start-period=60s --retries=15 \
-    CMD wget -q --spider http://localhost:4200 || exit 1
+    CMD wget -q --spider http://127.0.0.1:4200 || exit 1
 CMD ["sh", "-c", "bun install --frozen-lockfile && bun nx serve client --host 0.0.0.0"]
 
 #prod
