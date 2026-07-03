@@ -102,6 +102,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/transaction_db
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      # Must match the "iss" claim in tokens minted by auth-service.
+      AUTH_ISSUER: ${PUBLIC_ORIGIN}
     networks: [team99]
 
   budget-service:
@@ -116,6 +118,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/budget_db
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      AUTH_ISSUER: ${PUBLIC_ORIGIN}
     networks: [team99]
 
   notification-service:
@@ -130,6 +133,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/notification_db
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      AUTH_ISSUER: ${PUBLIC_ORIGIN}
     networks: [team99]
 
   genai-service:
@@ -140,6 +144,7 @@ services:
       LLM_API_KEY: ${LLM_API_KEY}
       LLM_BASE_URL: ${LLM_BASE_URL:-https://logos.aet.cit.tum.de:8080/v1}
       LLM_MODEL: ${LLM_MODEL:-openai/gpt-oss-120b}
+      AUTH_ISSUER: ${PUBLIC_ORIGIN}
     networks: [team99]
 
   client:
