@@ -7,11 +7,11 @@
       "groupName": "java dependencies"
     },
     {
-      "matchManagers": ["pip_requirements", "pyenv", "pep621"],
+      "matchManagers": ["uv", "pep621"],
       "groupName": "python dependencies"
     },
     {
-      "matchManagers": ["npm"],
+      "matchManagers": ["bun"],
       "groupName": "npm dependencies"
     },
     {
