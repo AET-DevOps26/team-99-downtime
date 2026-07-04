@@ -68,6 +68,22 @@ export interface paths {
         patch: operations["update"];
         trace?: never;
     };
+    "/api/transactions/weekly-report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["weeklyReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/transactions/spend": {
         parameters: {
             query?: never;
@@ -143,34 +159,52 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
-            pageable?: components["schemas"]["PageableObject"];
-            /** Format: int32 */
-            numberOfElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["TransactionResponse"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
+            pageable?: components["schemas"]["PageableObject"];
+            /** Format: int32 */
+            numberOfElements?: number;
             first?: boolean;
             last?: boolean;
             empty?: boolean;
         };
         PageableObject: {
-            /** Format: int32 */
-            pageNumber?: number;
-            paged?: boolean;
-            /** Format: int32 */
-            pageSize?: number;
-            unpaged?: boolean;
             /** Format: int64 */
             offset?: number;
             sort?: components["schemas"]["SortObject"];
+            paged?: boolean;
+            /** Format: int32 */
+            pageSize?: number;
+            /** Format: int32 */
+            pageNumber?: number;
+            unpaged?: boolean;
         };
         SortObject: {
-            sorted?: boolean;
-            unsorted?: boolean;
             empty?: boolean;
+            unsorted?: boolean;
+            sorted?: boolean;
+        };
+        Entry: {
+            /** Format: date */
+            date?: string;
+            amount?: number;
+            currency?: string;
+            description?: string;
+        };
+        LastWeek: {
+            total?: number;
+            /** Format: int32 */
+            count?: number;
+        };
+        WeeklyReport: {
+            /** Format: date */
+            weekStart?: string;
+            thisWeek?: components["schemas"]["Entry"][];
+            lastWeek?: components["schemas"]["LastWeek"];
         };
         SpendEntry: {
             /** Format: uuid */
@@ -336,6 +370,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["TransactionResponse"];
+                };
+            };
+        };
+    };
+    weeklyReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["WeeklyReport"];
                 };
             };
         };

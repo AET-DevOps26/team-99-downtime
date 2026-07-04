@@ -9,7 +9,10 @@ import de.tum.aet.devops26.team99downtime.transaction.domain.UpstreamServiceExce
 import de.tum.aet.devops26.team99downtime.transaction.dto.SkippedRow;
 import de.tum.aet.devops26.team99downtime.transaction.dto.SpendEntry;
 import de.tum.aet.devops26.team99downtime.transaction.dto.TransactionRequest;
+import de.tum.aet.devops26.team99downtime.transaction.dto.WeeklyReport;
 import de.tum.aet.devops26.team99downtime.transaction.repository.TransactionRepository;
+import java.math.BigDecimal;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -170,6 +173,28 @@ public class TransactionService {
     LocalDate start = LocalDate.now().withDayOfMonth(1);
     LocalDate end = start.plusMonths(1);
     return repository.findSpendByCategory(userId, start, end);
+  }
+
+  /** The current ISO week's report (Monday-based), the weekly AI summary's input. */
+  public WeeklyReport weeklyReport(String userId) {
+    return weeklyReport(userId, LocalDate.now());
+  }
+
+  WeeklyReport weeklyReport(String userId, LocalDate today) {
+    LocalDate weekStart = today.with(DayOfWeek.MONDAY);
+    List<WeeklyReport.Entry> thisWeek =
+        repository
+            .findByUserIdAndDateBetweenOrderByDateAsc(userId, weekStart, weekStart.plusDays(6))
+            .stream()
+            .map(WeeklyReport.Entry::from)
+            .toList();
+    List<Transaction> lastWeek =
+        repository.findByUserIdAndDateBetweenOrderByDateAsc(
+            userId, weekStart.minusWeeks(1), weekStart.minusDays(1));
+    BigDecimal lastWeekTotal =
+        lastWeek.stream().map(Transaction::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+    return new WeeklyReport(
+        weekStart, thisWeek, new WeeklyReport.LastWeek(lastWeekTotal, lastWeek.size()));
   }
 
   private Transaction requireOwned(String userId, UUID id) {

@@ -109,6 +109,74 @@
         ]
       }
     },
+    "/api/genai/summarize": {
+      "post": {
+        "summary": "Summarize Week",
+        "description": "Generate and persist the calling user's summary for the given week.\n\nThe caller supplies the week's numbers (the dashboard forwards them from\ntransaction-service's GET /api/transactions/weekly-report). 422\n\"NOT_ENOUGH_DATA\" is the contract for a week too sparse to summarize —\nnothing is stored then.",
+        "operationId": "summarize_week_api_genai_summarize_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WeeklyData"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/genai/summarize/latest": {
+      "get": {
+        "summary": "Latest Summary",
+        "description": "The most recent stored summary; 404 \"NO_SUMMARY\" before the first one.",
+        "operationId": "latest_summary_api_genai_summarize_latest_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/genai/me": {
       "get": {
         "summary": "Me",
@@ -183,6 +251,27 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "LastWeekTotals": {
+        "properties": {
+          "total": {
+            "type": "number",
+            "minimum": 0,
+            "title": "Total"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0,
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "count"
+        ],
+        "title": "LastWeekTotals",
+        "description": "Aggregate of the previous week, for the week-over-week comparison."
       },
       "ParseFileRequest": {
         "properties": {
@@ -327,6 +416,62 @@
         "title": "SkippedRow",
         "description": "A row/line that could not be imported, with the reason why."
       },
+      "SummaryResponse": {
+        "properties": {
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "weekStart": {
+            "type": "string",
+            "format": "date",
+            "title": "Weekstart"
+          },
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Generatedat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "summary",
+          "weekStart",
+          "generatedAt"
+        ],
+        "title": "SummaryResponse"
+      },
+      "SummaryTransaction": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "amount": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "title": "Amount"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "default": "EUR"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "amount",
+          "description"
+        ],
+        "title": "SummaryTransaction",
+        "description": "One expense of the week being summarized, as sent by the caller."
+      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -366,6 +511,33 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WeeklyData": {
+        "properties": {
+          "weekStart": {
+            "type": "string",
+            "format": "date",
+            "title": "Weekstart"
+          },
+          "thisWeek": {
+            "items": {
+              "$ref": "#/components/schemas/SummaryTransaction"
+            },
+            "type": "array",
+            "title": "Thisweek"
+          },
+          "lastWeek": {
+            "$ref": "#/components/schemas/LastWeekTotals"
+          }
+        },
+        "type": "object",
+        "required": [
+          "weekStart",
+          "thisWeek",
+          "lastWeek"
+        ],
+        "title": "WeeklyData",
+        "description": "The summarize request payload: one week of expenses plus context."
       }
     },
     "securitySchemes": {

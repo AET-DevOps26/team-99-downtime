@@ -26,6 +26,13 @@ services:
   genai:
     url: ${GENAI_SERVICE_URL:http://genai-service:8000}
 
+# Weekly AI summary generation (US-11): Sunday evening, when the week being
+# summarized is effectively complete. Override SUMMARY_CRON to demo the job
+# without waiting a week (e.g. "0 */2 * * * *" = every 2 minutes).
+summary:
+  cron: ${SUMMARY_CRON:0 0 20 * * SUN}
+  zone: ${SUMMARY_ZONE:Europe/Berlin}
+
 springdoc:
   api-docs:
     path: /api/transactions/v3/api-docs

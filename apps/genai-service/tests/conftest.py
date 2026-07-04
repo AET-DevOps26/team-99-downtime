@@ -2,7 +2,7 @@
 
 import pytest
 
-from src import categorize as categorize_module
+from src import llm as llm_module
 
 
 @pytest.fixture
@@ -14,5 +14,5 @@ def llm(monkeypatch):
         state["messages"] = messages
         return state["reply"]
 
-    monkeypatch.setattr(categorize_module, "_chat", fake_chat)
+    monkeypatch.setattr(llm_module, "chat", fake_chat)
     return state

@@ -5,6 +5,7 @@ import { Button } from '@/shared/ui/button';
 import { useBudgetStatus } from '@/features/budgets';
 import { AddExpenseModal, useTransactions } from '@/features/transactions';
 import { RecentTransactions, BudgetBars } from '@/features/dashboard';
+import { WeeklySummaryCard, useWeeklySummary } from '@/features/summary';
 
 export function DashboardPage() {
   const {
@@ -15,6 +16,13 @@ export function DashboardPage() {
     reload: reloadBudget,
   } = useBudgetStatus();
   const { transactions, loading: txLoading, error: txError, refresh } = useTransactions(5);
+  const {
+    summary,
+    loading: summaryLoading,
+    error: summaryError,
+    generating,
+    generate,
+  } = useWeeklySummary();
   const [addOpen, setAddOpen] = useState(false);
 
   const handleCreated = () => {
@@ -31,6 +39,14 @@ export function DashboardPage() {
           Add expense
         </Button>
       </div>
+
+      <WeeklySummaryCard
+        summary={summary}
+        loading={summaryLoading}
+        error={summaryError}
+        generating={generating}
+        onGenerate={generate}
+      />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <RecentTransactions

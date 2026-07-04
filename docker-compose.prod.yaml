@@ -139,12 +139,19 @@ services:
   genai-service:
     image: ${REGISTRY}/t99-genai-service:${APP_IMAGE_TAG}
     <<: *restart
+    depends_on:
+      postgres:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
     environment:
       # Key rendered into the VM's .env by Ansible (app.env.j2).
       LLM_API_KEY: ${LLM_API_KEY}
       LLM_BASE_URL: ${LLM_BASE_URL:-https://logos.aet.cit.tum.de:8080/v1}
       LLM_MODEL: ${LLM_MODEL:-openai/gpt-oss-120b}
       AUTH_ISSUER: ${PUBLIC_ORIGIN}
+      # Weekly summaries are persisted in the service's own database.
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/genai_db
     networks: [team99]
 
   client:

@@ -34,6 +34,14 @@ spec:
                 secretKeyRef:
                   name: t99-app-secrets
                   key: llmApiKey
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: t99-db-credentials
+                  key: password
+            # Weekly summaries are persisted in the service's own database.
+            - name: DATABASE_URL
+              value: "postgresql://postgres:$(DB_PASSWORD)@{{ .Release.Name }}-postgresql:5432/genai_db"
           envFrom:
             - configMapRef:
                 name: {{ .Release.Name }}-genai-config

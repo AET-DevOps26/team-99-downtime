@@ -371,27 +371,16 @@ Receive transaction data → classify/summarize → return structured output.
 
 **API:**
 
-| Method | Endpoint                   | Purpose                                      |
-| ------ | -------------------------- | -------------------------------------------- |
-| POST   | `/api/ai/categorize`       | Categorize a transaction / free-text expense |
-| POST   | `/api/ai/summarize`        | Generate a financial summary                 |
-| GET    | `/api/ai/summarize/latest` | Fetch the latest summary                     |
+| Method | Endpoint                      | Purpose                                                             |
+| ------ | ----------------------------- | ------------------------------------------------------------------- |
+| POST   | `/api/genai/categorize`       | Extract structured expenses from a free-text sentence               |
+| POST   | `/api/genai/parse-file`       | Extract expenses from an uploaded bank CSV / notes file             |
+| POST   | `/api/genai/summarize`        | Generate + store the weekly summary from the caller's weekly report |
+| GET    | `/api/genai/summarize/latest` | Fetch the latest stored weekly summary                              |
+| POST   | `/internal/summarize`         | Scheduler path (network-internal, not routed by the gateway)        |
 
-```mermaid
----
-config:
-  theme: dark
----
-classDiagram
-    direction TB
-
-    class GenAIController {
-        TBD
-        +categorize(data: ): JSONResponse
-        +summarize(data: ): JSONResponse
-        +get_latest_summary(): JSONResponse
-    }
-
-```
+Weekly summaries are persisted in the service's own `genai_db` (one row per
+user and week). The weekly scheduler lives in transaction-service — see
+[`2026-07-03-weekly-ai-summary-design.md`](../specs/2026-07-03-weekly-ai-summary-design.md).
 
 ---

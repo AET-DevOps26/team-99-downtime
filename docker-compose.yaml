@@ -209,11 +209,18 @@ services:
       dockerfile: apps/genai-service/Dockerfile
       target: dev
     restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
     environment:
       # Logos LLM gateway; the key lives in the gitignored .env only.
       LLM_API_KEY: ${LLM_API_KEY}
       LLM_BASE_URL: ${LLM_BASE_URL:-https://logos.aet.cit.tum.de:8080/v1}
       LLM_MODEL: ${LLM_MODEL:-openai/gpt-oss-120b}
+      # Weekly summaries are persisted in the service's own database.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-devuser}:${POSTGRES_PASSWORD:-devpass}@postgres:5432/genai_db
     ports:
       - '8000:8000'
     volumes:

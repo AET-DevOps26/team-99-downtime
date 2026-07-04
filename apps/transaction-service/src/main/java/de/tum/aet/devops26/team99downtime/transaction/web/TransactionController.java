@@ -6,6 +6,7 @@ import de.tum.aet.devops26.team99downtime.transaction.dto.ImportResult;
 import de.tum.aet.devops26.team99downtime.transaction.dto.SpendEntry;
 import de.tum.aet.devops26.team99downtime.transaction.dto.TransactionRequest;
 import de.tum.aet.devops26.team99downtime.transaction.dto.TransactionResponse;
+import de.tum.aet.devops26.team99downtime.transaction.dto.WeeklyReport;
 import de.tum.aet.devops26.team99downtime.transaction.service.TransactionService;
 import jakarta.validation.Valid;
 import java.io.IOException;
@@ -123,5 +124,11 @@ public class TransactionController {
   @GetMapping("/spend")
   public List<SpendEntry> spend(@AuthenticationPrincipal Jwt jwt) {
     return service.getSpend(jwt.getSubject());
+  }
+
+  /** The current week's expenses + last week's totals — what the AI summary is generated from. */
+  @GetMapping("/weekly-report")
+  public WeeklyReport weeklyReport(@AuthenticationPrincipal Jwt jwt) {
+    return service.weeklyReport(jwt.getSubject());
   }
 }
