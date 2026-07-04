@@ -32,20 +32,16 @@ config:
 classDiagram
     direction TB
 
-    class BudgetController {
-        -budgetService: BudgetService
-        +createCategory(dto: CategoryDTO): ResponseEntity
-        +getCategories(): List~Category~
-        +getBudgetStatus(): BudgetSummaryDTO
-        +updateThreshold(id: UUID, limit: Double)
+    class BudgetStatusController {
+        -budgetStatusService: BudgetStatusService
+        +status(jwt: Jwt): List~BudgetStatusResponse~
     }
 
-    class BudgetService {
+    class BudgetStatusService {
         -categoryRepo: CategoryRepository
         -limitRepo: LimitRepository
         -transactionClient: TransactionClient
-        +calculateUsage(userId: String): List~BudgetUsage~
-        +checkThresholds(userId: String): List~Alert~
+        +getStatus(userId: String, authHeader: String): List~BudgetStatusResponse~
     }
 
     class CategoryRepository {
@@ -82,10 +78,10 @@ classDiagram
         +percentage: Double
     }
 
-    BudgetController --> BudgetService : delegates to
-    BudgetService --> CategoryRepository : manages categories
-    BudgetService --> LimitRepository : manages limits
+    BudgetStatusController --> BudgetStatusService : delegates to
+    BudgetStatusService --> CategoryRepository : manages categories
+    BudgetStatusService --> LimitRepository : manages limits
     CategoryRepository ..> Category : persists
     LimitRepository ..> BudgetLimit : persists
-    BudgetService ..> BudgetUsage : computes
+    BudgetStatusService ..> BudgetUsage : computes
 ```

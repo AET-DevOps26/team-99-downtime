@@ -4,7 +4,7 @@
 Handles transaction import, normalization, storage, and transaction history management.
 
 **Flow:**
-Import CSV/text → send to AI Service for categorization → store transactions → expose history and filters.
+Upload file (multipart/form-data) → send to AI Service for categorization → store transactions → expose history and filters.
 
 **Features:**
 
@@ -15,14 +15,15 @@ Import CSV/text → send to AI Service for categorization → store transactions
 
 ## API
 
-| Method | Endpoint                   | Purpose                                        |
-| ------ | -------------------------- | ---------------------------------------------- |
-| POST   | `/api/transactions/import` | Import transactions from CSV/text              |
-| POST   | `/api/transactions`        | Create a transaction                           |
-| GET    | `/api/transactions`        | List transaction history (optionally filtered) |
-| GET    | `/api/transactions/{id}`   | Get a single transaction by id                 |
-| PATCH  | `/api/transactions/{id}`   | Update a transaction                           |
-| DELETE | `/api/transactions/{id}`   | Delete a transaction                           |
+| Method | Endpoint                   | Purpose                                          |
+| ------ | -------------------------- | ------------------------------------------------ |
+| POST   | `/api/transactions/import` | Import transactions from a multipart file upload |
+| POST   | `/api/transactions`        | Create a transaction                             |
+| GET    | `/api/transactions`        | List transaction history (optionally filtered)   |
+| GET    | `/api/transactions/{id}`   | Get a single transaction by id                   |
+| PATCH  | `/api/transactions/{id}`   | Update a transaction                             |
+| DELETE | `/api/transactions/{id}`   | Delete a transaction                             |
+| GET    | `/api/transactions/spend`  | Get spend totals per category for the user       |
 
 ## Class diagram
 

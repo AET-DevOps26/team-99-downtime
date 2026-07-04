@@ -11,7 +11,7 @@ Client signs in via AuthService → client retrieves a JWT (`/api/auth/token`) �
 - Email + password authentication
 - (optionally) Social OAuth providers
 - Session management (get session / sign out)
-- Email verification
+- Email verification (disabled — `requireEmailVerification: false`)
 - Password reset + password change
 
 ## Client usage (React)

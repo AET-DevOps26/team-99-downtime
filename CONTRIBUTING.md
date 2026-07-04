@@ -2,9 +2,9 @@
 
 ## Branch naming
 
-Branches must follow the pattern `<type>/<short-description>`, where `type` matches the Conventional Commits scope below.
+Branches must follow the pattern `<type>/<short-description>`, where `type` matches the Conventional Commits type below.
 
-```
+```text
 feat/add-budget-alerts
 fix/transaction-parse-crash
 docs/update-kubernetes-guide
@@ -15,7 +15,7 @@ chore/bump-gradle-wrapper
 
 Every commit title must follow [Conventional Commits](https://www.conventionalcommits.org/):
 
-```
+```text
 <type>(<scope>): <short description>
 ```
 
