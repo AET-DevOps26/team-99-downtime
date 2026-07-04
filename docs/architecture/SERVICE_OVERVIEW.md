@@ -17,3 +17,9 @@
 ![Use Case Diagram](./diagrams/UseCaseDiagram.png)
 
 ![Component Diagram](./diagrams/ComponentDiagram.png)
+
+### Analysis Object Model
+
+![Analysis Object Model — Domain](./diagrams/AnalysisObjectModelDomain.png)
+
+![Analysis Object Model — Interaction](./diagrams/AnalysisObjectModelInteraction.png)
