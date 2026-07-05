@@ -6,7 +6,7 @@
     "dev": "nx run-many -t serve --parallel",
     "deploy:k8s": "bun run scripts/deploy-stage.ts",
     "prepare": "husky",
-    "openapi": "bun tools/openapi/generate.mjs"
+    "openapi": "./gradlew generateOpenApiDocs && bun scripts/generate-openapi.ts"
   },
   "private": true,
   "commitlint": {
@@ -30,8 +30,10 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.3.0",
+    "isbot": "^5",
     "lucide-react": "^1.16.0",
     "next-themes": "^0.4.6",
+    "openapi-fetch": "^0.17.0",
     "pg": "^8.21.0",
     "radix-ui": "^1.4.3",
     "react": "^19.0.0",
@@ -41,8 +43,7 @@
     "react-router": "8",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0",
-    "zod": "^4.4.3",
-    "isbot": "^5"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.0.1",

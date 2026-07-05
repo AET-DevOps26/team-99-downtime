@@ -1,71 +1,269 @@
 {
-  "openapi": "3.1.0",
+  "components": {
+    "schemas": {
+      "FreeTextRequest": {
+        "properties": {
+          "text": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "type": "object"
+      },
+      "ImportResult": {
+        "properties": {
+          "imported": {
+            "items": {
+              "$ref": "#/components/schemas/TransactionResponse"
+            },
+            "type": "array"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/SkippedRow"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "PageTransactionResponse": {
+        "properties": {
+          "content": {
+            "items": {
+              "$ref": "#/components/schemas/TransactionResponse"
+            },
+            "type": "array"
+          },
+          "empty": {
+            "type": "boolean"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
+          },
+          "number": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "numberOfElements": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
+          },
+          "size": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
+          },
+          "totalElements": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "totalPages": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "PageableObject": {
+        "properties": {
+          "offset": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "pageNumber": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "pageSize": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "paged": {
+            "type": "boolean"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
+          },
+          "unpaged": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "SkippedRow": {
+        "properties": {
+          "reason": {
+            "type": "string"
+          },
+          "row": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "SortObject": {
+        "properties": {
+          "empty": {
+            "type": "boolean"
+          },
+          "sorted": {
+            "type": "boolean"
+          },
+          "unsorted": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "SpendEntry": {
+        "properties": {
+          "categoryId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "totalSpent": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "TransactionRequest": {
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "categoryId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "currency": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "date": {
+            "format": "date",
+            "type": "string"
+          },
+          "description": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "categoryId",
+          "currency",
+          "date",
+          "description"
+        ],
+        "type": "object"
+      },
+      "TransactionResponse": {
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "categoryId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "date": {
+            "format": "date",
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "bearerFormat": "JWT",
+        "description": "Better Auth JWT minted by the auth-service.",
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
   "info": {
     "title": "transaction-service API",
     "version": "v1"
   },
-  "servers": [
-    {
-      "url": "http://localhost:8080",
-      "description": "Generated server url"
-    }
-  ],
-  "security": [
-    {
-      "bearerAuth": []
-    }
-  ],
+  "openapi": "3.1.0",
   "paths": {
     "/api/transactions": {
       "get": {
-        "tags": [
-          "transaction-controller"
-        ],
         "operationId": "list",
         "parameters": [
           {
-            "name": "page",
             "in": "query",
+            "name": "page",
             "required": false,
             "schema": {
-              "type": "integer",
+              "default": 0,
               "format": "int32",
-              "default": 0
+              "type": "integer"
             }
           },
           {
-            "name": "size",
             "in": "query",
+            "name": "size",
             "required": false,
             "schema": {
-              "type": "integer",
+              "default": 20,
               "format": "int32",
-              "default": 20
+              "type": "integer"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/PageTransactionResponse"
                 }
               }
-            }
+            },
+            "description": "OK"
           }
-        }
-      },
-      "post": {
+        },
         "tags": [
           "transaction-controller"
-        ],
+        ]
+      },
+      "post": {
         "operationId": "create",
         "parameters": [
           {
-            "name": "Authorization",
             "in": "header",
+            "name": "Authorization",
             "required": false,
             "schema": {
               "type": "string"
@@ -84,76 +282,28 @@
         },
         "responses": {
           "201": {
-            "description": "Created",
             "content": {
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/TransactionResponse"
                 }
               }
-            }
-          }
-        }
-      }
-    },
-    "/api/transactions/import": {
-      "post": {
-        "tags": [
-          "transaction-controller"
-        ],
-        "operationId": "importFile",
-        "parameters": [
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "file": {
-                    "type": "string",
-                    "format": "binary"
-                  }
-                },
-                "required": [
-                  "file"
-                ]
-              }
-            }
+            },
+            "description": "Created"
           }
         },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ImportResult"
-                }
-              }
-            }
-          }
-        }
+        "tags": [
+          "transaction-controller"
+        ]
       }
     },
     "/api/transactions/free-text": {
       "post": {
-        "tags": [
-          "transaction-controller"
-        ],
         "operationId": "createFromFreeText",
         "parameters": [
           {
-            "name": "Authorization",
             "in": "header",
+            "name": "Authorization",
             "required": false,
             "schema": {
               "type": "string"
@@ -172,43 +322,135 @@
         },
         "responses": {
           "201": {
-            "description": "Created",
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/TransactionResponse"
-                  }
+                  },
+                  "type": "array"
                 }
+              }
+            },
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "transaction-controller"
+        ]
+      }
+    },
+    "/api/transactions/import": {
+      "post": {
+        "operationId": "importFile",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "file": {
+                    "format": "binary",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file"
+                ],
+                "type": "object"
               }
             }
           }
-        }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResult"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "transaction-controller"
+        ]
+      }
+    },
+    "/api/transactions/me": {
+      "get": {
+        "operationId": "me",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "additionalProperties": {},
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "who-am-i-controller"
+        ]
+      }
+    },
+    "/api/transactions/spend": {
+      "get": {
+        "operationId": "spend",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SpendEntry"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "transaction-controller"
+        ]
       }
     },
     "/api/transactions/{id}": {
       "delete": {
-        "tags": [
-          "transaction-controller"
-        ],
         "operationId": "delete",
         "parameters": [
           {
-            "name": "Authorization",
             "in": "header",
+            "name": "Authorization",
             "required": false,
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "id",
             "in": "path",
+            "name": "id",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "type": "string"
             }
           }
         ],
@@ -216,29 +458,29 @@
           "204": {
             "description": "No Content"
           }
-        }
-      },
-      "patch": {
+        },
         "tags": [
           "transaction-controller"
-        ],
+        ]
+      },
+      "patch": {
         "operationId": "update",
         "parameters": [
           {
-            "name": "Authorization",
             "in": "header",
+            "name": "Authorization",
             "required": false,
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "id",
             "in": "path",
+            "name": "id",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "type": "string"
             }
           }
         ],
@@ -254,273 +496,25 @@
         },
         "responses": {
           "200": {
-            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/TransactionResponse"
                 }
               }
-            }
+            },
+            "description": "OK"
           }
-        }
-      }
-    },
-    "/api/transactions/spend": {
-      "get": {
+        },
         "tags": [
           "transaction-controller"
-        ],
-        "operationId": "spend",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/SpendEntry"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/transactions/me": {
-      "get": {
-        "tags": [
-          "who-am-i-controller"
-        ],
-        "operationId": "me",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
-                }
-              }
-            }
-          }
-        }
+        ]
       }
     }
   },
-  "components": {
-    "schemas": {
-      "TransactionRequest": {
-        "type": "object",
-        "properties": {
-          "categoryId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "amount": {
-            "type": "number"
-          },
-          "currency": {
-            "type": "string",
-            "minLength": 1
-          },
-          "description": {
-            "type": "string",
-            "minLength": 1
-          },
-          "date": {
-            "type": "string",
-            "format": "date"
-          }
-        },
-        "required": [
-          "amount",
-          "categoryId",
-          "currency",
-          "date",
-          "description"
-        ]
-      },
-      "TransactionResponse": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "categoryId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "amount": {
-            "type": "number"
-          },
-          "currency": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "date": {
-            "type": "string",
-            "format": "date"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
-      "ImportResult": {
-        "type": "object",
-        "properties": {
-          "imported": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/TransactionResponse"
-            }
-          },
-          "skipped": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/SkippedRow"
-            }
-          }
-        }
-      },
-      "SkippedRow": {
-        "type": "object",
-        "properties": {
-          "row": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "reason": {
-            "type": "string"
-          }
-        }
-      },
-      "FreeTextRequest": {
-        "type": "object",
-        "properties": {
-          "text": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "required": [
-          "text"
-        ]
-      },
-      "PageTransactionResponse": {
-        "type": "object",
-        "properties": {
-          "totalElements": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "totalPages": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "pageable": {
-            "$ref": "#/components/schemas/PageableObject"
-          },
-          "numberOfElements": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "size": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "content": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/TransactionResponse"
-            }
-          },
-          "number": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "sort": {
-            "$ref": "#/components/schemas/SortObject"
-          },
-          "first": {
-            "type": "boolean"
-          },
-          "last": {
-            "type": "boolean"
-          },
-          "empty": {
-            "type": "boolean"
-          }
-        }
-      },
-      "PageableObject": {
-        "type": "object",
-        "properties": {
-          "pageNumber": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "paged": {
-            "type": "boolean"
-          },
-          "pageSize": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "unpaged": {
-            "type": "boolean"
-          },
-          "offset": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "sort": {
-            "$ref": "#/components/schemas/SortObject"
-          }
-        }
-      },
-      "SortObject": {
-        "type": "object",
-        "properties": {
-          "sorted": {
-            "type": "boolean"
-          },
-          "unsorted": {
-            "type": "boolean"
-          },
-          "empty": {
-            "type": "boolean"
-          }
-        }
-      },
-      "SpendEntry": {
-        "type": "object",
-        "properties": {
-          "categoryId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "totalSpent": {
-            "type": "number"
-          }
-        }
-      }
-    },
-    "securitySchemes": {
-      "bearerAuth": {
-        "type": "http",
-        "description": "Better Auth JWT minted by the auth-service.",
-        "scheme": "bearer",
-        "bearerFormat": "JWT"
-      }
+  "security": [
+    {
+      "bearerAuth": []
     }
-  }
+  ]
 }

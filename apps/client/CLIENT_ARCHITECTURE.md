@@ -38,8 +38,10 @@ Ask one thing: does it **call server / hold logic / validate / draw**?
 
 - **api/** — sends requests, gets data back. knows nothing about React or screens.
   one function per server action. `authApi.ts` has `signInWithEmail`, etc.
-  backend calls go through `shared/lib/api.ts` (`apiFetch`). it adds the JWT,
-  hits the gateway path (`/budgets/api/...`). `budgetApi.ts` is this.
+  backend calls go through the typed `apiClient` (`shared/api/client.ts`). it
+  adds the JWT, hits the gateway path (`/api/budgets/...`), and checks the URL,
+  params and body against the OpenAPI spec at compile time. errors get thrown
+  as `ApiError` (`shared/lib/api.ts`). `budgetApi.ts` is this.
 - **hooks/** — the brain of the feature. makes the form, calls api, runs schema
   check, shows error toast, navigates. returns plain stuff for a page to use.
   `useLogin.ts` is this.
