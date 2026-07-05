@@ -22,6 +22,30 @@ spec:
         {{- include "t99-app.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: genai
     spec:
+      initContainers:
+        # Postgres initdb scripts only run on a fresh volume, so an existing PVC
+        # never picks up newly added databases. Create genai_db idempotently
+        # before the app starts — mirrors the compose db-init service and the
+        # auth deployment's migrate initContainer.
+        - name: db-init
+          image: "postgres:{{ .Values.postgresql.image.tag }}"
+          command:
+            - sh
+            - -ec
+            - |
+              until pg_isready -h {{ .Release.Name }}-postgresql -U postgres; do sleep 2; done
+              psql -h {{ .Release.Name }}-postgresql -U postgres -d postgres -tAc \
+                "SELECT 1 FROM pg_database WHERE datname = 'genai_db'" | grep -q 1 || \
+                psql -h {{ .Release.Name }}-postgresql -U postgres -d postgres \
+                  -c 'CREATE DATABASE genai_db'
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: t99-db-credentials
+                  key: password
+          resources:
+            {{- toYaml .Values.genaiService.resources | nindent 12 }}
       containers:
         - name: genai
           image: {{ include "t99-app.image" (dict "registry" .Values.global.imageRegistry "repo" .Values.genaiService.image.repository "tag" .Values.genaiService.image.tag) }}
