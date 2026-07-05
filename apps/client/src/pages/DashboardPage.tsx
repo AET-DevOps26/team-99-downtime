@@ -22,6 +22,7 @@ export function DashboardPage() {
     error: summaryError,
     generating,
     generate,
+    retry: retrySummary,
   } = useWeeklySummary();
   const [addOpen, setAddOpen] = useState(false);
 
@@ -46,6 +47,7 @@ export function DashboardPage() {
         error={summaryError}
         generating={generating}
         onGenerate={generate}
+        onRetry={retrySummary}
       />
 
       <div className="grid gap-6 lg:grid-cols-2">

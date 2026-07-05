@@ -41,5 +41,5 @@ export function useWeeklySummary() {
     }
   }, []);
 
-  return { summary, loading, error, generating, generate };
+  return { summary, loading, error, generating, generate, retry: load };
 }

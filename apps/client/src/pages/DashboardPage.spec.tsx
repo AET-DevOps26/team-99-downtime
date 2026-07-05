@@ -45,6 +45,7 @@ vi.mock('@/features/summary', () => ({
     error: false,
     generating: false,
     generate: vi.fn(),
+    retry: vi.fn(),
   }),
 }));
 

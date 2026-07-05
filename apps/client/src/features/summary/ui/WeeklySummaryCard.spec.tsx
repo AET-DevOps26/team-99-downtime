@@ -19,6 +19,7 @@ describe('WeeklySummaryCard', () => {
         error={false}
         generating={false}
         onGenerate={noop}
+        onRetry={noop}
       />
     );
     expect(screen.getByText(summary.summary)).toBeTruthy();
@@ -35,6 +36,7 @@ describe('WeeklySummaryCard', () => {
         error={false}
         generating={false}
         onGenerate={onGenerate}
+        onRetry={noop}
       />
     );
     expect(screen.getByText('No summary yet')).toBeTruthy();
@@ -51,6 +53,7 @@ describe('WeeklySummaryCard', () => {
         error={false}
         generating={false}
         onGenerate={onGenerate}
+        onRetry={noop}
       />
     );
     fireEvent.click(screen.getByLabelText('Regenerate summary'));
@@ -65,12 +68,14 @@ describe('WeeklySummaryCard', () => {
         error={false}
         generating={false}
         onGenerate={noop}
+        onRetry={noop}
       />
     );
     expect(screen.queryByText('No summary yet')).toBeNull();
   });
 
-  it('shows an error message when loading failed', () => {
+  it('shows an error message with a retry affordance when loading failed', () => {
+    const onRetry = vi.fn();
     render(
       <WeeklySummaryCard
         summary={null}
@@ -78,8 +83,11 @@ describe('WeeklySummaryCard', () => {
         error={true}
         generating={false}
         onGenerate={noop}
+        onRetry={onRetry}
       />
     );
     expect(screen.getByText('Could not load the weekly summary.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /Try again/ }));
+    expect(onRetry).toHaveBeenCalled();
   });
 });

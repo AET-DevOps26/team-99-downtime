@@ -12,6 +12,7 @@ interface WeeklySummaryCardProps {
   error: boolean;
   generating: boolean;
   onGenerate: () => void;
+  onRetry: () => void;
 }
 
 const weekLabel = (iso: string) => {
@@ -33,6 +34,7 @@ export function WeeklySummaryCard({
   error,
   generating,
   onGenerate,
+  onRetry,
 }: WeeklySummaryCardProps) {
   return (
     <Card className="relative overflow-hidden">
@@ -63,7 +65,18 @@ export function WeeklySummaryCard({
       </CardHeader>
       <CardContent className="relative">
         {error ? (
-          <p className="text-sm text-destructive">Could not load the weekly summary.</p>
+          <div className="flex items-center gap-3">
+            <p className="text-sm text-destructive">Could not load the weekly summary.</p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-muted-foreground"
+              onClick={onRetry}
+            >
+              <RefreshCwIcon className="size-3.5" />
+              Try again
+            </Button>
+          </div>
         ) : loading ? (
           <div className="space-y-2">
             <Skeleton className="h-4 w-full" />

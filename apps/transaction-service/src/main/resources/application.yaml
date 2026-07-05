@@ -1,6 +1,13 @@
 spring:
   application:
     name: transaction-service
+  # Bounded timeouts for clients built from the auto-configured RestClient.Builder
+  # (SummaryClient). The read timeout stays above genai's own 30s LLM budget, so a
+  # hung genai call can't stall the single-threaded scheduler indefinitely.
+  http:
+    client:
+      connect-timeout: 5s
+      read-timeout: 60s
   jpa:
     hibernate:
       ddl-auto: update

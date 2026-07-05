@@ -21,9 +21,10 @@ public class SummaryClient {
 
   private final RestClient restClient;
 
-  // The auto-configured builder (not RestClient.builder()) so the Boot ObjectMapper
-  // serializes LocalDate as "2026-06-29" — the raw default writes date arrays,
-  // which genai's validation rejects.
+  // The auto-configured builder (not RestClient.builder()): the Boot ObjectMapper
+  // serializes LocalDate as "2026-06-29" (the raw default writes date arrays, which
+  // genai's validation rejects), and the spring.http.client timeouts apply, so a
+  // hung genai call can't stall the scheduler thread.
   public SummaryClient(
       RestClient.Builder builder, @Value("${services.genai.url}") String genaiUrl) {
     this.restClient = builder.baseUrl(genaiUrl).build();
