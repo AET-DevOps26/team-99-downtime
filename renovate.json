@@ -1,0 +1,26 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "packageRules": [
+    {
+      "matchManagers": ["gradle", "gradle-wrapper"],
+      "groupName": "java dependencies"
+    },
+    {
+      "matchManagers": ["uv", "pep621"],
+      "groupName": "python dependencies"
+    },
+    {
+      "matchManagers": ["bun"],
+      "groupName": "npm dependencies"
+    },
+    {
+      "matchManagers": ["docker-compose", "dockerfile", "helm-values"],
+      "groupName": "docker & helm image tags"
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "github actions"
+    }
+  ]
+}
