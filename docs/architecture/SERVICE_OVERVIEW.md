@@ -380,7 +380,10 @@ Receive transaction data → classify/summarize → return structured output.
 | POST   | `/internal/summarize`         | Scheduler path (network-internal, not routed by the gateway)        |
 
 Weekly summaries are persisted in the service's own `genai_db` (one row per
-user and week). The weekly scheduler lives in transaction-service — see
-[`2026-07-03-weekly-ai-summary-design.md`](../specs/2026-07-03-weekly-ai-summary-design.md).
+user and week; regenerating overwrites). The weekly scheduler lives in
+**transaction-service** (the data owner): a cron holds no user JWT, so it
+builds each active user's report from its own database and posts it to
+`/internal/summarize` — reachable only inside the compose/cluster network,
+since the gateway routes just `/api/genai*` to this service.
 
 ---
