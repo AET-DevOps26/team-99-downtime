@@ -69,11 +69,10 @@ jobs:
       - name: Setup Build Tools
         uses: ./.github/actions/setup-build-tools
 
-      - name: Generate OpenAPI specs (Spring Boot)
-        run: ./gradlew generateOpenApiDocs
-
-      - name: Generate OpenAPI specs (FastAPI, Better Auth) and typed client
-        run: bun scripts/generate-openapi.ts
+      # Same single command devs run locally — pipeline needs no change when
+      # the script's internals do.
+      - name: Generate OpenAPI specs and typed client
+        run: bun run openapi
 
       - name: Fail if committed specs or generated client are out of date
         run: |
@@ -86,8 +85,11 @@ jobs:
 
   build-and-test:
     runs-on: ubuntu-latest
-    needs: lint
-    if: always() && (needs.lint.result == 'success' || needs.lint.result == 'skipped')
+    # lint is skipped on merge_group, hence the always() + skipped handling;
+    # openapi-drift runs on both events and must have passed — don't build or
+    # publish containers against a stale API contract.
+    needs: [lint, openapi-drift]
+    if: always() && (needs.lint.result == 'success' || needs.lint.result == 'skipped') && needs['openapi-drift'].result == 'success'
     name: Build, Test, and Publish Containers
 
     permissions:

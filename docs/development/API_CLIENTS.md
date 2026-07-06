@@ -41,7 +41,7 @@ Spring / FastAPI / Better Auth code  ──►  openapi/<service>.json  ──�
 No stack needed — don't start anything:
 
 ```sh
-bun run openapi   # gradle spec gen + FastAPI/auth extraction + typed client
+bun run openapi   # spring + FastAPI + auth spec gen, then the typed client
 ```
 
 Commit the regenerated `openapi/*.json` and `generated/*.ts` alongside your code
@@ -146,7 +146,7 @@ endpoints — get a token per [`AUTHENTICATION.md`](AUTHENTICATION.md).
   block in [`Caddyfile`](../../Caddyfile)).
 
 Adding a service? Spring: copy the `openApi { ... }` block into its
-`build.gradle.kts` and add the service name to the `springServices` list in
-`scripts/generate-openapi.ts`. Anything else: write its spec into `openapi/`
-from that script, add the name to `services`. Then merge its generated `paths`
-type into `ApiPaths` in `apps/client/src/shared/api/client.ts`.
+`build.gradle.kts`. Anything else: write its spec into `openapi/` from
+`scripts/generate-openapi.ts`. Either way, add the service name to the
+`services` list in that script, then merge its generated `paths` type into
+`ApiPaths` in `apps/client/src/shared/api/client.ts`.
