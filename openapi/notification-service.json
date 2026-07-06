@@ -1,47 +1,117 @@
 {
-  "openapi": "3.1.0",
+  "components": {
+    "schemas": {
+      "NotificationCreateRequest": {
+        "properties": {
+          "amountLeft": {
+            "type": "number"
+          },
+          "categoryId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "categoryName": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "percentUsed": {
+            "type": "number"
+          },
+          "threshold": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "amountLeft",
+          "categoryId",
+          "categoryName",
+          "percentUsed"
+        ],
+        "type": "object"
+      },
+      "NotificationResponse": {
+        "properties": {
+          "amountLeft": {
+            "type": "number"
+          },
+          "categoryId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "categoryName": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "percentUsed": {
+            "type": "number"
+          },
+          "readAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "threshold": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "SseEmitter": {
+        "properties": {
+          "timeout": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "bearerFormat": "JWT",
+        "description": "Better Auth JWT minted by the auth-service.",
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
   "info": {
     "title": "notification-service API",
     "version": "v1"
   },
-  "servers": [
-    {
-      "url": "http://localhost:8081",
-      "description": "Generated server url"
-    }
-  ],
-  "security": [
-    {
-      "bearerAuth": []
-    }
-  ],
+  "openapi": "3.1.0",
   "paths": {
     "/api/notifications": {
       "get": {
-        "tags": [
-          "notification-controller"
-        ],
         "operationId": "list",
         "responses": {
           "200": {
-            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/NotificationResponse"
-                  }
+                  },
+                  "type": "array"
                 }
               }
-            }
+            },
+            "description": "OK"
           }
-        }
-      },
-      "post": {
+        },
         "tags": [
           "notification-controller"
-        ],
+        ]
+      },
+      "post": {
         "operationId": "create",
         "requestBody": {
           "content": {
@@ -55,173 +125,97 @@
         },
         "responses": {
           "201": {
-            "description": "Created",
             "content": {
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/NotificationResponse"
                 }
               }
-            }
+            },
+            "description": "Created"
           }
-        }
-      }
-    },
-    "/api/notifications/{id}/read": {
-      "patch": {
+        },
         "tags": [
           "notification-controller"
-        ],
-        "operationId": "markAsRead",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
+        ]
+      }
+    },
+    "/api/notifications/me": {
+      "get": {
+        "operationId": "me",
         "responses": {
           "200": {
-            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/NotificationResponse"
+                  "additionalProperties": {},
+                  "type": "object"
                 }
               }
-            }
+            },
+            "description": "OK"
           }
-        }
+        },
+        "tags": [
+          "who-am-i-controller"
+        ]
       }
     },
     "/api/notifications/stream": {
       "get": {
-        "tags": [
-          "notification-controller"
-        ],
         "operationId": "stream",
         "responses": {
           "200": {
-            "description": "OK",
             "content": {
               "text/event-stream": {
                 "schema": {
                   "$ref": "#/components/schemas/SseEmitter"
                 }
               }
-            }
+            },
+            "description": "OK"
           }
-        }
+        },
+        "tags": [
+          "notification-controller"
+        ]
       }
     },
-    "/api/notifications/me": {
-      "get": {
-        "tags": [
-          "who-am-i-controller"
+    "/api/notifications/{id}/read": {
+      "patch": {
+        "operationId": "markAsRead",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
         ],
-        "operationId": "me",
         "responses": {
           "200": {
-            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
+                  "$ref": "#/components/schemas/NotificationResponse"
                 }
               }
-            }
+            },
+            "description": "OK"
           }
-        }
+        },
+        "tags": [
+          "notification-controller"
+        ]
       }
     }
   },
-  "components": {
-    "schemas": {
-      "NotificationCreateRequest": {
-        "type": "object",
-        "properties": {
-          "categoryId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "categoryName": {
-            "type": "string",
-            "minLength": 1
-          },
-          "threshold": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "percentUsed": {
-            "type": "number"
-          },
-          "amountLeft": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "amountLeft",
-          "categoryId",
-          "categoryName",
-          "percentUsed"
-        ]
-      },
-      "NotificationResponse": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "categoryId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "categoryName": {
-            "type": "string"
-          },
-          "threshold": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "percentUsed": {
-            "type": "number"
-          },
-          "amountLeft": {
-            "type": "number"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "readAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
-      "SseEmitter": {
-        "type": "object",
-        "properties": {
-          "timeout": {
-            "type": "integer",
-            "format": "int64"
-          }
-        }
-      }
-    },
-    "securitySchemes": {
-      "bearerAuth": {
-        "type": "http",
-        "description": "Better Auth JWT minted by the auth-service.",
-        "scheme": "bearer",
-        "bearerFormat": "JWT"
-      }
+  "security": [
+    {
+      "bearerAuth": []
     }
-  }
+  ]
 }

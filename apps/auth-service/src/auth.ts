@@ -1,5 +1,6 @@
 import { betterAuth } from 'better-auth';
 import { jwt } from 'better-auth/plugins/jwt';
+import { openAPI } from 'better-auth/plugins';
 import { Pool } from 'pg';
 
 /**
@@ -49,5 +50,10 @@ export const auth = betterAuth({
         keyPairConfig: { alg: 'RS256', modulusLength: 2048 },
       },
     }),
+    // Lets scripts/generate-openapi.ts extract the OpenAPI spec in-process
+    // (auth.api.generateOpenAPISchema) for the committed openapi/auth-service.json.
+    // The interactive reference page it would serve at /api/auth/reference stays
+    // off — the aggregated Swagger UI at /docs is the one browsing entry point.
+    openAPI({ disableDefaultReference: true }),
   ],
 });

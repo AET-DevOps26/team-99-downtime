@@ -1,70 +1,100 @@
 {
-  "openapi": "3.1.0",
+  "components": {
+    "schemas": {
+      "BudgetStatusResponse": {
+        "properties": {
+          "categoryId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "monthlyLimit": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "percentUsed": {
+            "type": "number"
+          },
+          "remaining": {
+            "type": "number"
+          },
+          "spent": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "CategoryRequest": {
+        "properties": {
+          "monthlyLimit": {
+            "type": "number"
+          },
+          "name": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "monthlyLimit",
+          "name"
+        ],
+        "type": "object"
+      },
+      "CategoryResponse": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "monthlyLimit": {
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "bearerFormat": "JWT",
+        "description": "Better Auth JWT minted by the auth-service.",
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
   "info": {
     "title": "budget-service API",
     "version": "v1"
   },
-  "servers": [
-    {
-      "url": "http://localhost:8082",
-      "description": "Generated server url"
-    }
-  ],
-  "security": [
-    {
-      "bearerAuth": []
-    }
-  ],
+  "openapi": "3.1.0",
   "paths": {
-    "/api/budgets/threshold-check": {
-      "post": {
-        "tags": [
-          "threshold-check-controller"
-        ],
-        "operationId": "check",
-        "parameters": [
-          {
-            "name": "Authorization",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          }
-        }
-      }
-    },
     "/api/budgets/categories": {
       "get": {
-        "tags": [
-          "category-controller"
-        ],
         "operationId": "list",
         "responses": {
           "200": {
-            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/CategoryResponse"
-                  }
+                  },
+                  "type": "array"
                 }
               }
-            }
+            },
+            "description": "OK"
           }
-        }
-      },
-      "post": {
+        },
         "tags": [
           "category-controller"
-        ],
+        ]
+      },
+      "post": {
         "operationId": "create",
         "requestBody": {
           "content": {
@@ -78,32 +108,32 @@
         },
         "responses": {
           "201": {
-            "description": "Created",
             "content": {
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/CategoryResponse"
                 }
               }
-            }
+            },
+            "description": "Created"
           }
-        }
+        },
+        "tags": [
+          "category-controller"
+        ]
       }
     },
     "/api/budgets/categories/{id}": {
       "delete": {
-        "tags": [
-          "category-controller"
-        ],
         "operationId": "delete",
         "parameters": [
           {
-            "name": "id",
             "in": "path",
+            "name": "id",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "type": "string"
             }
           }
         ],
@@ -111,21 +141,21 @@
           "204": {
             "description": "No Content"
           }
-        }
-      },
-      "patch": {
+        },
         "tags": [
           "category-controller"
-        ],
+        ]
+      },
+      "patch": {
         "operationId": "update",
         "parameters": [
           {
-            "name": "id",
             "in": "path",
+            "name": "id",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "type": "string"
             }
           }
         ],
@@ -141,28 +171,49 @@
         },
         "responses": {
           "200": {
-            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/CategoryResponse"
                 }
               }
-            }
+            },
+            "description": "OK"
           }
-        }
+        },
+        "tags": [
+          "category-controller"
+        ]
+      }
+    },
+    "/api/budgets/me": {
+      "get": {
+        "operationId": "me",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "additionalProperties": {},
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "who-am-i-controller"
+        ]
       }
     },
     "/api/budgets/status": {
       "get": {
-        "tags": [
-          "budget-status-controller"
-        ],
         "operationId": "status",
         "parameters": [
           {
-            "name": "Authorization",
             "in": "header",
+            "name": "Authorization",
             "required": false,
             "schema": {
               "type": "string"
@@ -171,108 +222,51 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
             "content": {
               "*/*": {
                 "schema": {
-                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/BudgetStatusResponse"
-                  }
+                  },
+                  "type": "array"
                 }
               }
-            }
+            },
+            "description": "OK"
           }
-        }
+        },
+        "tags": [
+          "budget-status-controller"
+        ]
       }
     },
-    "/api/budgets/me": {
-      "get": {
-        "tags": [
-          "who-am-i-controller"
-        ],
-        "operationId": "me",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": {}
-                }
-              }
+    "/api/budgets/threshold-check": {
+      "post": {
+        "operationId": "check",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "schema": {
+              "type": "string"
             }
           }
-        }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "threshold-check-controller"
+        ]
       }
     }
   },
-  "components": {
-    "schemas": {
-      "CategoryRequest": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "minLength": 1
-          },
-          "monthlyLimit": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "monthlyLimit",
-          "name"
-        ]
-      },
-      "CategoryResponse": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string"
-          },
-          "monthlyLimit": {
-            "type": "number"
-          }
-        }
-      },
-      "BudgetStatusResponse": {
-        "type": "object",
-        "properties": {
-          "categoryId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string"
-          },
-          "monthlyLimit": {
-            "type": "number"
-          },
-          "spent": {
-            "type": "number"
-          },
-          "remaining": {
-            "type": "number"
-          },
-          "percentUsed": {
-            "type": "number"
-          }
-        }
-      }
-    },
-    "securitySchemes": {
-      "bearerAuth": {
-        "type": "http",
-        "description": "Better Auth JWT minted by the auth-service.",
-        "scheme": "bearer",
-        "bearerFormat": "JWT"
-      }
+  "security": [
+    {
+      "bearerAuth": []
     }
-  }
+  ]
 }

@@ -1,29 +1,359 @@
 {
-  "openapi": "3.1.0",
+  "components": {
+    "schemas": {
+      "CategorizeRequest": {
+        "properties": {
+          "categories": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "CategorizeRequest",
+        "type": "object"
+      },
+      "CategorizeResponse": {
+        "properties": {
+          "expenses": {
+            "items": {
+              "$ref": "#/components/schemas/ParsedExpense"
+            },
+            "title": "Expenses",
+            "type": "array"
+          }
+        },
+        "required": [
+          "expenses"
+        ],
+        "title": "CategorizeResponse",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "LastWeekTotals": {
+        "description": "Aggregate of the previous week, for the week-over-week comparison.",
+        "properties": {
+          "count": {
+            "minimum": 0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "total": {
+            "minimum": 0,
+            "title": "Total",
+            "type": "number"
+          }
+        },
+        "required": [
+          "total",
+          "count"
+        ],
+        "title": "LastWeekTotals",
+        "type": "object"
+      },
+      "ParseFileRequest": {
+        "properties": {
+          "categories": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "title": "ParseFileRequest",
+        "type": "object"
+      },
+      "ParseFileResponse": {
+        "properties": {
+          "expenses": {
+            "items": {
+              "$ref": "#/components/schemas/RowExpense"
+            },
+            "title": "Expenses",
+            "type": "array"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/SkippedRow"
+            },
+            "title": "Skipped",
+            "type": "array"
+          }
+        },
+        "required": [
+          "expenses",
+          "skipped"
+        ],
+        "title": "ParseFileResponse",
+        "type": "object"
+      },
+      "ParsedExpense": {
+        "description": "One expense extracted from the sentence.",
+        "properties": {
+          "amount": {
+            "exclusiveMinimum": 0,
+            "title": "Amount",
+            "type": "number"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "currency": {
+            "default": "EUR",
+            "title": "Currency",
+            "type": "string"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "merchant": {
+            "title": "Merchant",
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "merchant",
+          "category",
+          "date"
+        ],
+        "title": "ParsedExpense",
+        "type": "object"
+      },
+      "RowExpense": {
+        "description": "One expense extracted from a row/line of an uploaded file.",
+        "properties": {
+          "amount": {
+            "exclusiveMinimum": 0,
+            "title": "Amount",
+            "type": "number"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "currency": {
+            "default": "EUR",
+            "title": "Currency",
+            "type": "string"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "merchant": {
+            "title": "Merchant",
+            "type": "string"
+          },
+          "row": {
+            "minimum": 1,
+            "title": "Row",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "amount",
+          "merchant",
+          "category",
+          "date",
+          "row"
+        ],
+        "title": "RowExpense",
+        "type": "object"
+      },
+      "SkippedRow": {
+        "description": "A row/line that could not be imported, with the reason why.",
+        "properties": {
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "row": {
+            "minimum": 1,
+            "title": "Row",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "row",
+          "reason"
+        ],
+        "title": "SkippedRow",
+        "type": "object"
+      },
+      "SummaryResponse": {
+        "properties": {
+          "generatedAt": {
+            "format": "date-time",
+            "title": "Generatedat",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "weekStart": {
+            "format": "date",
+            "title": "Weekstart",
+            "type": "string"
+          }
+        },
+        "required": [
+          "summary",
+          "weekStart",
+          "generatedAt"
+        ],
+        "title": "SummaryResponse",
+        "type": "object"
+      },
+      "SummaryTransaction": {
+        "description": "One expense of the week being summarized, as sent by the caller.",
+        "properties": {
+          "amount": {
+            "exclusiveMinimum": 0,
+            "title": "Amount",
+            "type": "number"
+          },
+          "currency": {
+            "default": "EUR",
+            "title": "Currency",
+            "type": "string"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "amount",
+          "description"
+        ],
+        "title": "SummaryTransaction",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "WeeklyData": {
+        "description": "The summarize request payload: one week of expenses plus context.",
+        "properties": {
+          "lastWeek": {
+            "$ref": "#/components/schemas/LastWeekTotals"
+          },
+          "thisWeek": {
+            "items": {
+              "$ref": "#/components/schemas/SummaryTransaction"
+            },
+            "title": "Thisweek",
+            "type": "array"
+          },
+          "weekStart": {
+            "format": "date",
+            "title": "Weekstart",
+            "type": "string"
+          }
+        },
+        "required": [
+          "weekStart",
+          "thisWeek",
+          "lastWeek"
+        ],
+        "title": "WeeklyData",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
   "info": {
     "title": "ExpenseFlow AI Service",
     "version": "0.1.0"
   },
+  "openapi": "3.1.0",
   "paths": {
-    "/health": {
-      "get": {
-        "summary": "Health Check",
-        "operationId": "health_check_health_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/genai/categorize": {
       "post": {
-        "summary": "Categorize Expenses",
         "description": "Extract one or more structured expenses from a free-text sentence.\n\n422 \"TOO_VAGUE\" is the contract for a sentence the model cannot extract from.",
         "operationId": "categorize_expenses_api_genai_categorize_post",
         "requestBody": {
@@ -38,36 +368,58 @@
         },
         "responses": {
           "200": {
-            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CategorizeResponse"
                 }
               }
-            }
+            },
+            "description": "Successful Response"
           },
           "422": {
-            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
-            }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [
           {
             "HTTPBearer": []
           }
-        ]
+        ],
+        "summary": "Categorize Expenses"
+      }
+    },
+    "/api/genai/me": {
+      "get": {
+        "description": "Probe proving JWT validation works end-to-end.",
+        "operationId": "me_api_genai_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Me"
       }
     },
     "/api/genai/parse-file": {
       "post": {
-        "summary": "Parse File Expenses",
         "description": "Extract one expense per row/line from a bank CSV or free-text notes file.\n\n422 \"UNREADABLE_FILE\" is the contract for content with no expense data at\nall; individually unusable rows come back under \"skipped\" instead.",
         "operationId": "parse_file_expenses_api_genai_parse_file_post",
         "requestBody": {
@@ -82,36 +434,36 @@
         },
         "responses": {
           "200": {
-            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ParseFileResponse"
                 }
               }
-            }
+            },
+            "description": "Successful Response"
           },
           "422": {
-            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
-            }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [
           {
             "HTTPBearer": []
           }
-        ]
+        ],
+        "summary": "Parse File Expenses"
       }
     },
     "/api/genai/summarize": {
       "post": {
-        "summary": "Summarize Week",
         "description": "Generate and persist the calling user's summary for the given week.\n\nThe caller supplies the week's numbers (the dashboard forwards them from\ntransaction-service's GET /api/transactions/weekly-report). 422\n\"NOT_ENOUGH_DATA\" is the contract for a week too sparse to summarize —\nnothing is stored then.",
         "operationId": "summarize_week_api_genai_summarize_post",
         "requestBody": {
@@ -126,424 +478,72 @@
         },
         "responses": {
           "200": {
-            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SummaryResponse"
                 }
               }
-            }
+            },
+            "description": "Successful Response"
           },
           "422": {
-            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
-            }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [
           {
             "HTTPBearer": []
           }
-        ]
+        ],
+        "summary": "Summarize Week"
       }
     },
     "/api/genai/summarize/latest": {
       "get": {
-        "summary": "Latest Summary",
         "description": "The most recent stored summary; 404 \"NO_SUMMARY\" before the first one.",
         "operationId": "latest_summary_api_genai_summarize_latest_get",
         "responses": {
           "200": {
-            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SummaryResponse"
                 }
               }
-            }
+            },
+            "description": "Successful Response"
           }
         },
         "security": [
           {
             "HTTPBearer": []
           }
-        ]
+        ],
+        "summary": "Latest Summary"
       }
     },
-    "/api/genai/me": {
+    "/health": {
       "get": {
-        "summary": "Me",
-        "description": "Probe proving JWT validation works end-to-end.",
-        "operationId": "me_api_genai_me_get",
+        "operationId": "health_check_health_get",
         "responses": {
           "200": {
-            "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {}
               }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    }
-  },
-  "components": {
-    "schemas": {
-      "CategorizeRequest": {
-        "properties": {
-          "text": {
-            "type": "string",
-            "title": "Text"
-          },
-          "categories": {
-            "items": {
-              "type": "string"
             },
-            "type": "array",
-            "title": "Categories",
-            "default": []
+            "description": "Successful Response"
           }
         },
-        "type": "object",
-        "required": [
-          "text"
-        ],
-        "title": "CategorizeRequest"
-      },
-      "CategorizeResponse": {
-        "properties": {
-          "expenses": {
-            "items": {
-              "$ref": "#/components/schemas/ParsedExpense"
-            },
-            "type": "array",
-            "title": "Expenses"
-          }
-        },
-        "type": "object",
-        "required": [
-          "expenses"
-        ],
-        "title": "CategorizeResponse"
-      },
-      "HTTPValidationError": {
-        "properties": {
-          "detail": {
-            "items": {
-              "$ref": "#/components/schemas/ValidationError"
-            },
-            "type": "array",
-            "title": "Detail"
-          }
-        },
-        "type": "object",
-        "title": "HTTPValidationError"
-      },
-      "LastWeekTotals": {
-        "properties": {
-          "total": {
-            "type": "number",
-            "minimum": 0,
-            "title": "Total"
-          },
-          "count": {
-            "type": "integer",
-            "minimum": 0,
-            "title": "Count"
-          }
-        },
-        "type": "object",
-        "required": [
-          "total",
-          "count"
-        ],
-        "title": "LastWeekTotals",
-        "description": "Aggregate of the previous week, for the week-over-week comparison."
-      },
-      "ParseFileRequest": {
-        "properties": {
-          "content": {
-            "type": "string",
-            "title": "Content"
-          },
-          "categories": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Categories",
-            "default": []
-          }
-        },
-        "type": "object",
-        "required": [
-          "content"
-        ],
-        "title": "ParseFileRequest"
-      },
-      "ParseFileResponse": {
-        "properties": {
-          "expenses": {
-            "items": {
-              "$ref": "#/components/schemas/RowExpense"
-            },
-            "type": "array",
-            "title": "Expenses"
-          },
-          "skipped": {
-            "items": {
-              "$ref": "#/components/schemas/SkippedRow"
-            },
-            "type": "array",
-            "title": "Skipped"
-          }
-        },
-        "type": "object",
-        "required": [
-          "expenses",
-          "skipped"
-        ],
-        "title": "ParseFileResponse"
-      },
-      "ParsedExpense": {
-        "properties": {
-          "amount": {
-            "type": "number",
-            "exclusiveMinimum": 0,
-            "title": "Amount"
-          },
-          "currency": {
-            "type": "string",
-            "title": "Currency",
-            "default": "EUR"
-          },
-          "merchant": {
-            "type": "string",
-            "title": "Merchant"
-          },
-          "category": {
-            "type": "string",
-            "title": "Category"
-          },
-          "date": {
-            "type": "string",
-            "format": "date",
-            "title": "Date"
-          }
-        },
-        "type": "object",
-        "required": [
-          "amount",
-          "merchant",
-          "category",
-          "date"
-        ],
-        "title": "ParsedExpense",
-        "description": "One expense extracted from the sentence."
-      },
-      "RowExpense": {
-        "properties": {
-          "amount": {
-            "type": "number",
-            "exclusiveMinimum": 0,
-            "title": "Amount"
-          },
-          "currency": {
-            "type": "string",
-            "title": "Currency",
-            "default": "EUR"
-          },
-          "merchant": {
-            "type": "string",
-            "title": "Merchant"
-          },
-          "category": {
-            "type": "string",
-            "title": "Category"
-          },
-          "date": {
-            "type": "string",
-            "format": "date",
-            "title": "Date"
-          },
-          "row": {
-            "type": "integer",
-            "minimum": 1,
-            "title": "Row"
-          }
-        },
-        "type": "object",
-        "required": [
-          "amount",
-          "merchant",
-          "category",
-          "date",
-          "row"
-        ],
-        "title": "RowExpense",
-        "description": "One expense extracted from a row/line of an uploaded file."
-      },
-      "SkippedRow": {
-        "properties": {
-          "row": {
-            "type": "integer",
-            "minimum": 1,
-            "title": "Row"
-          },
-          "reason": {
-            "type": "string",
-            "title": "Reason"
-          }
-        },
-        "type": "object",
-        "required": [
-          "row",
-          "reason"
-        ],
-        "title": "SkippedRow",
-        "description": "A row/line that could not be imported, with the reason why."
-      },
-      "SummaryResponse": {
-        "properties": {
-          "summary": {
-            "type": "string",
-            "title": "Summary"
-          },
-          "weekStart": {
-            "type": "string",
-            "format": "date",
-            "title": "Weekstart"
-          },
-          "generatedAt": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Generatedat"
-          }
-        },
-        "type": "object",
-        "required": [
-          "summary",
-          "weekStart",
-          "generatedAt"
-        ],
-        "title": "SummaryResponse"
-      },
-      "SummaryTransaction": {
-        "properties": {
-          "date": {
-            "type": "string",
-            "format": "date",
-            "title": "Date"
-          },
-          "amount": {
-            "type": "number",
-            "exclusiveMinimum": 0,
-            "title": "Amount"
-          },
-          "currency": {
-            "type": "string",
-            "title": "Currency",
-            "default": "EUR"
-          },
-          "description": {
-            "type": "string",
-            "title": "Description"
-          }
-        },
-        "type": "object",
-        "required": [
-          "date",
-          "amount",
-          "description"
-        ],
-        "title": "SummaryTransaction",
-        "description": "One expense of the week being summarized, as sent by the caller."
-      },
-      "ValidationError": {
-        "properties": {
-          "loc": {
-            "items": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
-                }
-              ]
-            },
-            "type": "array",
-            "title": "Location"
-          },
-          "msg": {
-            "type": "string",
-            "title": "Message"
-          },
-          "type": {
-            "type": "string",
-            "title": "Error Type"
-          },
-          "input": {
-            "title": "Input"
-          },
-          "ctx": {
-            "type": "object",
-            "title": "Context"
-          }
-        },
-        "type": "object",
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
-        "title": "ValidationError"
-      },
-      "WeeklyData": {
-        "properties": {
-          "weekStart": {
-            "type": "string",
-            "format": "date",
-            "title": "Weekstart"
-          },
-          "thisWeek": {
-            "items": {
-              "$ref": "#/components/schemas/SummaryTransaction"
-            },
-            "type": "array",
-            "title": "Thisweek"
-          },
-          "lastWeek": {
-            "$ref": "#/components/schemas/LastWeekTotals"
-          }
-        },
-        "type": "object",
-        "required": [
-          "weekStart",
-          "thisWeek",
-          "lastWeek"
-        ],
-        "title": "WeeklyData",
-        "description": "The summarize request payload: one week of expenses plus context."
-      }
-    },
-    "securitySchemes": {
-      "HTTPBearer": {
-        "type": "http",
-        "scheme": "bearer"
+        "summary": "Health Check"
       }
     }
   }

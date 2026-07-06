@@ -1,16 +1,13 @@
+import { apiClient } from '@/shared/api/client';
 import type { components } from '@/shared/api/generated/budget-service';
-import { apiFetch } from '@/shared/lib/api';
+import { unwrap } from '@/shared/lib/api';
 
 /**
- * api: thin wrappers over the budget-service category endpoints. Reaches the
- * service through the gateway at its full path — budget-service owns /api/budgets.
- * No React, no UI here.
- *
- * The request/response shapes are the auto-generated OpenAPI types
- * (apps/client/src/shared/api/generated, produced by `bun run openapi`), so they
- * track the backend contract instead of being hand-maintained here.
+ * api: thin wrappers over the budget-service endpoints, built on the shared
+ * typed apiClient — URL, method, params and body of every call are
+ * compile-checked against openapi/budget-service.json (regenerate with
+ * `bun run openapi`). No React, no UI here.
  */
-const BASE = '/api/budgets/categories';
 
 // A category response always carries every field; springdoc types them optional
 // (no @NonNull on the record), so re-require them for ergonomic consumers.
@@ -18,31 +15,29 @@ export type Category = Required<components['schemas']['CategoryResponse']>;
 
 export type CategoryInput = components['schemas']['CategoryRequest'];
 
-export function listCategories() {
-  return apiFetch<Category[]>(BASE);
+export type CategoryStatus = Required<components['schemas']['BudgetStatusResponse']>;
+
+export async function listCategories(): Promise<Category[]> {
+  return unwrap(await apiClient.GET('/api/budgets/categories')) as Category[];
 }
 
-export function createCategory(input: CategoryInput) {
-  return apiFetch<Category>(BASE, { method: 'POST', body: JSON.stringify(input) });
+export async function createCategory(input: CategoryInput): Promise<Category> {
+  return unwrap(await apiClient.POST('/api/budgets/categories', { body: input })) as Category;
 }
 
-export function updateCategory(id: string, input: CategoryInput) {
-  return apiFetch<Category>(`${BASE}/${id}`, { method: 'PATCH', body: JSON.stringify(input) });
+export async function updateCategory(id: string, input: CategoryInput): Promise<Category> {
+  return unwrap(
+    await apiClient.PATCH('/api/budgets/categories/{id}', {
+      params: { path: { id } },
+      body: input,
+    })
+  ) as Category;
 }
 
-export function deleteCategory(id: string) {
-  return apiFetch<void>(`${BASE}/${id}`, { method: 'DELETE' });
+export async function deleteCategory(id: string): Promise<void> {
+  unwrap(await apiClient.DELETE('/api/budgets/categories/{id}', { params: { path: { id } } }));
 }
 
-export interface CategoryStatus {
-  categoryId: string;
-  name: string;
-  monthlyLimit: number;
-  spent: number;
-  remaining: number;
-  percentUsed: number;
-}
-
-export function getBudgetStatus() {
-  return apiFetch<CategoryStatus[]>('/api/budgets/status');
+export async function getBudgetStatus(): Promise<CategoryStatus[]> {
+  return unwrap(await apiClient.GET('/api/budgets/status')) as CategoryStatus[];
 }

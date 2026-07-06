@@ -1,73 +1,71 @@
-import { apiFetch } from '@/shared/lib/api';
+import { apiClient } from '@/shared/api/client';
+import type { components } from '@/shared/api/generated/transaction-service';
+import { unwrap } from '@/shared/lib/api';
 
-export interface Transaction {
-  id: string;
-  categoryId: string;
-  amount: number;
-  currency: string;
-  description: string;
-  date: string;
-  createdAt: string;
+/**
+ * api: thin wrappers over the transaction-service endpoints, built on the
+ * shared typed apiClient — URL, method, params and body of every call are
+ * compile-checked against openapi/transaction-service.json (regenerate with
+ * `bun run openapi`). No React, no UI here.
+ */
+
+// Responses always carry every field; springdoc types them optional (no
+// @NonNull on the records), so re-require them for ergonomic consumers.
+export type Transaction = Required<components['schemas']['TransactionResponse']>;
+
+export type TransactionPage = Omit<
+  Required<components['schemas']['PageTransactionResponse']>,
+  'content'
+> & { content: Transaction[] };
+
+export type TransactionInput = components['schemas']['TransactionRequest'];
+
+export type SkippedRow = Required<components['schemas']['SkippedRow']>;
+
+export type ImportResult = {
+  imported: Transaction[];
+  skipped: SkippedRow[];
+};
+
+export async function listTransactions(page = 0, size = 20): Promise<TransactionPage> {
+  return unwrap(
+    await apiClient.GET('/api/transactions', { params: { query: { page, size } } })
+  ) as TransactionPage;
 }
 
-export interface TransactionPage {
-  content: Transaction[];
-  totalPages: number;
-  totalElements: number;
-  number: number;
-  size: number;
-}
-
-export interface TransactionInput {
-  categoryId: string;
-  amount: number;
-  currency: string;
-  description: string;
-  date: string;
-}
-
-const BASE = '/api/transactions';
-
-export function listTransactions(page = 0, size = 20) {
-  return apiFetch<TransactionPage>(`${BASE}?page=${page}&size=${size}`);
-}
-
-export function createTransaction(input: TransactionInput) {
-  return apiFetch<Transaction>(BASE, { method: 'POST', body: JSON.stringify(input) });
+export async function createTransaction(input: TransactionInput): Promise<Transaction> {
+  return unwrap(await apiClient.POST('/api/transactions', { body: input })) as Transaction;
 }
 
 /** Rejects with a 422 ApiError (`error: 'too_vague' | 'no_categories'`). */
-export function createTransactionsFromText(text: string) {
-  return apiFetch<Transaction[]>(`${BASE}/free-text`, {
-    method: 'POST',
-    body: JSON.stringify({ text }),
-  });
-}
-
-export interface SkippedRow {
-  row: number;
-  reason: string;
-}
-
-export interface ImportResult {
-  imported: Transaction[];
-  skipped: SkippedRow[];
+export async function createTransactionsFromText(text: string): Promise<Transaction[]> {
+  return unwrap(
+    await apiClient.POST('/api/transactions/free-text', { body: { text } })
+  ) as Transaction[];
 }
 
 /** Rejects with a 422 ApiError (`error: 'invalid_file' | 'no_expenses' | 'no_categories'`). */
-export function importTransactionsFile(file: File) {
-  const form = new FormData();
-  form.append('file', file);
-  return apiFetch<ImportResult>(`${BASE}/import`, { method: 'POST', body: form });
+export async function importTransactionsFile(file: File): Promise<ImportResult> {
+  return unwrap(
+    await apiClient.POST('/api/transactions/import', {
+      // The spec types the multipart part as a binary string; ship the real
+      // File via FormData (the browser sets the multipart boundary itself).
+      body: { file } as unknown as { file: string },
+      bodySerializer: () => {
+        const form = new FormData();
+        form.append('file', file);
+        return form;
+      },
+    })
+  ) as ImportResult;
 }
 
-export function updateTransaction(id: string, input: TransactionInput) {
-  return apiFetch<Transaction>(`${BASE}/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(input),
-  });
+export async function updateTransaction(id: string, input: TransactionInput): Promise<Transaction> {
+  return unwrap(
+    await apiClient.PATCH('/api/transactions/{id}', { params: { path: { id } }, body: input })
+  ) as Transaction;
 }
 
-export function deleteTransaction(id: string) {
-  return apiFetch<void>(`${BASE}/${id}`, { method: 'DELETE' });
+export async function deleteTransaction(id: string): Promise<void> {
+  unwrap(await apiClient.DELETE('/api/transactions/{id}', { params: { path: { id } } }));
 }

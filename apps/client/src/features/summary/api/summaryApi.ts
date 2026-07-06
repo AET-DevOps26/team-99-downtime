@@ -1,26 +1,24 @@
-import type { components as genai } from '@/shared/api/generated/genai-service';
-import type { components as transactions } from '@/shared/api/generated/transaction-service';
-import { apiFetch, apiErrorInfo } from '@/shared/lib/api';
+import { apiClient } from '@/shared/api/client';
+import type { components } from '@/shared/api/generated/genai-service';
+import { apiErrorInfo, unwrap } from '@/shared/lib/api';
 
 /**
- * api: thin wrappers over the weekly AI summary endpoints (US-11). Two services
- * cooperate: transaction-service owns the week's numbers (weekly-report) and
- * genai-service turns them into prose and stores the result. No React, no UI here.
- *
- * The request/response shapes are the auto-generated OpenAPI types
- * (apps/client/src/shared/api/generated, produced by `bun run openapi`), so they
- * track the backend contract instead of being hand-maintained here.
+ * api: thin wrappers over the weekly AI summary endpoints (US-11), built on
+ * the shared typed apiClient — URL, method and body of every call are
+ * compile-checked against the committed OpenAPI specs (regenerate with
+ * `bun run openapi`). Two services cooperate: transaction-service owns the
+ * week's numbers (weekly-report) and genai-service turns them into prose and
+ * stores the result. No React, no UI here.
  */
 
-export type WeeklySummary = genai['schemas']['SummaryResponse'];
+export type WeeklySummary = components['schemas']['SummaryResponse'];
 
-/** The genai summarize payload, produced verbatim by GET /api/transactions/weekly-report. */
-type WeeklyReport = transactions['schemas']['WeeklyReport'];
+type WeeklyData = components['schemas']['WeeklyData'];
 
 /** The latest stored summary, or null before the first one exists (404 NO_SUMMARY). */
 export async function getLatestSummary(): Promise<WeeklySummary | null> {
   try {
-    return await apiFetch<WeeklySummary>('/api/genai/summarize/latest');
+    return unwrap(await apiClient.GET('/api/genai/summarize/latest'));
   } catch (err) {
     if (apiErrorInfo(err)?.status === 404) return null;
     throw err;
@@ -34,12 +32,14 @@ export async function getLatestSummary(): Promise<WeeklySummary | null> {
  * by design no summary is stored then.
  */
 export async function generateSummary(): Promise<WeeklySummary | null> {
-  const report = await apiFetch<WeeklyReport>('/api/transactions/weekly-report');
+  // weekly-report produces the summarize payload verbatim; springdoc types its
+  // fields optional (no @NonNull on the record) while FastAPI requires them,
+  // so re-shape at the boundary like the other feature APIs do.
+  const report = unwrap(
+    await apiClient.GET('/api/transactions/weekly-report')
+  ) as unknown as WeeklyData;
   try {
-    return await apiFetch<WeeklySummary>('/api/genai/summarize', {
-      method: 'POST',
-      body: JSON.stringify(report),
-    });
+    return unwrap(await apiClient.POST('/api/genai/summarize', { body: report }));
   } catch (err) {
     if (apiErrorInfo(err)?.status === 422) return null;
     throw err;

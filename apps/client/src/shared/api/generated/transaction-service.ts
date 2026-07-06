@@ -20,22 +20,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/transactions/import": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["importFile"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/transactions/free-text": {
         parameters: {
             query?: never;
@@ -52,7 +36,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/transactions/{id}": {
+    "/api/transactions/import": {
         parameters: {
             query?: never;
             header?: never;
@@ -61,21 +45,21 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post?: never;
-        delete: operations["delete"];
+        post: operations["importFile"];
+        delete?: never;
         options?: never;
         head?: never;
-        patch: operations["update"];
+        patch?: never;
         trace?: never;
     };
-    "/api/transactions/weekly-report": {
+    "/api/transactions/me": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["weeklyReport"];
+        get: operations["me"];
         put?: never;
         post?: never;
         delete?: never;
@@ -100,14 +84,14 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/transactions/me": {
+    "/api/transactions/weekly-report": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["me"];
+        get: operations["weeklyReport"];
         put?: never;
         post?: never;
         delete?: never;
@@ -116,100 +100,116 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/transactions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete"];
+        options?: never;
+        head?: never;
+        patch: operations["update"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        TransactionRequest: {
-            /** Format: uuid */
-            categoryId: string;
-            amount: number;
-            currency: string;
-            description: string;
-            /** Format: date */
-            date: string;
-        };
-        TransactionResponse: {
-            /** Format: uuid */
-            id?: string;
-            /** Format: uuid */
-            categoryId?: string;
+        Entry: {
             amount?: number;
             currency?: string;
-            description?: string;
             /** Format: date */
             date?: string;
-            /** Format: date-time */
-            createdAt?: string;
+            description?: string;
+        };
+        FreeTextRequest: {
+            text: string;
         };
         ImportResult: {
             imported?: components["schemas"]["TransactionResponse"][];
             skipped?: components["schemas"]["SkippedRow"][];
         };
-        SkippedRow: {
+        LastWeek: {
             /** Format: int32 */
-            row?: number;
-            reason?: string;
-        };
-        FreeTextRequest: {
-            text: string;
+            count?: number;
+            total?: number;
         };
         PageTransactionResponse: {
+            content?: components["schemas"]["TransactionResponse"][];
+            empty?: boolean;
+            first?: boolean;
+            last?: boolean;
+            /** Format: int32 */
+            number?: number;
+            /** Format: int32 */
+            numberOfElements?: number;
+            pageable?: components["schemas"]["PageableObject"];
+            /** Format: int32 */
+            size?: number;
+            sort?: components["schemas"]["SortObject"];
             /** Format: int64 */
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
-            /** Format: int32 */
-            size?: number;
-            content?: components["schemas"]["TransactionResponse"][];
-            /** Format: int32 */
-            number?: number;
-            sort?: components["schemas"]["SortObject"];
-            pageable?: components["schemas"]["PageableObject"];
-            /** Format: int32 */
-            numberOfElements?: number;
-            first?: boolean;
-            last?: boolean;
-            empty?: boolean;
         };
         PageableObject: {
             /** Format: int64 */
             offset?: number;
-            sort?: components["schemas"]["SortObject"];
-            paged?: boolean;
-            /** Format: int32 */
-            pageSize?: number;
             /** Format: int32 */
             pageNumber?: number;
+            /** Format: int32 */
+            pageSize?: number;
+            paged?: boolean;
+            sort?: components["schemas"]["SortObject"];
             unpaged?: boolean;
+        };
+        SkippedRow: {
+            reason?: string;
+            /** Format: int32 */
+            row?: number;
         };
         SortObject: {
             empty?: boolean;
-            unsorted?: boolean;
             sorted?: boolean;
-        };
-        Entry: {
-            /** Format: date */
-            date?: string;
-            amount?: number;
-            currency?: string;
-            description?: string;
-        };
-        LastWeek: {
-            total?: number;
-            /** Format: int32 */
-            count?: number;
-        };
-        WeeklyReport: {
-            /** Format: date */
-            weekStart?: string;
-            thisWeek?: components["schemas"]["Entry"][];
-            lastWeek?: components["schemas"]["LastWeek"];
+            unsorted?: boolean;
         };
         SpendEntry: {
             /** Format: uuid */
             categoryId?: string;
             totalSpent?: number;
+        };
+        TransactionRequest: {
+            amount: number;
+            /** Format: uuid */
+            categoryId: string;
+            currency: string;
+            /** Format: date */
+            date: string;
+            description: string;
+        };
+        TransactionResponse: {
+            amount?: number;
+            /** Format: uuid */
+            categoryId?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            currency?: string;
+            /** Format: date */
+            date?: string;
+            description?: string;
+            /** Format: uuid */
+            id?: string;
+        };
+        WeeklyReport: {
+            lastWeek?: components["schemas"]["LastWeek"];
+            thisWeek?: components["schemas"]["Entry"][];
+            /** Format: date */
+            weekStart?: string;
         };
     };
     responses: never;
@@ -269,6 +269,32 @@ export interface operations {
             };
         };
     };
+    createFromFreeText: {
+        parameters: {
+            query?: never;
+            header?: {
+                Authorization?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FreeTextRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TransactionResponse"][];
+                };
+            };
+        };
+    };
     importFile: {
         parameters: {
             query?: never;
@@ -298,28 +324,64 @@ export interface operations {
             };
         };
     };
-    createFromFreeText: {
+    me: {
         parameters: {
             query?: never;
-            header?: {
-                Authorization?: string;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["FreeTextRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
-            /** @description Created */
-            201: {
+            /** @description OK */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["TransactionResponse"][];
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    spend: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SpendEntry"][];
+                };
+            };
+        };
+    };
+    weeklyReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["WeeklyReport"];
                 };
             };
         };
@@ -370,68 +432,6 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["TransactionResponse"];
-                };
-            };
-        };
-    };
-    weeklyReport: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["WeeklyReport"];
-                };
-            };
-        };
-    };
-    spend: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["SpendEntry"][];
-                };
-            };
-        };
-    };
-    me: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
                 };
             };
         };
