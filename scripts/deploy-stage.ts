@@ -180,10 +180,15 @@ const main = defineCommand({
         --set ${`drizzleStudio.github.clientId=${clientId ?? ''}`} \
         --set ${`drizzleStudio.github.clientSecret=${clientSecret ?? ''}`} \
         --wait --timeout 5m --rollback-on-failure \
-        ${dryRun ? '--dry-run' : ''}`;
+        ${dryRun ? '--dry-run=client' : ''}`.quiet();
     } catch (err) {
       s.stop('Deploy failed.');
-      p.log.error(String(err));
+      // quiet() suppresses stdout; surface stderr so the failure reason is visible
+      const stderr =
+        err instanceof Error && 'stderr' in err && err.stderr instanceof Uint8Array
+          ? new TextDecoder().decode(err.stderr).trim()
+          : String(err);
+      p.log.error(stderr);
       process.exit(1);
     }
 
