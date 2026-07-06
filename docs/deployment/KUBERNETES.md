@@ -59,7 +59,8 @@ All Helm invocations use `--wait --timeout 5m --rollback-on-failure`.
 
 ```sh
 bun deploy:k8s                        # → t99-stage (latest git tag)
-bun deploy:k8s -n t99-prod            # → any namespace
+bun deploy:k8s --prod                 # → t99-prod with values.prod.yaml
+bun deploy:k8s -n t99-prod            # → explicit namespace override
 bun deploy:k8s --dry-run              # validate without applying changes
 bun deploy:k8s --no-studio            # skip Drizzle Studio entirely
 bun deploy:k8s --no-oauth             # deploy Studio without OAuth protection

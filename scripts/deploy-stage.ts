@@ -37,15 +37,26 @@ const main = defineCommand({
     },
     'dry-run': {
       type: 'boolean',
-      description: 'Pass --dry-run to helm — validate without deploying',
+      description: 'Pass --dry-run=client to helm — validate without deploying',
+      default: false,
+    },
+    prod: {
+      type: 'boolean',
+      description: 'Use values.prod.yaml and default to t99-prod namespace',
       default: false,
     },
   },
   async run({ args }) {
-    const namespace = args.namespace;
+    // --prod defaults namespace to t99-prod unless -n was explicitly supplied
+    const namespace = args.prod && args.namespace === 't99-stage' ? 't99-prod' : args.namespace;
+    const valuesFile = args.prod
+      ? 'k8s/helm/t99-app/values.prod.yaml'
+      : 'k8s/helm/t99-app/values.stage.yaml';
     const dryRun = args['dry-run'];
 
-    p.intro(`ExpenseFlow deploy → ${namespace}${dryRun ? '  [dry-run]' : ''}`);
+    p.intro(
+      `ExpenseFlow deploy → ${namespace}${args.prod ? '  [prod]' : ''}${dryRun ? '  [dry-run]' : ''}`
+    );
 
     // -------------------------------------------------------------------------
     // Version — latest git tag
@@ -167,7 +178,7 @@ const main = defineCommand({
       await $`helm upgrade --install t99 k8s/helm/t99-app/ \
         -n ${namespace} \
         -f k8s/helm/t99-app/values.yaml \
-        -f k8s/helm/t99-app/values.stage.yaml \
+        -f ${valuesFile} \
         --set ${`authService.image.tag=${version}`} \
         --set ${`client.image.tag=${version}`} \
         --set ${`transactionService.image.tag=${version}`} \
