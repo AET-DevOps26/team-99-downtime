@@ -84,7 +84,7 @@ const main = defineCommand({
     if (studioEnabled) {
       // Try loading credentials from cluster secret first
       const s = p.spinner();
-      s.start('Checking cluster for existing OAuth credentials…');
+      s.start('Checking cluster for existing OAuth credentials');
       try {
         const raw = await $`kubectl get secret t99-studio-oauth2 -n ${namespace} -o json`
           .quiet()
@@ -172,7 +172,7 @@ const main = defineCommand({
     // -------------------------------------------------------------------------
 
     const s = p.spinner();
-    s.start(dryRun ? 'Running helm dry-run…' : 'Deploying…');
+    s.start(dryRun ? 'Running helm dry-run' : 'Deploying');
 
     try {
       await $`helm upgrade --install t99 k8s/helm/t99-app/ \
@@ -215,14 +215,16 @@ const main = defineCommand({
           ? 't99.stud.k8s.aet.cit.tum.de'
           : 'stage.t99.stud.k8s.aet.cit.tum.de';
 
-      p.outro(
+      p.note(
         [
           `App:    https://${domain}`,
           studioEnabled ? `Studio: https://studio.${domain}` : 'Studio: disabled',
-        ].join('\n')
+        ].join('\n'),
+        `Deployed v${version} → ${namespace}`
       );
+      p.outro('Done');
     } else {
-      p.outro('Dry-run finished. Re-run without --dry-run to deploy.');
+      p.outro('Dry-run complete — re-run without --dry-run to apply');
     }
   },
 });
