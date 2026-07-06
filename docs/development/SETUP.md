@@ -89,14 +89,13 @@ All endpoints except `/actuator/health` require a Bearer JWT. See [AUTHENTICATIO
 
 ### Regenerating the OpenAPI Specs + Frontend Client
 
-Every service auto-exposes an OpenAPI spec, and the frontend's typed client is generated from those specs. Whenever you add or change an endpoint or DTO:
+Every service describes its API as an OpenAPI spec, and the frontend's typed client is generated from those specs — both at build time, straight from the code. Whenever you add or change an endpoint or DTO:
 
 ```sh
-docker compose up -d     # stack must be running
-bun run openapi          # refresh openapi/*.json + apps/client/src/shared/api/generated
+bun run openapi          # no stack needed — refresh openapi/*.json + apps/client/src/shared/api/generated
 ```
 
-Then commit the regenerated `openapi/` and `generated/` files with your change. See [API_CLIENTS.md](API_CLIENTS.md) for details.
+Then commit the regenerated `openapi/` and `generated/` files with your change — the `openapi-drift` CI job fails the PR if you forget. See [API_CLIENTS.md](API_CLIENTS.md) for details.
 
 ### Client (React + Vite + Tailwind v4 + shadcn/ui)
 

@@ -4,23 +4,6 @@
  */
 
 export interface paths {
-    "/health": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Health Check */
-        get: operations["health_check_health_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/genai/categorize": {
         parameters: {
             query?: never;
@@ -37,6 +20,26 @@ export interface paths {
          *     422 "TOO_VAGUE" is the contract for a sentence the model cannot extract from.
          */
         post: operations["categorize_expenses_api_genai_categorize_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/genai/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Me
+         * @description Probe proving JWT validation works end-to-end.
+         */
+        get: operations["me_api_genai_me_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -66,18 +69,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/genai/me": {
+    "/health": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /**
-         * Me
-         * @description Probe proving JWT validation works end-to-end.
-         */
-        get: operations["me_api_genai_me_get"];
+        /** Health Check */
+        get: operations["health_check_health_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -92,13 +92,13 @@ export interface components {
     schemas: {
         /** CategorizeRequest */
         CategorizeRequest: {
-            /** Text */
-            text: string;
             /**
              * Categories
              * @default []
              */
             categories: string[];
+            /** Text */
+            text: string;
         };
         /** CategorizeResponse */
         CategorizeResponse: {
@@ -112,13 +112,13 @@ export interface components {
         };
         /** ParseFileRequest */
         ParseFileRequest: {
-            /** Content */
-            content: string;
             /**
              * Categories
              * @default []
              */
             categories: string[];
+            /** Content */
+            content: string;
         };
         /** ParseFileResponse */
         ParseFileResponse: {
@@ -134,20 +134,20 @@ export interface components {
         ParsedExpense: {
             /** Amount */
             amount: number;
+            /** Category */
+            category: string;
             /**
              * Currency
              * @default EUR
              */
             currency: string;
-            /** Merchant */
-            merchant: string;
-            /** Category */
-            category: string;
             /**
              * Date
              * Format: date
              */
             date: string;
+            /** Merchant */
+            merchant: string;
         };
         /**
          * RowExpense
@@ -156,20 +156,20 @@ export interface components {
         RowExpense: {
             /** Amount */
             amount: number;
+            /** Category */
+            category: string;
             /**
              * Currency
              * @default EUR
              */
             currency: string;
-            /** Merchant */
-            merchant: string;
-            /** Category */
-            category: string;
             /**
              * Date
              * Format: date
              */
             date: string;
+            /** Merchant */
+            merchant: string;
             /** Row */
             row: number;
         };
@@ -178,23 +178,23 @@ export interface components {
          * @description A row/line that could not be imported, with the reason why.
          */
         SkippedRow: {
-            /** Row */
-            row: number;
             /** Reason */
             reason: string;
+            /** Row */
+            row: number;
         };
         /** ValidationError */
         ValidationError: {
+            /** Context */
+            ctx?: Record<string, never>;
+            /** Input */
+            input?: unknown;
             /** Location */
             loc: (string | number)[];
             /** Message */
             msg: string;
             /** Error Type */
             type: string;
-            /** Input */
-            input?: unknown;
-            /** Context */
-            ctx?: Record<string, never>;
         };
     };
     responses: never;
@@ -205,26 +205,6 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    health_check_health_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
     categorize_expenses_api_genai_categorize_post: {
         parameters: {
             query?: never;
@@ -254,6 +234,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    me_api_genai_me_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };
@@ -291,7 +291,7 @@ export interface operations {
             };
         };
     };
-    me_api_genai_me_get: {
+    health_check_health_get: {
         parameters: {
             query?: never;
             header?: never;

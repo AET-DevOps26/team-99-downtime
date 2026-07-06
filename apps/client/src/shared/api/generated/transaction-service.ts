@@ -20,22 +20,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/transactions/import": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["importFile"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/transactions/free-text": {
         parameters: {
             query?: never;
@@ -52,7 +36,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/transactions/{id}": {
+    "/api/transactions/import": {
         parameters: {
             query?: never;
             header?: never;
@@ -61,23 +45,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post?: never;
-        delete: operations["delete"];
-        options?: never;
-        head?: never;
-        patch: operations["update"];
-        trace?: never;
-    };
-    "/api/transactions/spend": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["spend"];
-        put?: never;
-        post?: never;
+        post: operations["importFile"];
         delete?: never;
         options?: never;
         head?: never;
@@ -100,82 +68,114 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/transactions/spend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["spend"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/transactions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete"];
+        options?: never;
+        head?: never;
+        patch: operations["update"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        TransactionRequest: {
-            /** Format: uuid */
-            categoryId: string;
-            amount: number;
-            currency: string;
-            description: string;
-            /** Format: date */
-            date: string;
-        };
-        TransactionResponse: {
-            /** Format: uuid */
-            id?: string;
-            /** Format: uuid */
-            categoryId?: string;
-            amount?: number;
-            currency?: string;
-            description?: string;
-            /** Format: date */
-            date?: string;
-            /** Format: date-time */
-            createdAt?: string;
+        FreeTextRequest: {
+            text: string;
         };
         ImportResult: {
             imported?: components["schemas"]["TransactionResponse"][];
             skipped?: components["schemas"]["SkippedRow"][];
         };
-        SkippedRow: {
-            /** Format: int32 */
-            row?: number;
-            reason?: string;
-        };
-        FreeTextRequest: {
-            text: string;
-        };
         PageTransactionResponse: {
+            content?: components["schemas"]["TransactionResponse"][];
+            empty?: boolean;
+            first?: boolean;
+            last?: boolean;
+            /** Format: int32 */
+            number?: number;
+            /** Format: int32 */
+            numberOfElements?: number;
+            pageable?: components["schemas"]["PageableObject"];
+            /** Format: int32 */
+            size?: number;
+            sort?: components["schemas"]["SortObject"];
             /** Format: int64 */
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
-            pageable?: components["schemas"]["PageableObject"];
-            /** Format: int32 */
-            numberOfElements?: number;
-            /** Format: int32 */
-            size?: number;
-            content?: components["schemas"]["TransactionResponse"][];
-            /** Format: int32 */
-            number?: number;
-            sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
-            empty?: boolean;
         };
         PageableObject: {
-            /** Format: int32 */
-            pageNumber?: number;
-            paged?: boolean;
-            /** Format: int32 */
-            pageSize?: number;
-            unpaged?: boolean;
             /** Format: int64 */
             offset?: number;
+            /** Format: int32 */
+            pageNumber?: number;
+            /** Format: int32 */
+            pageSize?: number;
+            paged?: boolean;
             sort?: components["schemas"]["SortObject"];
+            unpaged?: boolean;
+        };
+        SkippedRow: {
+            reason?: string;
+            /** Format: int32 */
+            row?: number;
         };
         SortObject: {
+            empty?: boolean;
             sorted?: boolean;
             unsorted?: boolean;
-            empty?: boolean;
         };
         SpendEntry: {
             /** Format: uuid */
             categoryId?: string;
             totalSpent?: number;
+        };
+        TransactionRequest: {
+            amount: number;
+            /** Format: uuid */
+            categoryId: string;
+            currency: string;
+            /** Format: date */
+            date: string;
+            description: string;
+        };
+        TransactionResponse: {
+            amount?: number;
+            /** Format: uuid */
+            categoryId?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            currency?: string;
+            /** Format: date */
+            date?: string;
+            description?: string;
+            /** Format: uuid */
+            id?: string;
         };
     };
     responses: never;
@@ -235,6 +235,32 @@ export interface operations {
             };
         };
     };
+    createFromFreeText: {
+        parameters: {
+            query?: never;
+            header?: {
+                Authorization?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FreeTextRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TransactionResponse"][];
+                };
+            };
+        };
+    };
     importFile: {
         parameters: {
             query?: never;
@@ -264,28 +290,44 @@ export interface operations {
             };
         };
     };
-    createFromFreeText: {
+    me: {
         parameters: {
             query?: never;
-            header?: {
-                Authorization?: string;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["FreeTextRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
-            /** @description Created */
-            201: {
+            /** @description OK */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["TransactionResponse"][];
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    spend: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SpendEntry"][];
                 };
             };
         };
@@ -336,48 +378,6 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["TransactionResponse"];
-                };
-            };
-        };
-    };
-    spend: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["SpendEntry"][];
-                };
-            };
-        };
-    };
-    me: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
                 };
             };
         };

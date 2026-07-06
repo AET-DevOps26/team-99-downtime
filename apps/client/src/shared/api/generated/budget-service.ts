@@ -4,22 +4,6 @@
  */
 
 export interface paths {
-    "/api/budgets/threshold-check": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["check"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/budgets/categories": {
         parameters: {
             query?: never;
@@ -52,22 +36,6 @@ export interface paths {
         patch: operations["update"];
         trace?: never;
     };
-    "/api/budgets/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["status"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/budgets/me": {
         parameters: {
             query?: never;
@@ -84,28 +52,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/budgets/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/budgets/threshold-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["check"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        BudgetStatusResponse: {
+            /** Format: uuid */
+            categoryId?: string;
+            monthlyLimit?: number;
+            name?: string;
+            percentUsed?: number;
+            remaining?: number;
+            spent?: number;
+        };
         CategoryRequest: {
-            name: string;
             monthlyLimit: number;
+            name: string;
         };
         CategoryResponse: {
             /** Format: uuid */
             id?: string;
-            name?: string;
             monthlyLimit?: number;
-        };
-        BudgetStatusResponse: {
-            /** Format: uuid */
-            categoryId?: string;
             name?: string;
-            monthlyLimit?: number;
-            spent?: number;
-            remaining?: number;
-            percentUsed?: number;
         };
     };
     responses: never;
@@ -116,26 +116,6 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    check: {
-        parameters: {
-            query?: never;
-            header: {
-                Authorization: string;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No Content */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     list: {
         parameters: {
             query?: never;
@@ -226,6 +206,28 @@ export interface operations {
             };
         };
     };
+    me: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     status: {
         parameters: {
             query?: never;
@@ -248,25 +250,23 @@ export interface operations {
             };
         };
     };
-    me: {
+    check: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                Authorization: string;
+            };
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
-            200: {
+            /** @description No Content */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "*/*": {
-                        [key: string]: unknown;
-                    };
-                };
+                content?: never;
             };
         };
     };

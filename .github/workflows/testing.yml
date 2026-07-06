@@ -48,10 +48,48 @@ jobs:
         if: steps.helm-changes.outputs.helm == 'true'
         run: helm lint k8s/helm/t99-app/ -f k8s/helm/t99-app/values.stage.yaml
 
+  # Regenerates every OpenAPI spec and the typed client from the code (no
+  # containers: springdoc Gradle plugin, FastAPI in-memory export, Better Auth
+  # in-process extraction) and fails when the committed files don't match —
+  # an API change must ship its spec + generated-client update in the same PR.
+  openapi-drift:
+    runs-on: ubuntu-latest
+    name: OpenAPI Drift Check
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          # This job only reads the repo and diffs generated output; don't
+          # leave the GITHUB_TOKEN on disk for the forked service processes.
+          persist-credentials: false
+
+      - name: Setup Build Tools
+        uses: ./.github/actions/setup-build-tools
+
+      # Same single command devs run locally — pipeline needs no change when
+      # the script's internals do.
+      - name: Generate OpenAPI specs and typed client
+        run: bun run openapi
+
+      - name: Fail if committed specs or generated client are out of date
+        run: |
+          if [ -n "$(git status --porcelain -- openapi/ apps/client/src/shared/api/generated/)" ]; then
+            git status --short -- openapi/ apps/client/src/shared/api/generated/
+            git diff -- openapi/ apps/client/src/shared/api/generated/
+            echo '::error::OpenAPI specs are out of date. Run `bun run openapi` and commit the result.'
+            exit 1
+          fi
+
   build-and-test:
     runs-on: ubuntu-latest
-    needs: lint
-    if: always() && (needs.lint.result == 'success' || needs.lint.result == 'skipped')
+    # lint is skipped on merge_group, hence the always() + skipped handling;
+    # openapi-drift runs on both events and must have passed — don't build or
+    # publish containers against a stale API contract.
+    needs: [lint, openapi-drift]
+    if: always() && (needs.lint.result == 'success' || needs.lint.result == 'skipped') && needs['openapi-drift'].result == 'success'
     name: Build, Test, and Publish Containers
 
     permissions:

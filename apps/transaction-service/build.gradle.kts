@@ -5,6 +5,7 @@ plugins {
 	id("io.spring.dependency-management") version "1.1.7"
 	id("com.diffplug.spotless") version "6.25.0"
 	id("dev.nx.gradle.project-graph") version "0.1.21"
+	id("org.springdoc.openapi-gradle-plugin") version "1.9.0"
 }
 
 val workspaceRoot = rootDir
@@ -31,6 +32,9 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	runtimeOnly("org.postgresql:postgresql")
+	// bootRun-only classpath (excluded from the jar): lets generateOpenApiDocs
+	// boot against embedded H2 instead of needing a Postgres container.
+	developmentOnly("com.h2database:h2")
 	compileOnly("org.projectlombok:lombok")
 	annotationProcessor("org.projectlombok:lombok")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
@@ -43,6 +47,26 @@ dependencies {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+}
+
+// generateOpenApiDocs: boots the service (embedded H2, side port so a running
+// dev stack doesn't collide), fetches the springdoc spec and writes it to the
+// committed openapi/ directory — no Docker needed. CI drift-checks the result.
+openApi {
+	apiDocsUrl.set("http://localhost:18080/api/transactions/v3/api-docs")
+	outputDir.set(workspaceRoot.resolve("openapi"))
+	outputFileName.set("${project.name}.json")
+	// Cold JPA context on a CI runner can exceed the default 30 s.
+	waitTimeInSeconds.set(120)
+	customBootRun {
+		args.set(listOf("--server.port=18080"))
+	}
+}
+
+// The springdoc plugin's fork task consumes the commons-jvm jar off the runtime
+// classpath but never declares it, which Gradle's dependency validation rejects.
+tasks.named("forkedSpringBootRun") {
+	dependsOn(":commons-jvm:jar")
 }
 
 tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
