@@ -191,7 +191,7 @@ const main = defineCommand({
         --set ${`drizzleStudio.github.clientId=${clientId ?? ''}`} \
         --set ${`drizzleStudio.github.clientSecret=${clientSecret ?? ''}`} \
         --wait --timeout 5m --rollback-on-failure \
-        ${dryRun ? '--dry-run=client' : ''}`.quiet();
+        ${dryRun ? ['--dry-run=client'] : []}`.quiet();
     } catch (err) {
       s.stop('Deploy failed.');
       // quiet() suppresses stdout; surface stderr so the failure reason is visible
