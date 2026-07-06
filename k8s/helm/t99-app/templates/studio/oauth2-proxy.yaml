@@ -1,4 +1,5 @@
 {{- if .Values.drizzleStudio.enabled }}
+{{- if .Values.drizzleStudio.oauth.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -80,4 +81,5 @@ spec:
   ports:
     - port: 4180
       targetPort: 4180
+{{- end }}
 {{- end }}

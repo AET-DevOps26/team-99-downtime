@@ -1,98 +1,214 @@
 #!/usr/bin/env bun
-/**
- * Deploy the latest Helm release to the stage environment.
- *
- * Usage:
- *   bun run scripts/deploy-stage.ts [-n <namespace>]
- *
- * GitHub OAuth credentials are read from the existing cluster secret when
- * present; you are only prompted when the secret does not yet exist.
- */
+import * as p from '@clack/prompts';
 import { $ } from 'bun';
+import { defineCommand, runMain } from 'citty';
 
-// ---------------------------------------------------------------------------
-// Args
-// ---------------------------------------------------------------------------
+const main = defineCommand({
+  meta: {
+    name: 'deploy-stage',
+    description: 'Deploy the latest Helm release to a k8s environment',
+  },
+  args: {
+    namespace: {
+      type: 'string',
+      alias: 'n',
+      description: 'Target namespace',
+      default: 't99-stage',
+    },
+    'no-studio': {
+      type: 'boolean',
+      description: 'Skip Drizzle Studio entirely',
+      default: false,
+    },
+    'no-oauth': {
+      type: 'boolean',
+      description: 'Deploy Studio without OAuth2 proxy (publicly accessible)',
+      default: false,
+    },
+    'client-id': {
+      type: 'string',
+      description: 'GitHub OAuth client ID',
+      default: '',
+    },
+    'client-secret': {
+      type: 'string',
+      description: 'GitHub OAuth client secret',
+      default: '',
+    },
+    'dry-run': {
+      type: 'boolean',
+      description: 'Pass --dry-run to helm — validate without deploying',
+      default: false,
+    },
+  },
+  async run({ args }) {
+    const namespace = args.namespace;
+    const dryRun = args['dry-run'];
 
-let namespace = 't99-stage';
-const args = process.argv.slice(2);
-for (let i = 0; i < args.length; i++) {
-  if ((args[i] === '-n' || args[i] === '--namespace') && args[i + 1]) {
-    namespace = args[i + 1];
-    i++;
-  }
-}
+    p.intro(`ExpenseFlow deploy → ${namespace}${dryRun ? '  [dry-run]' : ''}`);
 
-// ---------------------------------------------------------------------------
-// Version — latest git tag
-// ---------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    // Version — latest git tag
+    // -------------------------------------------------------------------------
 
-let version: string;
-try {
-  version = (await $`git describe --tags --abbrev=0`.quiet().text()).trim().replace(/^v/, '');
-} catch {
-  console.error('No git tags found. Tag a release first (e.g. git tag v0.1.0).');
-  process.exit(1);
-}
+    let version: string;
+    try {
+      version = (await $`git describe --tags --abbrev=0`.quiet().text()).trim().replace(/^v/, '');
+    } catch {
+      p.cancel('No git tags found. Tag a release first (e.g. git tag v0.1.0).');
+      process.exit(1);
+    }
 
-console.log(`\nDeploying v${version} → ${namespace}\n`);
+    p.log.info(`Version: v${version}`);
 
-// ---------------------------------------------------------------------------
-// GitHub OAuth credentials — read from cluster or prompt
-// ---------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    // Drizzle Studio — resolve credentials / intent
+    // -------------------------------------------------------------------------
 
-let clientId = '';
-let clientSecret = '';
+    let studioEnabled = !args['no-studio'];
+    let oauthEnabled = !args['no-oauth'];
+    let clientId = args['client-id'];
+    let clientSecret = args['client-secret'];
 
-try {
-  const raw = await $`kubectl get secret t99-studio-oauth2 -n ${namespace} -o json`.quiet().text();
-  const { data = {} } = JSON.parse(raw);
-  clientId = data.clientId ? atob(data.clientId) : '';
-  clientSecret = data.clientSecret ? atob(data.clientSecret) : '';
-} catch {
-  // secret not yet present — will prompt below
-}
+    if (studioEnabled) {
+      // Try loading credentials from cluster secret first
+      const s = p.spinner();
+      s.start('Checking cluster for existing OAuth credentials…');
+      try {
+        const raw = await $`kubectl get secret t99-studio-oauth2 -n ${namespace} -o json`
+          .quiet()
+          .text();
+        const { data = {} } = JSON.parse(raw);
+        const id = data.clientId ? atob(data.clientId) : '';
+        const secret = data.clientSecret ? atob(data.clientSecret) : '';
+        if (id && secret) {
+          clientId = id;
+          clientSecret = secret;
+          s.stop('OAuth credentials loaded from cluster.');
+        } else {
+          s.stop('Secret exists but credentials are empty — will prompt.');
+        }
+      } catch {
+        s.stop('No existing OAuth secret found.');
+      }
 
-if (clientId && clientSecret) {
-  console.log('✓ GitHub OAuth credentials found in cluster\n');
-} else {
-  console.log('GitHub OAuth credentials not found — enter them now:');
-  console.log('(note: input is visible in the terminal)\n');
-  clientId = prompt('  Client ID:     ') ?? '';
-  clientSecret = prompt('  Client Secret: ') ?? '';
-  console.log('');
-  if (!clientId || !clientSecret) {
-    console.error('Both Client ID and Client Secret are required.');
-    process.exit(1);
-  }
-}
+      const credentialsResolved = !!(clientId && clientSecret);
 
-// ---------------------------------------------------------------------------
-// Helm deploy
-// ---------------------------------------------------------------------------
+      if (!credentialsResolved && !args['no-oauth']) {
+        // Interactive flow
+        const deployStudio = await p.confirm({ message: 'Deploy Drizzle Studio?' });
+        if (p.isCancel(deployStudio)) {
+          p.cancel('Cancelled.');
+          process.exit(0);
+        }
 
-await $`helm upgrade --install t99 k8s/helm/t99-app/ \
-  -n ${namespace} \
-  -f k8s/helm/t99-app/values.yaml \
-  -f k8s/helm/t99-app/values.stage.yaml \
-  --set ${'authService.image.tag=' + version} \
-  --set ${'client.image.tag=' + version} \
-  --set ${'transactionService.image.tag=' + version} \
-  --set ${'notificationService.image.tag=' + version} \
-  --set ${'budgetService.image.tag=' + version} \
-  --set ${'genaiService.image.tag=' + version} \
-  --set ${'genaiService.llmApiKey=' + (process.env.LLM_API_KEY ?? '')} \
-  --set ${'drizzleStudio.github.clientId=' + clientId} \
-  --set ${'drizzleStudio.github.clientSecret=' + clientSecret} \
-  --wait --timeout 5m --rollback-on-failure`;
+        if (!deployStudio) {
+          studioEnabled = false;
+        } else {
+          const useOauth = await p.confirm({
+            message: 'Protect with GitHub OAuth? (recommended)',
+            initialValue: true,
+          });
+          if (p.isCancel(useOauth)) {
+            p.cancel('Cancelled.');
+            process.exit(0);
+          }
 
-// ---------------------------------------------------------------------------
-// Summary
-// ---------------------------------------------------------------------------
+          if (useOauth) {
+            oauthEnabled = true;
+            const creds = await p.group(
+              {
+                clientId: () =>
+                  p.text({
+                    message: 'GitHub OAuth Client ID',
+                    validate: (v) => (!v ? 'Required' : undefined),
+                  }),
+                clientSecret: () =>
+                  p.password({
+                    message: 'GitHub OAuth Client Secret',
+                    validate: (v) => (!v ? 'Required' : undefined),
+                  }),
+              },
+              {
+                onCancel: () => {
+                  p.cancel('Cancelled.');
+                  process.exit(0);
+                },
+              }
+            );
+            clientId = creds.clientId;
+            clientSecret = creds.clientSecret;
+          } else {
+            oauthEnabled = false;
+            p.log.warn('Studio will be publicly accessible — no authentication.');
+            const confirmed = await p.confirm({
+              message: 'Continue without OAuth protection?',
+              initialValue: false,
+            });
+            if (p.isCancel(confirmed) || !confirmed) {
+              p.cancel('Cancelled.');
+              process.exit(0);
+            }
+          }
+        }
+      } else if (args['client-id'] && args['client-secret']) {
+        p.log.info('Using credentials from CLI flags.');
+      }
+    }
 
-const domain =
-  namespace === 't99-prod' ? 't99.stud.k8s.aet.cit.tum.de' : 'stage.t99.stud.k8s.aet.cit.tum.de';
+    // -------------------------------------------------------------------------
+    // Helm deploy
+    // -------------------------------------------------------------------------
 
-console.log(`\n✓ Deployed v${version} to ${namespace}`);
-console.log(`  App:    https://${domain}`);
-console.log(`  Studio: https://studio.${domain}\n`);
+    const s = p.spinner();
+    s.start(dryRun ? 'Running helm dry-run…' : 'Deploying…');
+
+    try {
+      await $`helm upgrade --install t99 k8s/helm/t99-app/ \
+        -n ${namespace} \
+        -f k8s/helm/t99-app/values.yaml \
+        -f k8s/helm/t99-app/values.stage.yaml \
+        --set ${`authService.image.tag=${version}`} \
+        --set ${`client.image.tag=${version}`} \
+        --set ${`transactionService.image.tag=${version}`} \
+        --set ${`notificationService.image.tag=${version}`} \
+        --set ${`budgetService.image.tag=${version}`} \
+        --set ${`genaiService.image.tag=${version}`} \
+        --set ${`genaiService.llmApiKey=${process.env.LLM_API_KEY ?? ''}`} \
+        --set ${`drizzleStudio.enabled=${studioEnabled}`} \
+        --set ${`drizzleStudio.oauth.enabled=${oauthEnabled}`} \
+        --set ${`drizzleStudio.github.clientId=${clientId ?? ''}`} \
+        --set ${`drizzleStudio.github.clientSecret=${clientSecret ?? ''}`} \
+        --wait --timeout 5m --rollback-on-failure \
+        ${dryRun ? '--dry-run' : ''}`;
+    } catch (err) {
+      s.stop('Deploy failed.');
+      p.log.error(String(err));
+      process.exit(1);
+    }
+
+    s.stop(dryRun ? 'Dry-run complete — no changes applied.' : `Deployed v${version}.`);
+
+    // -------------------------------------------------------------------------
+    // Summary
+    // -------------------------------------------------------------------------
+
+    if (!dryRun) {
+      const domain =
+        namespace === 't99-prod'
+          ? 't99.stud.k8s.aet.cit.tum.de'
+          : 'stage.t99.stud.k8s.aet.cit.tum.de';
+
+      p.outro(
+        [
+          `App:    https://${domain}`,
+          studioEnabled ? `Studio: https://studio.${domain}` : 'Studio: disabled',
+        ].join('\n')
+      );
+    } else {
+      p.outro('Dry-run finished. Re-run without --dry-run to deploy.');
+    }
+  },
+});
+
+runMain(main);
