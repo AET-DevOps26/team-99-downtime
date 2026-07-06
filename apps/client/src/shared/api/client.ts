@@ -27,9 +27,16 @@ export const apiClient = createClient<ApiPaths>({ baseUrl: '/' });
 
 apiClient.use({
   async onRequest({ request }) {
-    const { data } = await authClient.token();
-    if (data?.token) {
-      request.headers.set('Authorization', `Bearer ${data.token}`);
+    // Same defensive pattern as useNotificationStream: a failed token fetch
+    // must not abort the call with a raw exception — send unauthenticated and
+    // let the backend 401, which unwrap() turns into a catchable ApiError.
+    try {
+      const { data } = await authClient.token();
+      if (data?.token) {
+        request.headers.set('Authorization', `Bearer ${data.token}`);
+      }
+    } catch {
+      // proceed without Authorization
     }
     return request;
   },

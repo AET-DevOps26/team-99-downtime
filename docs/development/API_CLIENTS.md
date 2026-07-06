@@ -49,6 +49,11 @@ change. If you forget, the `openapi-drift` CI job fails with exactly that
 instruction; the TypeScript compiler then points at every call site the change
 breaks.
 
+The same applies to dependency bumps (e.g. from Renovate): upgrading a
+generator — springdoc, FastAPI, Better Auth, `openapi-typescript` — can change
+the emitted output, and the drift job will flag it. The fix is always the same
+`bun run openapi` + commit.
+
 ---
 
 ## Calling the APIs from the client

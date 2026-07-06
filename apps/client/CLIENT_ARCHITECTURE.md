@@ -21,7 +21,8 @@ src/
     index.ts    the door. outside world imports only this.
   shared/       stuff many features use.
     ui/         shadcn + generic parts (button, card, wordmark)
-    lib/        utils, auth-client singleton, api (authed fetch to backend)
+    api/        typed apiClient (openapi-fetch) + generated OpenAPI types
+    lib/        utils, auth-client singleton, api (ApiError/unwrap contract)
     layout/     app frame (Sidebar, Header, AppLayout)
     hooks/      cross-feature hooks (none yet; placeholder)
 ```

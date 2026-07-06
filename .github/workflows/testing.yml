@@ -61,6 +61,10 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v6
+        with:
+          # This job only reads the repo and diffs generated output; don't
+          # leave the GITHUB_TOKEN on disk for the forked service processes.
+          persist-credentials: false
 
       - name: Setup Build Tools
         uses: ./.github/actions/setup-build-tools

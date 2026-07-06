@@ -52,7 +52,8 @@ if (missing.length > 0) {
 // ---------------------------------------------------------------------------
 
 console.log('genai-service: nx run genai-service:export-openapi');
-await $`bun nx run genai-service:export-openapi`.cwd(repoRoot).quiet();
+// Not .quiet(): when this fails in CI, the underlying error must be in the log.
+await $`bun nx run genai-service:export-openapi`.cwd(repoRoot);
 
 // ---------------------------------------------------------------------------
 // auth-service — Better Auth openAPI plugin, extracted in-process
@@ -105,7 +106,7 @@ for (const name of services) {
   console.log(`${name}: canonicalised openapi/${name}.json`);
 
   const out = join(outDir, `${name}.ts`);
-  await $`bunx openapi-typescript ${specFile} --output ${out}`.cwd(repoRoot).quiet();
+  await $`bunx openapi-typescript ${specFile} --output ${out}`.cwd(repoRoot);
   console.log(`${name}: wrote generated/${name}.ts`);
 }
 
