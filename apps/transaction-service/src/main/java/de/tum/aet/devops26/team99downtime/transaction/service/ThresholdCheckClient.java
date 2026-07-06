@@ -15,8 +15,9 @@ public class ThresholdCheckClient {
 
   private final RestClient restClient;
 
-  public ThresholdCheckClient(@Value("${services.budget.url}") String budgetUrl) {
-    this.restClient = RestClient.builder().baseUrl(budgetUrl).build();
+  public ThresholdCheckClient(
+      @Value("${services.budget.url}") String budgetUrl, RestClient.Builder restClientBuilder) {
+    this.restClient = restClientBuilder.baseUrl(budgetUrl).build();
   }
 
   @Async
