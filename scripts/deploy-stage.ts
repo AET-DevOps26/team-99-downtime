@@ -1,4 +1,7 @@
 #!/usr/bin/env bun
+import { unlink } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import * as p from '@clack/prompts';
 import { $ } from 'bun';
 import { defineCommand, runMain } from 'citty';
@@ -82,25 +85,30 @@ const main = defineCommand({
     let clientSecret = args['client-secret'];
 
     if (studioEnabled) {
-      // Try loading credentials from cluster secret first
-      const s = p.spinner();
-      s.start('Checking cluster for existing OAuth credentials');
-      try {
-        const raw = await $`kubectl get secret t99-studio-oauth2 -n ${namespace} -o json`
-          .quiet()
-          .text();
-        const { data = {} } = JSON.parse(raw);
-        const id = data.clientId ? atob(data.clientId) : '';
-        const secret = data.clientSecret ? atob(data.clientSecret) : '';
-        if (id && secret) {
-          clientId = id;
-          clientSecret = secret;
-          s.stop('OAuth credentials loaded from cluster.');
-        } else {
-          s.stop('Secret exists but credentials are empty — will prompt.');
+      const cliCredsProvided = !!(args['client-id'] && args['client-secret']);
+
+      if (!cliCredsProvided) {
+        const s = p.spinner();
+        s.start('Checking cluster for existing OAuth credentials');
+        try {
+          const raw = await $`kubectl get secret t99-studio-oauth2 -n ${namespace} -o json`
+            .quiet()
+            .text();
+          const { data = {} } = JSON.parse(raw);
+          const id = data.clientId ? atob(data.clientId) : '';
+          const secret = data.clientSecret ? atob(data.clientSecret) : '';
+          if (id && secret) {
+            clientId = id;
+            clientSecret = secret;
+            s.stop('OAuth credentials loaded from cluster.');
+          } else {
+            s.stop('Secret exists but credentials are empty — will prompt.');
+          }
+        } catch {
+          s.stop('No existing OAuth secret found.');
         }
-      } catch {
-        s.stop('No existing OAuth secret found.');
+      } else {
+        p.log.info('Using credentials from CLI flags.');
       }
 
       const credentialsResolved = !!(clientId && clientSecret);
@@ -162,8 +170,6 @@ const main = defineCommand({
             }
           }
         }
-      } else if (args['client-id'] && args['client-secret']) {
-        p.log.info('Using credentials from CLI flags.');
       }
     }
 
@@ -174,22 +180,33 @@ const main = defineCommand({
     const s = p.spinner();
     s.start(dryRun ? 'Running helm dry-run' : 'Deploying');
 
+    const secretsPath = join(tmpdir(), `t99-deploy-secrets-${Date.now()}.yaml`);
+    const secretsYaml = `${[
+      'genaiService:',
+      `  llmApiKey: ${JSON.stringify(process.env.LLM_API_KEY ?? '')}`,
+      'drizzleStudio:',
+      '  github:',
+      `    clientId: ${JSON.stringify(clientId ?? '')}`,
+      `    clientSecret: ${JSON.stringify(clientSecret ?? '')}`,
+    ].join('\n')}\n`;
+    await Bun.write(secretsPath, secretsYaml);
+
+    const removeSecrets = () => unlink(secretsPath).catch(() => {});
+
     try {
       await $`helm upgrade --install t99 k8s/helm/t99-app/ \
         -n ${namespace} \
         -f k8s/helm/t99-app/values.yaml \
         -f ${valuesFile} \
+        -f ${secretsPath} \
         --set ${`authService.image.tag=${version}`} \
         --set ${`client.image.tag=${version}`} \
         --set ${`transactionService.image.tag=${version}`} \
         --set ${`notificationService.image.tag=${version}`} \
         --set ${`budgetService.image.tag=${version}`} \
         --set ${`genaiService.image.tag=${version}`} \
-        --set ${`genaiService.llmApiKey=${process.env.LLM_API_KEY ?? ''}`} \
         --set ${`drizzleStudio.enabled=${studioEnabled}`} \
         --set ${`drizzleStudio.oauth.enabled=${oauthEnabled}`} \
-        --set ${`drizzleStudio.github.clientId=${clientId ?? ''}`} \
-        --set ${`drizzleStudio.github.clientSecret=${clientSecret ?? ''}`} \
         --wait --timeout 5m --rollback-on-failure \
         ${dryRun ? ['--dry-run=client'] : []}`.quiet();
     } catch (err) {
@@ -200,8 +217,10 @@ const main = defineCommand({
           ? new TextDecoder().decode(err.stderr).trim()
           : String(err);
       p.log.error(stderr);
+      await removeSecrets();
       process.exit(1);
     }
+    await removeSecrets();
 
     s.stop(dryRun ? 'Dry-run complete — no changes applied.' : `Deployed v${version}.`);
 
