@@ -55,7 +55,7 @@ const main = defineCommand({
     const dryRun = args['dry-run'];
 
     p.intro(
-      `ExpenseFlow deploy → ${namespace}${args.prod ? '  [prod]' : ''}${dryRun ? '  [dry-run]' : ''}`
+      `ExpenseFlow deploy → ${namespace}${args.prod ? ' [prod]' : ''}${dryRun ? ' [dry-run]' : ''}`
     );
 
     // -------------------------------------------------------------------------
@@ -222,10 +222,8 @@ const main = defineCommand({
         ].join('\n'),
         `Deployed v${version} → ${namespace}`
       );
-      p.outro('Done');
-    } else {
-      p.outro('Dry-run complete — re-run without --dry-run to apply');
     }
+    p.outro('Done.');
   },
 });
 
