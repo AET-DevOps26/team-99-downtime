@@ -58,11 +58,24 @@ All Helm invocations use `--wait --timeout 5m --rollback-on-failure`.
 ## Local Deploy
 
 ```sh
-bun deploy:k8s                # → t99-stage (latest git tag)
-bun deploy:k8s -n t99-prod   # → any namespace
+bun deploy:k8s                        # → t99-stage (latest git tag)
+bun deploy:k8s --prod                 # → t99-prod with values.prod.yaml
+bun deploy:k8s -n t99-prod            # → explicit namespace override
+bun deploy:k8s --dry-run              # validate without applying changes
+bun deploy:k8s --no-studio            # skip Drizzle Studio entirely
+bun deploy:k8s --no-oauth             # deploy Studio without OAuth protection
+bun deploy:k8s --client-id=<id> --client-secret=<secret>  # non-interactive
 ```
 
-Reads GitHub OAuth credentials from the existing cluster secret if present; prompts on first run. See [SCRIPTS.md](../development/SCRIPTS.md) for details.
+The script uses `@clack/prompts` for a styled interactive experience. The flow is:
+
+1. Check the cluster for an existing `t99-studio-oauth2` secret
+   - **Found** → credentials loaded automatically, no questions asked
+   - **Not found** → interactive prompts:
+     - Deploy Drizzle Studio? → No skips it entirely
+     - Protect with GitHub OAuth? (recommended) → Yes prompts for credentials; No warns and confirms public access
+
+CLI flags override interactive prompts — any flag provided skips the corresponding question.
 
 ## Ingress
 
@@ -87,7 +100,7 @@ Domains:
 Live database inspector deployed per environment when `drizzleStudio.enabled: true`.
 
 - **Image:** `ghcr.io/drizzle-team/gateway:latest`
-- **Auth:** `oauth2-proxy` in front — GitHub OAuth scoped to collaborators of `aet-devops26/team-99-downtime`
+- **Auth:** `oauth2-proxy` in front by default (`drizzleStudio.oauth.enabled: true`) — GitHub OAuth scoped to collaborators of `aet-devops26/team-99-downtime`; set `oauth.enabled: false` (or use `--no-oauth`) to expose studio directly without authentication
 - **DB connections:** `auth_db`, `transaction_db`, `budget_db`, `notification_db` pre-configured via `store.json` ConfigMap; init container substitutes `__DB_PASSWORD__` at pod start
 - **Config persistence:** 128 Mi RWO PVC (`helm.sh/resource-policy: keep`); deployment strategy `Recreate`
 

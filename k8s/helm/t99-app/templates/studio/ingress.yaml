@@ -23,7 +23,13 @@ spec:
             pathType: Prefix
             backend:
               service:
+                {{- if .Values.drizzleStudio.oauth.enabled }}
                 name: {{ .Release.Name }}-studio-oauth2
                 port:
                   number: 4180
+                {{- else }}
+                name: {{ .Release.Name }}-studio
+                port:
+                  number: 4983
+                {{- end }}
 {{- end }}
