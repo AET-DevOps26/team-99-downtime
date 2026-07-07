@@ -108,6 +108,35 @@ class TransactionFlowIntegrationTest {
   }
 
   @Test
+  void weeklyReportReflectsThisWeeksTransactions() throws Exception {
+    String userId = "tx-weekly-report-user";
+    String today = LocalDate.now().toString();
+    String body =
+        String.format(
+            "{\"categoryId\":\"00000000-0000-0000-0000-000000000001\","
+                + "\"amount\":19.99,\"currency\":\"EUR\","
+                + "\"description\":\"Cinema\",\"date\":\"%s\"}",
+            today);
+
+    mockMvc
+        .perform(
+            post("/api/transactions")
+                .with(asUser(userId))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+        .andExpect(status().isCreated());
+
+    mockMvc
+        .perform(get("/api/transactions/weekly-report").with(asUser(userId)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.weekStart").isNotEmpty())
+        .andExpect(jsonPath("$.thisWeek.length()").value(1))
+        .andExpect(jsonPath("$.thisWeek[0].description").value("Cinema"))
+        .andExpect(jsonPath("$.thisWeek[0].amount").value(19.99))
+        .andExpect(jsonPath("$.lastWeek.count").value(0));
+  }
+
+  @Test
   void deleteRecomputesSpendThatBudgetsReadFrom() throws Exception {
     // The budget-service computes each category's spend live from GET
     // /api/transactions/spend, so proving that endpoint drops after a delete

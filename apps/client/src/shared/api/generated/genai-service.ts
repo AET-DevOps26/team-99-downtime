@@ -69,6 +69,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/genai/summarize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Summarize Week
+         * @description Generate and persist the calling user's summary for the given week.
+         *
+         *     The caller supplies the week's numbers (the dashboard forwards them from
+         *     transaction-service's GET /api/transactions/weekly-report). 422
+         *     "NOT_ENOUGH_DATA" is the contract for a week too sparse to summarize —
+         *     nothing is stored then.
+         */
+        post: operations["summarize_week_api_genai_summarize_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/genai/summarize/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Latest Summary
+         * @description The most recent stored summary; 404 "NO_SUMMARY" before the first one.
+         */
+        get: operations["latest_summary_api_genai_summarize_latest_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -109,6 +154,16 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * LastWeekTotals
+         * @description Aggregate of the previous week, for the week-over-week comparison.
+         */
+        LastWeekTotals: {
+            /** Count */
+            count: number;
+            /** Total */
+            total: number;
         };
         /** ParseFileRequest */
         ParseFileRequest: {
@@ -183,6 +238,41 @@ export interface components {
             /** Row */
             row: number;
         };
+        /** SummaryResponse */
+        SummaryResponse: {
+            /**
+             * Generatedat
+             * Format: date-time
+             */
+            generatedAt: string;
+            /** Summary */
+            summary: string;
+            /**
+             * Weekstart
+             * Format: date
+             */
+            weekStart: string;
+        };
+        /**
+         * SummaryTransaction
+         * @description One expense of the week being summarized, as sent by the caller.
+         */
+        SummaryTransaction: {
+            /** Amount */
+            amount: number;
+            /**
+             * Currency
+             * @default EUR
+             */
+            currency: string;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Description */
+            description: string;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -195,6 +285,20 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /**
+         * WeeklyData
+         * @description The summarize request payload: one week of expenses plus context.
+         */
+        WeeklyData: {
+            lastWeek: components["schemas"]["LastWeekTotals"];
+            /** Thisweek */
+            thisWeek: components["schemas"]["SummaryTransaction"][];
+            /**
+             * Weekstart
+             * Format: date
+             */
+            weekStart: string;
         };
     };
     responses: never;
@@ -287,6 +391,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    summarize_week_api_genai_summarize_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WeeklyData"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SummaryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    latest_summary_api_genai_summarize_latest_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SummaryResponse"];
                 };
             };
         };

@@ -15,15 +15,27 @@ Upload file (multipart/form-data) → send to AI Service for categorization → 
 
 ## API
 
-| Method | Endpoint                   | Purpose                                          |
-| ------ | -------------------------- | ------------------------------------------------ |
-| POST   | `/api/transactions/import` | Import transactions from a multipart file upload |
-| POST   | `/api/transactions`        | Create a transaction                             |
-| GET    | `/api/transactions`        | List transaction history (optionally filtered)   |
-| GET    | `/api/transactions/{id}`   | Get a single transaction by id                   |
-| PATCH  | `/api/transactions/{id}`   | Update a transaction                             |
-| DELETE | `/api/transactions/{id}`   | Delete a transaction                             |
-| GET    | `/api/transactions/spend`  | Get spend totals per category for the user       |
+| Method | Endpoint                          | Purpose                                                          |
+| ------ | --------------------------------- | ---------------------------------------------------------------- |
+| POST   | `/api/transactions/import`        | Import transactions from a multipart file upload                 |
+| POST   | `/api/transactions`               | Create a transaction                                             |
+| GET    | `/api/transactions`               | List transaction history (optionally filtered)                   |
+| GET    | `/api/transactions/{id}`          | Get a single transaction by id                                   |
+| PATCH  | `/api/transactions/{id}`          | Update a transaction                                             |
+| DELETE | `/api/transactions/{id}`          | Delete a transaction                                             |
+| GET    | `/api/transactions/spend`         | Get spend totals per category for the user                       |
+| GET    | `/api/transactions/weekly-report` | This week's expenses + last week's totals — the AI summary input |
+
+## Weekly summary scheduler (US-11)
+
+`WeeklySummaryJob` runs on a cron (default Sunday 20:00 Europe/Berlin,
+`summary.cron` / `summary.zone` in `application.yaml`, overridable via
+`SUMMARY_CRON` and `SUMMARY_ZONE`). For every user with a transaction in the
+last two weeks it builds the same `WeeklyReport` the endpoint above serves and
+posts it to genai-service's network-internal `POST /internal/summarize`. The
+scheduler lives here rather than in genai because a cron holds no user JWT —
+this service owns the transaction data and can read it directly. One failing
+user never blocks the rest; genai's `422 NOT_ENOUGH_DATA` counts as "skipped".
 
 ## Class diagram
 

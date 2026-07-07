@@ -37,6 +37,18 @@ vi.mock('@/features/dashboard', () => ({
   BudgetBars: () => null,
 }));
 
+vi.mock('@/features/summary', () => ({
+  WeeklySummaryCard: () => null,
+  useWeeklySummary: () => ({
+    summary: null,
+    loading: false,
+    error: false,
+    generating: false,
+    generate: vi.fn(),
+    retry: vi.fn(),
+  }),
+}));
+
 describe('DashboardPage', () => {
   beforeEach(() => vi.clearAllMocks());
 

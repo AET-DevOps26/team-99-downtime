@@ -1,6 +1,24 @@
 {
   "components": {
     "schemas": {
+      "Entry": {
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "date": {
+            "format": "date",
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "FreeTextRequest": {
         "properties": {
           "text": {
@@ -26,6 +44,18 @@
               "$ref": "#/components/schemas/SkippedRow"
             },
             "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "LastWeek": {
+        "properties": {
+          "count": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "total": {
+            "type": "number"
           }
         },
         "type": "object"
@@ -196,6 +226,24 @@
           },
           "id": {
             "format": "uuid",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "WeeklyReport": {
+        "properties": {
+          "lastWeek": {
+            "$ref": "#/components/schemas/LastWeek"
+          },
+          "thisWeek": {
+            "items": {
+              "$ref": "#/components/schemas/Entry"
+            },
+            "type": "array"
+          },
+          "weekStart": {
+            "format": "date",
             "type": "string"
           }
         },
@@ -421,6 +469,26 @@
                     "$ref": "#/components/schemas/SpendEntry"
                   },
                   "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "transaction-controller"
+        ]
+      }
+    },
+    "/api/transactions/weekly-report": {
+      "get": {
+        "operationId": "weeklyReport",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyReport"
                 }
               }
             },

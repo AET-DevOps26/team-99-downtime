@@ -6,7 +6,7 @@ import json
 import httpx
 import pytest
 
-from src import categorize as categorize_module
+from src import llm as llm_module
 from src.categorize import (
     LlmUnavailableError,
     TooVagueError,
@@ -134,10 +134,12 @@ def test_parse_file_maps_invalid_rows_to_llm_unavailable(llm):
 
 
 def test_transport_errors_are_wrapped_as_llm_unavailable(monkeypatch):
+    # The wrapping moved into the shared llm seam (src/llm.py) alongside the
+    # weekly-summary work; patch the module attribute categorize calls through.
     async def fake_chat(messages):
         raise httpx.ConnectError("gateway down")
 
-    monkeypatch.setattr(categorize_module, "_chat", fake_chat)
+    monkeypatch.setattr(llm_module, "chat", fake_chat)
 
     with pytest.raises(LlmUnavailableError, match="gateway down"):
         _run(categorize("coffee 3", ["Dining"]))

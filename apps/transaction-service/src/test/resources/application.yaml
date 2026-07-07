@@ -18,3 +18,7 @@ services:
     url: http://budget-service:8082
   genai:
     url: http://genai-service:8000
+summary:
+  # Same shape as production; tests invoke the job directly, never via the clock.
+  cron: 0 0 20 * * SUN
+  zone: Europe/Berlin

@@ -26,4 +26,11 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
           + "GROUP BY t.categoryId")
   List<SpendEntry> findSpendByCategory(
       @Param("userId") String userId, @Param("start") LocalDate start, @Param("end") LocalDate end);
+
+  List<Transaction> findByUserIdAndDateBetweenOrderByDateAsc(
+      String userId, LocalDate start, LocalDate end);
+
+  /** Users the weekly summary job generates for: anyone with a transaction since {@code since}. */
+  @Query("SELECT DISTINCT t.userId FROM Transaction t WHERE t.date >= :since")
+  List<String> findActiveUserIds(@Param("since") LocalDate since);
 }

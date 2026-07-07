@@ -12,7 +12,8 @@ import json
 import httpx
 from pydantic import BaseModel, Field, ValidationError
 
-from . import config
+from . import llm
+from .llm import LlmUnavailableError
 
 
 class ParsedExpense(BaseModel):
@@ -44,10 +45,6 @@ class TooVagueError(Exception):
 
 class UnreadableFileError(Exception):
     """Nothing in the uploaded content looks like expense data."""
-
-
-class LlmUnavailableError(Exception):
-    """The LLM gateway was unreachable or returned something unusable."""
 
 
 _SYSTEM_PROMPT = """\
@@ -105,22 +102,6 @@ Rules:
 """
 
 
-async def _chat(messages: list[dict]) -> str:
-    """One chat-completions round-trip; returns the assistant message text."""
-    async with httpx.AsyncClient(timeout=config.LLM_TIMEOUT_SECONDS) as client:
-        response = await client.post(
-            f"{config.LLM_BASE_URL}/chat/completions",
-            headers={"Authorization": f"Bearer {config.LLM_API_KEY}"},
-            json={
-                "model": config.LLM_MODEL,
-                "messages": messages,
-                "temperature": 0,
-            },
-        )
-        response.raise_for_status()
-        return response.json()["choices"][0]["message"]["content"]
-
-
 def _extract_json(text: str) -> dict:
     """Parse the model reply, tolerating ```json fences or stray prose."""
     start, end = text.find("{"), text.rfind("}")
@@ -136,7 +117,7 @@ async def _ask(prompt_template: str, categories: list[str], user_content: str) -
         categories=", ".join(categories),
     )
     try:
-        reply = await _chat(
+        reply = await llm.chat(
             [
                 {"role": "system", "content": prompt},
                 {"role": "user", "content": user_content},
