@@ -119,7 +119,7 @@
     },
     "groups": {
       "apps": {
-        "projects": ["*"],
+        "projects": ["*", "!client-e2e"],
         "projectsRelationship": "fixed",
         "docker": { "registryUrl": "ghcr.io" }
       }
