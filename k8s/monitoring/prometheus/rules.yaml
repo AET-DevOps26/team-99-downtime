@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-rules
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/part-of: t99-observability
+data:
+  alerts.yaml: |
+    groups:
+      - name: t99-availability
+        rules:
+          - alert: ServiceDown
+            expr: up{job="kubernetes-pods"} == 0
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Service {{ $labels.service }} is down"
+              description: "Prometheus has been unable to scrape {{ $labels.pod }} ({{ $labels.service }}) for more than 2 minutes."
+
+      - name: t99-traffic
+        rules:
+          - alert: HighHttpErrorRate
+            expr: |
+              sum by (application) (rate(http_server_requests_seconds_count{status=~"5.."}[5m]))
+                /
+              sum by (application) (rate(http_server_requests_seconds_count[5m]))
+                > 0.05
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High 5xx error rate on {{ $labels.application }}"
+              description: "{{ $labels.application }} is returning more than 5% server errors over the last 5 minutes."
+
+          - alert: HighRequestLatencyP95
+            expr: |
+              histogram_quantile(0.95,
+                sum by (application, le) (rate(http_server_requests_seconds_bucket[5m]))
+              ) > 1
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Slow responses on {{ $labels.application }}"
+              description: "p95 latency for {{ $labels.application }} has exceeded 1s for 10 minutes."
+
+      - name: t99-runtime
+        rules:
+          - alert: JvmHeapPressure
+            expr: |
+              sum by (application) (jvm_memory_used_bytes{area="heap"})
+                /
+              sum by (application) (jvm_memory_max_bytes{area="heap"})
+                > 0.9
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "JVM heap pressure on {{ $labels.application }}"
+              description: "{{ $labels.application }} has used more than 90% of its max heap for 10 minutes; investigate for leaks or bump limits."

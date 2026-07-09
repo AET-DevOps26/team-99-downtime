@@ -1,0 +1,26 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: local-compose
+
+rule_files:
+  - /etc/prometheus/rules/alerts.yaml
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: expenseflow-services
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['transaction-service:8080']
+        labels:
+          service: transaction
+      - targets: ['notification-service:8081']
+        labels:
+          service: notification
+      - targets: ['budget-service:8082']
+        labels:
+          service: budget

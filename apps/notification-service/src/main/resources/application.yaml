@@ -23,3 +23,21 @@ auth:
 springdoc:
   api-docs:
     path: /api/notifications/v3/api-docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      version: ${APP_VERSION:dev}
