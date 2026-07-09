@@ -5,7 +5,7 @@ name: team-99-downtime
 
 services:
   prometheus:
-    image: prom/prometheus:v2.54.1
+    image: prom/prometheus:v3.5.5
     restart: unless-stopped
     command:
       - --config.file=/etc/prometheus/prometheus.yml
@@ -21,7 +21,7 @@ services:
     networks: [team99]
 
   grafana:
-    image: grafana/grafana:11.2.0
+    image: grafana/grafana:12.4.5
     restart: unless-stopped
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}

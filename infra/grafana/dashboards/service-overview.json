@@ -50,7 +50,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "sum(up{job=\"kubernetes-pods\"})",
+          "expr": "sum(up{job=~\"kubernetes-pods|expenseflow-services\"})",
           "legendFormat": "targets up",
           "refId": "A"
         }
@@ -92,7 +92,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "expr": "max by (service) (up{job=\"kubernetes-pods\", service!=\"\"})",
+          "expr": "max by (service) (up{job=~\"kubernetes-pods|expenseflow-services\", service!=\"\"})",
           "legendFormat": "{{service}}",
           "refId": "A"
         }

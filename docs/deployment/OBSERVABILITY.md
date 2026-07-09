@@ -36,8 +36,9 @@ kubectl -n monitoring port-forward svc/grafana 3000:3000
 kubectl -n monitoring port-forward svc/prometheus 9090:9090
 ```
 
-> Change the Grafana admin password (the `grafana-admin` Secret ships
-> `admin`/`admin` as a placeholder) before any real deployment.
+> `apply.sh` generates a random Grafana admin password on first run and prints
+> it once. Read it later with:
+> `kubectl -n monitoring get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d`
 
 ## Dashboards
 
