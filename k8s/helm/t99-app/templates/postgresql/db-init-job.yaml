@@ -56,6 +56,18 @@ spec:
       containers:
         - name: db-init
           image: "postgres:{{ .Values.postgresql.image.tag }}"
+          # The namespace ResourceQuota tracks limits.cpu/limits.memory, so a
+          # pod without explicit limits is rejected at admission — the job then
+          # never starts a pod and dies via activeDeadlineSeconds (#138). Keep
+          # these well under the quota headroom: the pod is additive while the
+          # previous release is still running.
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
           command:
             - sh
             - -ec
