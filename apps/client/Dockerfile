@@ -14,7 +14,7 @@ CMD ["sh", "-c", "bun install --frozen-lockfile && bun nx serve client --host 0.
 #prod
 FROM joseluisq/static-web-server:2-alpine AS prod
 ENV SERVER_ROOT=/public \
-    SERVER_PAGE_FALLBACK=/public/index.html \
+    SERVER_FALLBACK_PAGE=/public/index.html \
     SERVER_COMPRESSION=true \
     SERVER_CACHE_CONTROL_HEADERS=true
 COPY dist/apps/client/client /public

@@ -1,0 +1,17 @@
+{
+  "name": "client-e2e",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/client-e2e/src",
+  "projectType": "application",
+  "tags": [],
+  "implicitDependencies": ["client"],
+  "targets": {
+    "e2e": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/client-e2e",
+        "command": "playwright test"
+      }
+    }
+  }
+}

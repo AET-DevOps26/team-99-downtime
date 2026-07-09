@@ -61,6 +61,7 @@
     "@nx/web": "22.7.1",
     "@nx/workspace": "22.7.1",
     "@nxlv/python": "^22.1.3",
+    "@playwright/test": "^1.61.1",
     "@react-router/dev": "8",
     "@swc-node/register": "~1.11.1",
     "@swc/core": "~1.15.5",

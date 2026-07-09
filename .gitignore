@@ -119,6 +119,12 @@ infra/ansible/inventory.ini
 *.retry
 .react-router/
 
+# --- Playwright (client-e2e) ---
+playwright-report/
+test-results/
+# saved e2e user sessions
+apps/client-e2e/playwright/.auth/
+
 
 # AI stuff
 .superpowers

@@ -22,7 +22,13 @@ export function Header() {
               <p className="text-sm font-medium leading-none">{user.name}</p>
               <p className="text-xs text-muted-foreground">{user.email}</p>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => void logout()} title="Sign out">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => void logout()}
+              title="Sign out"
+              aria-label="Sign out"
+            >
               <LogOutIcon className="size-4" />
             </Button>
           </div>
