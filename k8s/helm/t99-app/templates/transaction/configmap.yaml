@@ -10,3 +10,5 @@ data:
   AUTH_JWKS_URI: http://{{ .Release.Name }}-auth:3000/api/auth/jwks
   AUTH_ISSUER: https://{{ .Values.domain }}
   JAVA_TOOL_OPTIONS: {{ .Values.transactionService.javaOpts | quote }}
+  BUDGET_SERVICE_URL: http://{{ .Release.Name }}-budget:8082
+  GENAI_SERVICE_URL: http://{{ .Release.Name }}-genai:8000
