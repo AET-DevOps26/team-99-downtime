@@ -21,6 +21,11 @@ spec:
       labels:
         {{- include "t99-app.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: notification
+        monitoring: "true"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /actuator/prometheus
+        prometheus.io/port: "8081"
     spec:
       containers:
         - name: notification
@@ -36,6 +41,8 @@ spec:
                   key: password
             - name: SPRING_DATASOURCE_PASSWORD
               value: "$(DB_PASSWORD)"
+            - name: APP_VERSION
+              value: {{ .Values.notificationService.image.tag | default .Chart.AppVersion | quote }}
           envFrom:
             - configMapRef:
                 name: {{ .Release.Name }}-notification-config

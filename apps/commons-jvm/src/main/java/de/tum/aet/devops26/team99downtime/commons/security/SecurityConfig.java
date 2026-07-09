@@ -50,6 +50,8 @@ public class SecurityConfig {
             auth ->
                 auth.requestMatchers("/actuator/health", "/actuator/health/**")
                     .permitAll()
+                    .requestMatchers("/actuator/prometheus", "/actuator/info")
+                    .permitAll()
                     .requestMatchers(new RegexRequestMatcher(".*/v3/api-docs(/.*|\\.yaml)?", null))
                     .permitAll()
                     .anyRequest()
