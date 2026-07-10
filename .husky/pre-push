@@ -2,16 +2,16 @@ set -e
 
 # ── squawk: lint changed SQL migrations ────────────────────────────────────────
 modified_migrations=$(git diff --diff-filter=d --name-only origin/main...HEAD \
-  | grep 'src/main/resources/db/migration/.*\.sql$' | tr '\n' ' ')
+  | grep 'src/main/resources/db/migration/.*\.sql$')
 
 if [ -n "$modified_migrations" ]; then
-  bunx squawk-cli -e prefer-text-field,prefer-bigint-over-int,prefer-timestamp-tz,prefer-robust-stmts,ban-char-field $modified_migrations
+  echo "$modified_migrations" | xargs bunx squawk-cli -e prefer-text-field,prefer-bigint-over-int,prefer-timestamp-tz,prefer-robust-stmts,ban-char-field
 fi
 
 # ── openapi drift: regenerate specs when API source files changed ───────────────
 # Only runs when Java controllers/DTOs, Python routes, or auth-service TS changed.
 openapi_sources=$(git diff --diff-filter=d --name-only origin/main...HEAD \
-  | grep -E 'apps/(transaction|budget|notification)-service/src/main/.*\.java$|apps/genai-service/.*\.py$|apps/auth-service/src/.*\.ts$' \
+  | grep -E 'apps/(transaction|budget|notification)-service/src/main/.*\.java$|apps/genai-service/.*\.py$|apps/auth-service/src/auth\.ts$' \
   | head -1)
 
 if [ -n "$openapi_sources" ]; then
