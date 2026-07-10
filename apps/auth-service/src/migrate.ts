@@ -39,12 +39,21 @@ if (rows.length === 0) {
 
   const generatedId = result.user.id;
 
-  // Pin to fixed UUID so other services can reference it in their Flyway seeds.
+  // Updating the user PK is blocked by FK constraints on session.userId and
+  // account.userId. Disable triggers on "user" so the PK update goes through,
+  // then fix the referencing rows — their outgoing FK checks still fire and
+  // pass because DEMO_USER_ID already exists in "user" at that point.
+  await pool.query('ALTER TABLE "user" DISABLE TRIGGER ALL');
   await pool.query('UPDATE "user" SET id = $1 WHERE id = $2', [DEMO_USER_ID, generatedId]);
-  await pool.query('UPDATE account SET user_id = $1 WHERE user_id = $2', [
+  await pool.query('UPDATE session SET "userId" = $1 WHERE "userId" = $2', [
     DEMO_USER_ID,
     generatedId,
   ]);
+  await pool.query('UPDATE account SET "userId" = $1 WHERE "userId" = $2', [
+    DEMO_USER_ID,
+    generatedId,
+  ]);
+  await pool.query('ALTER TABLE "user" ENABLE TRIGGER ALL');
 
   console.log(`auth-migrate: demo user seeded (${DEMO_EMAIL}).`);
 } else {
