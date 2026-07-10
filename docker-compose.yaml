@@ -111,6 +111,7 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-devuser}:${POSTGRES_PASSWORD:-devpass}@postgres:5432/auth_db
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      DEMO_USER_PASSWORD: ${DEMO_USER_PASSWORD:-demodemo1234!}
     # Runs the programmatic migration (better-auth/db/migration) via the service's
     # own config + pg adapter — no CLI, no native deps to compile in the image.
     command: sh -c "cd apps/auth-service && bun run src/migrate.ts"
