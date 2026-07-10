@@ -1,9 +1,10 @@
-[squawk]
-pg-version = "16"
-exclude = [
+pg_version = "16"
+excluded_rules = [
     "prefer-text-field",
     "prefer-bigint-over-int",
     "prefer-timestamp-tz",
     "prefer-robust-stmts",
     "ban-char-field",
+    "require-timeout-settings",
+    "require-concurrent-index-creation",
 ]

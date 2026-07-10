@@ -22,8 +22,18 @@ if (toBeCreated.length === 0 && toBeAdded.length === 0) {
 // transaction-service can reference it without cross-service coordination.
 const DEMO_USER_ID = '00000000-0000-0000-0000-000000000099';
 const DEMO_EMAIL = 'demo@expenseflow.dev';
-const DEMO_PASSWORD = 'demodemo1234!';
 const DEMO_NAME = 'Demo User';
+
+// Use a fixed password when DEMO_USER_PASSWORD is set (stage/demo deployments).
+// Without it the account is locked with a random password — it still gets the
+// fixed UUID so Flyway seed data in other services can reference it, but nobody
+// can log in without deliberately setting the env var.
+const DEMO_PASSWORD = process.env.DEMO_USER_PASSWORD ?? crypto.randomUUID();
+if (!process.env.DEMO_USER_PASSWORD) {
+  console.log(
+    'auth-migrate: DEMO_USER_PASSWORD not set — demo account locked with random password.'
+  );
+}
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 

@@ -10,3 +10,5 @@ CREATE TABLE IF NOT EXISTS notifications (
     read_at       TIMESTAMP,
     PRIMARY KEY (id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications (user_id);

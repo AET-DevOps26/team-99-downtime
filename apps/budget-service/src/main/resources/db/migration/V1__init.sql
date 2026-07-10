@@ -15,5 +15,6 @@ CREATE TABLE IF NOT EXISTS threshold_flags (
     threshold   INTEGER      NOT NULL,
     fired_at    TIMESTAMP    NOT NULL,
     PRIMARY KEY (id),
+    CONSTRAINT fk_threshold_flags_category FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE CASCADE,
     CONSTRAINT uq_threshold_flags UNIQUE (user_id, category_id, "month", threshold)
 );

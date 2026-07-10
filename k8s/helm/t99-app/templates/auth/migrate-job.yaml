@@ -34,6 +34,12 @@ spec:
                 secretKeyRef:
                   name: t99-app-secrets
                   key: jwtSigningKey
+            - name: DEMO_USER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: t99-app-secrets
+                  key: demoUserPassword
+                  optional: true
           envFrom:
             - configMapRef:
                 name: {{ .Release.Name }}-auth-config
