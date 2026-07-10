@@ -83,6 +83,34 @@ jobs:
             exit 1
           fi
 
+  squawk:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Check for migration file changes
+        id: migration-changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            migrations:
+              - 'apps/**/src/main/resources/db/migration/**/*.sql'
+
+      - name: Install squawk
+        if: steps.migration-changes.outputs.migrations == 'true'
+        run: |
+          curl -fsSL https://github.com/sbdchd/squawk/releases/download/v2.59.0/squawk-linux-x86_64 \
+            -o /usr/local/bin/squawk
+          chmod +x /usr/local/bin/squawk
+
+      - name: Lint SQL migrations
+        if: steps.migration-changes.outputs.migrations == 'true'
+        run: find apps -path '*/src/main/resources/db/migration/*.sql' | xargs squawk
+
   build-and-test:
     runs-on: ubuntu-latest
     # lint is skipped on merge_group, hence the always() + skipped handling;

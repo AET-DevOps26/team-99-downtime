@@ -1,33 +1,26 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: batch/v1
+kind: Job
 metadata:
-  name: {{ .Release.Name }}-auth
+  name: {{ .Release.Name }}-auth-migrate-{{ .Release.Revision }}
   labels:
     {{- include "t99-app.labels" . | nindent 4 }}
-    app.kubernetes.io/component: auth
+    app.kubernetes.io/component: auth-migrate
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 spec:
-  replicas: 1
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 0
-      maxUnavailable: 1
-  selector:
-    matchLabels:
-      {{- include "t99-app.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: auth
+  backoffLimit: 2
   template:
     metadata:
       labels:
         {{- include "t99-app.selectorLabels" . | nindent 8 }}
-        app.kubernetes.io/component: auth
+        app.kubernetes.io/component: auth-migrate
     spec:
+      restartPolicy: Never
       containers:
-        - name: auth
+        - name: migrate
           image: {{ include "t99-app.image" (dict "registry" .Values.global.imageRegistry "repo" .Values.authService.image.repository "tag" .Values.authService.image.tag) }}
-          ports:
-            - name: http
-              containerPort: 3000
+          command: ["bun", "run", "src/migrate.ts"]
           env:
             - name: DB_PASSWORD
               valueFrom:
@@ -44,18 +37,5 @@ spec:
           envFrom:
             - configMapRef:
                 name: {{ .Release.Name }}-auth-config
-          livenessProbe:
-            httpGet:
-              path: /api/auth/ok
-              port: 3000
-            initialDelaySeconds: 30
-            periodSeconds: 10
-            failureThreshold: 6
-          readinessProbe:
-            httpGet:
-              path: /api/auth/ok
-              port: 3000
-            initialDelaySeconds: 5
-            periodSeconds: 5
           resources:
             {{- toYaml .Values.authService.resources | nindent 12 }}

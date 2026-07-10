@@ -1,0 +1,11 @@
+[squawk]
+pg-version = "16"
+rules = [
+    "require-concurrent-index-creation",
+    "adding-not-null-column",
+    "ban-drop-column",
+    "ban-drop-table",
+    "rename-column",
+    "rename-table",
+    "changing-column-type",
+]

@@ -33,6 +33,8 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	runtimeOnly("io.micrometer:micrometer-registry-prometheus")
 	runtimeOnly("org.postgresql:postgresql")
+	implementation("org.flywaydb:flyway-core")
+	runtimeOnly("org.flywaydb:flyway-database-postgresql")
 	// bootRun-only classpath (excluded from the jar): lets generateOpenApiDocs
 	// boot against embedded H2 instead of needing a Postgres container.
 	developmentOnly("com.h2database:h2")

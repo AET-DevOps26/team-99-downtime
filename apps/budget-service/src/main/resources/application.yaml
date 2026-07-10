@@ -7,12 +7,14 @@ spring:
   jpa:
     hibernate:
       # Dev-grade schema management: Hibernate creates/updates tables from the
-      # entities on startup. Fine for the course project; switch to a Flyway
-      # migration before this is treated as production data.
-      ddl-auto: update
+      ddl-auto: validate
     # Avoid holding a DB session open through view rendering — keeps the request
     # boundary clean and silences the open-in-view startup warning.
     open-in-view: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
   security:
     oauth2:
       resourceserver:
