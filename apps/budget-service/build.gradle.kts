@@ -62,7 +62,11 @@ openApi {
 	// Cold JPA context on a CI runner can exceed the default 30 s.
 	waitTimeInSeconds.set(120)
 	customBootRun {
-		args.set(listOf("--server.port=18082"))
+		args.set(listOf(
+			"--server.port=18082",
+			"--spring.flyway.enabled=false",
+			"--spring.jpa.hibernate.ddl-auto=create-drop",
+		))
 	}
 }
 
