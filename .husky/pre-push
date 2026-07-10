@@ -5,7 +5,7 @@ modified_migrations=$(git diff --diff-filter=d --name-only origin/main...HEAD \
   | grep 'src/main/resources/db/migration/.*\.sql$' | tr '\n' ' ')
 
 if [ -n "$modified_migrations" ]; then
-  bunx squawk-cli -c .squawk.toml $modified_migrations
+  bunx squawk-cli -e prefer-text-field,prefer-bigint-over-int,prefer-timestamp-tz,prefer-robust-stmts,ban-char-field $modified_migrations
 fi
 
 # ── openapi drift: regenerate specs when API source files changed ───────────────
