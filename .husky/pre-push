@@ -24,4 +24,4 @@ if [ -n "$openapi_sources" ]; then
 fi
 
 # ── tests: run affected projects ───────────────────────────────────────────────
-bunx nx affected -t test --base=origin/main --parallel=3 --outputStyle=static
+bunx nx affected -t test --base=origin/main --parallel=3 --outputStyle=static --timeout=120
