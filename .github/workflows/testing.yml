@@ -106,6 +106,7 @@ jobs:
         if: steps.modified-migrations.outputs.file_names != ''
         with:
           files: ${{ steps.modified-migrations.outputs.file_names }}
+          config: .squawk.toml
 
   build-and-test:
     runs-on: ubuntu-latest
