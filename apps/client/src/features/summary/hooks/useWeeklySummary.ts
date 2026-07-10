@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
+import { apiErrorInfo } from '@/shared/lib/api';
 import { getLatestSummary, generateSummary, type WeeklySummary } from '../api/summaryApi';
 
 export function useWeeklySummary() {
@@ -34,8 +35,13 @@ export function useWeeklySummary() {
       } else {
         toast.info('Not enough expenses this week for a summary yet — track a few more first.');
       }
-    } catch {
-      toast.error('Could not generate the summary');
+    } catch (err) {
+      const info = apiErrorInfo(err);
+      toast.error(
+        info?.status === 502 && info.code === 'LLM_UNAVAILABLE'
+          ? 'The AI service is temporarily unavailable — please try again later.'
+          : 'Could not generate the summary'
+      );
     } finally {
       setGenerating(false);
     }

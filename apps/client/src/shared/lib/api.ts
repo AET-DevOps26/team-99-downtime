@@ -23,7 +23,7 @@ export class ApiError extends Error {
   }
 }
 
-/** Status plus the backend's error contract (`code` = `error`, `fields` for 400s). */
+/** Status plus the backend's error contract (`code` = `error`/`detail`, `fields` for 400s). */
 export interface ApiErrorInfo {
   status: number;
   code?: string;
@@ -33,8 +33,16 @@ export interface ApiErrorInfo {
 /** Reads status/code/fields off an {@link ApiError}, or undefined for any other error. */
 export function apiErrorInfo(err: unknown): ApiErrorInfo | undefined {
   if (!(err instanceof ApiError)) return undefined;
-  const body = err.body as { error?: string; fields?: Record<string, string> } | undefined;
-  return { status: err.status, code: body?.error, fields: body?.fields };
+  const body = err.body as
+    | { error?: unknown; detail?: unknown; fields?: Record<string, string> }
+    | undefined;
+  const code =
+    typeof body?.error === 'string'
+      ? body.error
+      : typeof body?.detail === 'string'
+        ? body.detail
+        : undefined;
+  return { status: err.status, code, fields: body?.fields };
 }
 
 /**

@@ -27,9 +27,16 @@ export type ImportResult = {
   skipped: SkippedRow[];
 };
 
-export async function listTransactions(page = 0, size = 20): Promise<TransactionPage> {
+export async function listTransactions(
+  page = 0,
+  size = 20,
+  signal?: AbortSignal
+): Promise<TransactionPage> {
   return unwrap(
-    await apiClient.GET('/api/transactions', { params: { query: { page, size } } })
+    await apiClient.GET('/api/transactions', {
+      params: { query: { page, size } },
+      signal,
+    })
   ) as TransactionPage;
 }
 

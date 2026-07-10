@@ -129,7 +129,6 @@ export function useManageCategories(open: boolean, onOpenChange: (open: boolean)
 
     if (blocked) {
       setRows(validated);
-      toast.error('Fix the highlighted fields');
       return;
     }
 
@@ -137,7 +136,8 @@ export function useManageCategories(open: boolean, onOpenChange: (open: boolean)
     setSaving(true);
     const working = [...validated];
     const stillRemoved: string[] = [];
-    let failed = false;
+    let deleteFailed = false;
+    let rowFailed = false;
 
     for (const id of removedIds) {
       try {
@@ -146,7 +146,7 @@ export function useManageCategories(open: boolean, onOpenChange: (open: boolean)
         // 404 = already gone, which is exactly the goal — not a failure.
         if (error instanceof ApiError && error.status === 404) continue;
         stillRemoved.push(id);
-        failed = true;
+        deleteFailed = true;
       }
     }
 
@@ -163,7 +163,7 @@ export function useManageCategories(open: boolean, onOpenChange: (open: boolean)
         }
       } catch (error) {
         working[i] = { ...row, error: messageFor(error) };
-        failed = true;
+        rowFailed = true;
       }
     }
 
@@ -171,10 +171,8 @@ export function useManageCategories(open: boolean, onOpenChange: (open: boolean)
     setRemovedIds(stillRemoved);
     setSaving(false);
 
-    if (failed) {
-      toast.error('Some changes could not be saved');
-      return;
-    }
+    if (deleteFailed) toast.error('Some categories could not be deleted');
+    if (deleteFailed || rowFailed) return;
     toast.success('Categories saved');
     onOpenChange(false);
   };

@@ -1,4 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
+import { toast } from 'sonner';
 
 import { useTransactions } from './useTransactions';
 import * as api from '../api/transactionApi';
@@ -7,6 +8,19 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const page = (content: api.Transaction[]): api.TransactionPage => ({
   content,
+  empty: content.length === 0,
+  first: true,
+  last: true,
+  numberOfElements: content.length,
+  pageable: {
+    offset: 0,
+    pageNumber: 0,
+    pageSize: 20,
+    paged: true,
+    sort: { empty: true, sorted: false, unsorted: true },
+    unpaged: false,
+  },
+  sort: { empty: true, sorted: false, unsorted: true },
   totalPages: 1,
   totalElements: content.length,
   number: 0,
@@ -23,7 +37,38 @@ const tx = (id: string): api.Transaction => ({
   createdAt: '2026-06-15T12:00:00',
 });
 
+describe('useTransactions.load', () => {
+  beforeEach(() => vi.clearAllMocks());
+  afterEach(() => vi.restoreAllMocks());
+
+  it('aborts the active page load when the hook unmounts', async () => {
+    let loadSignal: AbortSignal | undefined;
+    vi.spyOn(api, 'listTransactions').mockImplementation((_page, _size, signal) => {
+      loadSignal = signal;
+      return new Promise<api.TransactionPage>(() => undefined);
+    });
+
+    const { unmount } = renderHook(() => useTransactions(20));
+    await waitFor(() => expect(loadSignal).toBeDefined());
+
+    unmount();
+
+    expect(loadSignal?.aborted).toBe(true);
+  });
+
+  it('exposes other load failures inline without also showing a toast', async () => {
+    vi.spyOn(api, 'listTransactions').mockRejectedValue(new Error('unavailable'));
+
+    const { result } = renderHook(() => useTransactions(20));
+
+    await waitFor(() => expect(result.current.error).toBe(true));
+    expect(result.current.loading).toBe(false);
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+});
+
 describe('useTransactions.deleteOptimistic', () => {
+  beforeEach(() => vi.clearAllMocks());
   afterEach(() => vi.restoreAllMocks());
 
   it('removes the row immediately and keeps it removed on success', async () => {
@@ -41,6 +86,7 @@ describe('useTransactions.deleteOptimistic', () => {
     });
 
     expect(api.deleteTransaction).toHaveBeenCalledWith('a');
+    expect(toast.success).toHaveBeenCalledWith('Expense deleted');
     await waitFor(() =>
       expect(result.current.transactions.find((t) => t.id === 'a')).toBeUndefined()
     );
@@ -58,6 +104,7 @@ describe('useTransactions.deleteOptimistic', () => {
     });
 
     expect(result.current.transactions.map((t) => t.id).sort()).toEqual(['a', 'b']);
+    expect(toast.error).toHaveBeenCalledWith('Could not delete expense');
   });
 
   it('does not reconcile the page the user paged away from mid-delete', async () => {
