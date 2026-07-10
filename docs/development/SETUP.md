@@ -206,7 +206,8 @@ This project uses [Husky](https://typicode.github.io/husky/) to enforce code qua
 **pre-push** — runs before every `git push`:
 
 1. **squawk** lints any SQL migration files changed relative to `origin/main`. Requires `brew install squawk` (fails with a helpful message if not installed and migrations were changed).
-2. **`nx affected -t test`** runs tests for all projects affected by the push.
+2. **OpenAPI drift check** — if any Java controller/DTO, Python route, or auth-service TypeScript file changed, regenerates all specs (`bun run openapi`) and fails if the committed files are out of date. This is scoped to avoid the Gradle startup cost on unrelated pushes.
+3. **`nx affected -t test`** runs tests for all projects affected by the push.
 
 **commit-msg** — enforces [Conventional Commits](https://www.conventionalcommits.org/) via commitlint.
 
