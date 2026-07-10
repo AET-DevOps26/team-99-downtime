@@ -1,5 +1,5 @@
-import { Pool } from 'pg';
 import { getMigrations } from 'better-auth/db/migration';
+import { Pool } from 'pg';
 
 import { auth } from './auth';
 
@@ -49,21 +49,29 @@ if (rows.length === 0) {
 
   const generatedId = result.user.id;
 
-  // Updating the user PK is blocked by FK constraints on session.userId and
-  // account.userId. Disable triggers on "user" so the PK update goes through,
-  // then fix the referencing rows — their outgoing FK checks still fire and
-  // pass because DEMO_USER_ID already exists in "user" at that point.
-  await pool.query('ALTER TABLE "user" DISABLE TRIGGER ALL');
-  await pool.query('UPDATE "user" SET id = $1 WHERE id = $2', [DEMO_USER_ID, generatedId]);
-  await pool.query('UPDATE session SET "userId" = $1 WHERE "userId" = $2', [
-    DEMO_USER_ID,
-    generatedId,
-  ]);
-  await pool.query('UPDATE account SET "userId" = $1 WHERE "userId" = $2', [
-    DEMO_USER_ID,
-    generatedId,
-  ]);
-  await pool.query('ALTER TABLE "user" ENABLE TRIGGER ALL');
+  // Wrap the PK rename in a transaction so a mid-flight failure leaves the
+  // database consistent. PostgreSQL rolls back DDL (DISABLE/ENABLE TRIGGER)
+  // together with the DML on ROLLBACK, so no manual re-enable is needed on error.
+  await pool.query('BEGIN');
+  try {
+    // Disable FK triggers so the PK update on "user" isn't blocked by
+    // session.userId / account.userId referencing it.
+    await pool.query('ALTER TABLE "user" DISABLE TRIGGER ALL');
+    await pool.query('UPDATE "user" SET id = $1 WHERE id = $2', [DEMO_USER_ID, generatedId]);
+    await pool.query('UPDATE session SET "userId" = $1 WHERE "userId" = $2', [
+      DEMO_USER_ID,
+      generatedId,
+    ]);
+    await pool.query('UPDATE account SET "userId" = $1 WHERE "userId" = $2', [
+      DEMO_USER_ID,
+      generatedId,
+    ]);
+    await pool.query('ALTER TABLE "user" ENABLE TRIGGER ALL');
+    await pool.query('COMMIT');
+  } catch (err) {
+    await pool.query('ROLLBACK');
+    throw err;
+  }
 
   console.log(`auth-migrate: demo user seeded (${DEMO_EMAIL}).`);
 } else {

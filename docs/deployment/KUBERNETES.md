@@ -134,10 +134,10 @@ All Spring Boot services get `JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=75.0 -XX:
 
 A demo user is seeded automatically on every fresh deploy. No manual steps required.
 
-| Field    | Value                  |
-| -------- | ---------------------- |
-| Email    | `demo@expenseflow.dev` |
-| Password | `demodemo1234!`        |
+| Field    | Value                                                                            |
+| -------- | -------------------------------------------------------------------------------- |
+| Email    | `demo@expenseflow.dev`                                                           |
+| Password | set via `demoUserPassword` in `t99-app-secrets`; random locked password if unset |
 
 Pre-loaded data: 6 budget categories (Groceries, Transport, Dining, Entertainment, Utilities, Health) and 35 transactions across the 3 months prior to the deploy date.
 
@@ -152,21 +152,33 @@ Delete the relevant rows and re-deploy (or re-trigger the migrate Job manually):
 
 ```sh
 # Remove demo user from auth
-kubectl exec -n <namespace> deploy/t99-postgresql -- \
+kubectl exec -n <namespace> statefulset/t99-postgresql -- \
   psql -U postgres -d auth_db \
   -c "DELETE FROM \"user\" WHERE email = 'demo@expenseflow.dev';"
 
 # Remove seed data from other services (Flyway re-inserts on next startup)
-kubectl exec -n <namespace> deploy/t99-postgresql -- \
+kubectl exec -n <namespace> statefulset/t99-postgresql -- \
   psql -U postgres -d budget_db \
   -c "DELETE FROM flyway_schema_history WHERE version = '2'; DELETE FROM categories WHERE user_id = '00000000-0000-0000-0000-000000000099';"
 
-kubectl exec -n <namespace> deploy/t99-postgresql -- \
+kubectl exec -n <namespace> statefulset/t99-postgresql -- \
   psql -U postgres -d transaction_db \
   -c "DELETE FROM flyway_schema_history WHERE version = '2'; DELETE FROM transactions WHERE user_id = '00000000-0000-0000-0000-000000000099';"
 ```
 
-Then run `helm upgrade t99 k8s/helm/t99-app/ ...` to re-trigger the auth migrate Job and the Flyway seeds.
+Then re-trigger the migrations and restart the affected services:
+
+```sh
+helm upgrade t99 k8s/helm/t99-app/ ...
+
+# Force budget and transaction pods to restart so Flyway V2 re-runs
+kubectl rollout restart -n <namespace> \
+  deployment/t99-budget-service \
+  deployment/t99-transaction-service
+kubectl rollout status -n <namespace> \
+  deployment/t99-budget-service \
+  deployment/t99-transaction-service
+```
 
 ## Secrets Management
 

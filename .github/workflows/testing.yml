@@ -99,7 +99,7 @@ jobs:
         id: modified-migrations
         run: |
           modified=$(git diff --diff-filter=d --name-only origin/$GITHUB_BASE_REF...origin/$GITHUB_HEAD_REF \
-            | grep 'src/main/resources/db/migration/.*\.sql$' | tr '\n' ' ')
+            | grep 'src/main/resources/db/migration/.*\.sql$' | tr '\n' ' ' || true)
           echo "$modified"
           echo "file_names=$modified" >> $GITHUB_OUTPUT
 

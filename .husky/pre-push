@@ -2,7 +2,7 @@ set -e
 
 # ── squawk: lint changed SQL migrations ────────────────────────────────────────
 modified_migrations=$(git diff --diff-filter=d --name-only origin/main...HEAD \
-  | grep 'src/main/resources/db/migration/.*\.sql$')
+  | grep 'src/main/resources/db/migration/.*\.sql$' || true)
 
 if [ -n "$modified_migrations" ]; then
   echo "$modified_migrations" | xargs bunx squawk-cli -c .squawk.toml
