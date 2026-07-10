@@ -54,6 +54,7 @@ jobs:
   # an API change must ship its spec + generated-client update in the same PR.
   openapi-drift:
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     name: OpenAPI Drift Check
     permissions:
       contents: read
@@ -89,35 +90,30 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v6
-
-      - name: Check for migration file changes
-        id: migration-changes
-        uses: dorny/paths-filter@v3
+      - uses: actions/checkout@v6
         with:
-          filters: |
-            migrations:
-              - 'apps/**/src/main/resources/db/migration/**/*.sql'
+          fetch-depth: 0
 
-      - name: Install squawk
-        if: steps.migration-changes.outputs.migrations == 'true'
+      - name: Find modified migrations
+        id: modified-migrations
         run: |
-          curl -fsSL https://github.com/sbdchd/squawk/releases/download/v2.59.0/squawk-linux-x86_64 \
-            -o /usr/local/bin/squawk
-          chmod +x /usr/local/bin/squawk
+          modified=$(git diff --diff-filter=d --name-only origin/$GITHUB_BASE_REF...origin/$GITHUB_HEAD_REF \
+            | grep 'src/main/resources/db/migration/.*\.sql$' | tr '\n' ' ')
+          echo "$modified"
+          echo "file_names=$modified" >> $GITHUB_OUTPUT
 
-      - name: Lint SQL migrations
-        if: steps.migration-changes.outputs.migrations == 'true'
-        run: find apps -path '*/src/main/resources/db/migration/*.sql' | xargs squawk
+      - uses: sbdchd/squawk-action@v2
+        if: steps.modified-migrations.outputs.file_names != ''
+        with:
+          files: ${{ steps.modified-migrations.outputs.file_names }}
 
   build-and-test:
     runs-on: ubuntu-latest
     # lint is skipped on merge_group, hence the always() + skipped handling;
     # openapi-drift runs on both events and must have passed — don't build or
     # publish containers against a stale API contract.
-    needs: [lint, openapi-drift]
-    if: always() && (needs.lint.result == 'success' || needs.lint.result == 'skipped') && needs['openapi-drift'].result == 'success'
+    needs: [lint, openapi-drift, squawk]
+    if: always() && (needs.lint.result == 'success' || needs.lint.result == 'skipped') && (needs['openapi-drift'].result == 'success' || needs['openapi-drift'].result == 'skipped') && (needs.squawk.result == 'success' || needs.squawk.result == 'skipped')
     name: Build, Test, and Publish Containers
 
     permissions:
