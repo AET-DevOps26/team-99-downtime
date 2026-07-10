@@ -106,16 +106,12 @@ apps/<service>/src/main/resources/db/migration/
 
 **Flyway does not auto-generate migrations from JPA entities.** You write the SQL yourself. Hibernate is set to `ddl-auto: validate` in production — it checks that the schema matches the entities but never modifies it. If you forget the migration, the service will fail to start with a schema validation error, which is the safety net.
 
-**squawk** lints your migration for backwards-incompatible patterns (drop column, NOT NULL without a default, non-concurrent index creation, rename). It runs locally on pre-push and in CI. Install it once:
-
-```sh
-brew install squawk
-```
+**squawk** lints your migration for backwards-incompatible patterns (drop column, NOT NULL without a default, non-concurrent index creation, rename). It runs automatically on pre-push (via `bunx`) and in CI — no installation needed.
 
 To lint manually:
 
 ```sh
-squawk apps/budget-service/src/main/resources/db/migration/V3__my_change.sql
+bunx squawk-cli apps/budget-service/src/main/resources/db/migration/V3__my_change.sql
 ```
 
 **Tests** use H2 with `ddl-auto: create-drop` — Flyway is disabled in the test profile so you don't need a Postgres instance to run tests.
@@ -205,7 +201,7 @@ This project uses [Husky](https://typicode.github.io/husky/) to enforce code qua
 
 **pre-push** — runs before every `git push`:
 
-1. **squawk** lints any SQL migration files changed relative to `origin/main`. Requires `brew install squawk` (fails with a helpful message if not installed and migrations were changed).
+1. **squawk** lints any SQL migration files changed relative to `origin/main` via `bunx squawk-cli` — no installation needed.
 2. **OpenAPI drift check** — if any Java controller/DTO, Python route, or auth-service TypeScript file changed, regenerates all specs (`bun run openapi`) and fails if the committed files are out of date. This is scoped to avoid the Gradle startup cost on unrelated pushes.
 3. **`nx affected -t test`** runs tests for all projects affected by the push.
 

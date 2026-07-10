@@ -1,17 +1,11 @@
 set -e
 
 # ── squawk: lint changed SQL migrations ────────────────────────────────────────
-# Install squawk: brew install squawk
 modified_migrations=$(git diff --diff-filter=d --name-only origin/main...HEAD \
   | grep 'src/main/resources/db/migration/.*\.sql$' | tr '\n' ' ')
 
 if [ -n "$modified_migrations" ]; then
-  if ! command -v squawk >/dev/null 2>&1; then
-    echo "squawk is not installed but migration files were changed."
-    echo "Install it with: brew install squawk"
-    exit 1
-  fi
-  squawk $modified_migrations
+  bunx squawk-cli $modified_migrations
 fi
 
 # ── openapi drift: regenerate specs when API source files changed ───────────────
