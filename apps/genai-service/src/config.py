@@ -22,3 +22,8 @@ LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://logos.aet.cit.tum.de:8080/v1")
 LLM_API_KEY = os.getenv("LLM_API_KEY", "")
 LLM_MODEL = os.getenv("LLM_MODEL", "openai/gpt-oss-120b")
 LLM_TIMEOUT_SECONDS = float(os.getenv("LLM_TIMEOUT_SECONDS", "30"))
+LLM_SKIP_STARTUP_CHECK = os.getenv("LLM_SKIP_STARTUP_CHECK", "").lower() in (
+    "1",
+    "true",
+    "yes",
+)

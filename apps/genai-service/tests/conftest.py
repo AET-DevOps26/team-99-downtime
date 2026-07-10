@@ -5,6 +5,12 @@ import pytest
 from src import llm as llm_module
 
 
+@pytest.fixture(autouse=True)
+def _skip_llm_probe(monkeypatch):
+    """Bypass the LLM startup probe in all unit tests."""
+    monkeypatch.setattr("src.config.LLM_SKIP_STARTUP_CHECK", True)
+
+
 @pytest.fixture
 def llm(monkeypatch):
     """Stub the LLM chat call: set ``llm["reply"]``, read back ``llm["messages"]``."""
