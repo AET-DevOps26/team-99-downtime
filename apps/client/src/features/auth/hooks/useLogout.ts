@@ -1,21 +1,20 @@
-import { useNavigate } from 'react-router';
+import { toast } from 'sonner';
 
 import { signOut } from '../api/authApi';
-import { useSession } from './useSession';
 
 /**
  * hooks: sign the user out, then send them to the login screen.
  */
 export function useLogout() {
-  const navigate = useNavigate();
-  const { refetch } = useSession();
-
   return async () => {
-    await signOut();
-    // Better Auth refreshes its session store asynchronously after sign-out.
-    // Wait for that refresh so the guest guard cannot see stale session data
-    // and bounce back through the protected routes before reaching login.
-    await refetch();
-    navigate('/login', { replace: true });
+    const { error } = await signOut();
+    if (error) {
+      toast.error(error.message ?? 'Could not sign out. Please try again.');
+      return;
+    }
+
+    // A document navigation discards Better Auth's cached session state and
+    // unmounts protected-page requests, so neither can race the login guard.
+    window.location.replace('/login');
   };
 }

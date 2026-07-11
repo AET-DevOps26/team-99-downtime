@@ -1,47 +1,53 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
+import { toast } from 'sonner';
 
 import { useLogout } from './useLogout';
 
-const { navigateMock, refetchMock, signOutMock } = vi.hoisted(() => ({
-  navigateMock: vi.fn(),
-  refetchMock: vi.fn(),
+const { replaceMock, signOutMock } = vi.hoisted(() => ({
+  replaceMock: vi.fn(),
   signOutMock: vi.fn(),
 }));
 
-vi.mock('react-router', () => ({ useNavigate: () => navigateMock }));
+vi.mock('sonner', () => ({ toast: { error: vi.fn() } }));
 vi.mock('../api/authApi', () => ({ signOut: signOutMock }));
-vi.mock('./useSession', () => ({ useSession: () => ({ refetch: refetchMock }) }));
 
 describe('useLogout', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubGlobal('location', { replace: replaceMock });
+  });
 
-  it('refreshes the session before navigating to login', async () => {
-    let resolveRefetch!: () => void;
-    signOutMock.mockResolvedValue(undefined);
-    refetchMock.mockReturnValue(new Promise<void>((resolve) => (resolveRefetch = resolve)));
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('replaces the document with the login route after signing out', async () => {
+    signOutMock.mockResolvedValue({ data: { success: true }, error: null });
 
     const { result } = renderHook(() => useLogout());
-    let logout!: Promise<void>;
-
-    act(() => {
-      logout = result.current();
-    });
-
-    await waitFor(() => expect(refetchMock).toHaveBeenCalledOnce());
-    expect(signOutMock).toHaveBeenCalledOnce();
-    expect(navigateMock).not.toHaveBeenCalled();
 
     await act(async () => {
-      resolveRefetch();
-      await logout;
+      await result.current();
     });
 
-    expect(navigateMock).toHaveBeenCalledWith('/login', { replace: true });
+    expect(signOutMock).toHaveBeenCalledOnce();
+    expect(replaceMock).toHaveBeenCalledWith('/login');
     expect(signOutMock.mock.invocationCallOrder[0]).toBeLessThan(
-      refetchMock.mock.invocationCallOrder[0]
+      replaceMock.mock.invocationCallOrder[0]
     );
-    expect(refetchMock.mock.invocationCallOrder[0]).toBeLessThan(
-      navigateMock.mock.invocationCallOrder[0]
-    );
+  });
+
+  it('shows an error and stays put when sign-out fails', async () => {
+    signOutMock.mockResolvedValue({
+      data: null,
+      error: { message: 'Auth service unavailable' },
+    });
+
+    const { result } = renderHook(() => useLogout());
+
+    await act(async () => {
+      await result.current();
+    });
+
+    expect(toast.error).toHaveBeenCalledWith('Auth service unavailable');
+    expect(replaceMock).not.toHaveBeenCalled();
   });
 });
