@@ -145,7 +145,7 @@ jobs:
           key: ${{ steps.cache-restore.outputs.cache-primary-key }}
 
   attest:
-    name: Attest Image Provenance
+    name: Attest Image Provenance & SBOM
     needs: build-and-publish
     if: needs.build-and-publish.outputs.images != '' && needs.build-and-publish.outputs.images != '[]'
     runs-on: ubuntu-latest
@@ -166,6 +166,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Provenance: proves this digest was built by this workflow from this commit.
+      # Verifiable via: gh attestation verify oci://<image>@<digest> --repo <repo>
       - name: Attest build provenance
         id: attest
         uses: actions/attest@v4
@@ -181,14 +183,40 @@ jobs:
           gh attestation verify "oci://${{ matrix.image.name }}@${{ matrix.image.digest }}" \
             --repo "${{ github.repository }}"
 
+      # SBOM: scans the built image by digest and produces a CycloneDX bill of
+      # materials that reflects what actually ended up in the container, then
+      # attaches it to the image in the registry via keyless cosign (OIDC —
+      # no key management required).
+      # Verifiable via: cosign verify-attestation --type cyclonedx <image>
+      - name: Generate SBOM with Trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ matrix.image.name }}@${{ matrix.image.digest }}
+          format: cyclonedx
+          output: sbom.cdx.json
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ github.token }}
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v4.1.2
+
+      - name: Attach SBOM to image
+        run: |
+          cosign attest \
+            --type cyclonedx \
+            --predicate sbom.cdx.json \
+            --yes \
+            ${{ matrix.image.name }}@${{ matrix.image.digest }}
+
       - name: Write attestation summary
         run: |
           {
             echo "## Attestation"
             echo ""
-            echo "| Image | Digest | Status |"
-            echo "|-------|--------|--------|"
-            echo "| \`${{ matrix.image.name }}\` | \`${{ matrix.image.digest }}\` | ✅ Verified |"
+            echo "| Image | Digest | Provenance | SBOM |"
+            echo "|-------|--------|------------|------|"
+            echo "| \`${{ matrix.image.name }}\` | \`${{ matrix.image.digest }}\` | ✅ Verified | ✅ Attached |"
           } >> "$GITHUB_STEP_SUMMARY"
 
   # Delegates to the reusable deploy workflow so the automatic (on-release) and

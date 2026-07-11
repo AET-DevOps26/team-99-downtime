@@ -1,0 +1,233 @@
+name: Security
+
+on:
+  pull_request:
+  schedule:
+    - cron: '0 2 * * *' # nightly on the default branch
+
+# Minimal shared permissions; jobs that upload SARIF override to add
+# security-events: write.
+permissions:
+  contents: read
+
+jobs:
+  # ── Tier 1 — fast, blocking ───────────────────────────────────────────────
+  # These are linters and static checkers that run in seconds.
+  # They block merge from day one.
+
+  spelling:
+    name: Spell Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: crate-ci/typos@v1.48.0
+        with:
+          config: config/typos.toml
+
+  workflows:
+    name: Workflow Lint & Security
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      # Required by zizmor-action for online audits and by upload-sarif on
+      # private repos.
+      actions: read
+    steps:
+      - uses: actions/checkout@v6
+
+      # docker:// reference is the correct integration — rhysd/actionlint has
+      # no action.yml and cannot be referenced as a GitHub Action directly.
+      - name: Run actionlint
+        uses: docker://rhysd/actionlint:1.7.12
+        with:
+          args: -color
+
+      # Pinned to SHA as recommended by zizmor's own docs. The action uploads
+      # SARIF to Code Scanning automatically (advanced-security: true default).
+      - name: Run Zizmor
+        uses: zizmorcore/zizmor-action@192e21d79ab29983730a13d1382995c2307fbcaa # v0.5.7
+        with:
+          inputs: .github/workflows/
+
+  containers:
+    name: Dockerfile Lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Lint Dockerfiles with Hadolint
+        uses: hadolint/hadolint-action@v3.3.0
+        with:
+          recursive: true
+          format: sarif
+          output-file: hadolint.sarif
+          failure-threshold: error
+
+      - name: Upload Hadolint SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: hadolint.sarif
+          category: hadolint
+
+  iac:
+    name: IaC Lint & Misconfiguration
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup tflint
+        uses: terraform-linters/setup-tflint@v6.3.0
+        with:
+          tflint_version: v0.63.1
+          tflint_config_path: infra/terraform/.tflint.hcl
+
+      - name: Init tflint
+        working-directory: infra/terraform
+        run: tflint --init
+
+      - name: Run tflint
+        working-directory: infra/terraform
+        run: tflint --format compact
+
+      - name: Run KICS
+        uses: checkmarx/kics-github-action@v2.1.20
+        with:
+          path: '.'
+          fail_on: high,critical
+          output_formats: 'sarif'
+          output_path: kics-results
+          exclude_paths: 'node_modules,dist,.nx,tmp'
+
+      - name: Upload KICS SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: kics-results/results.sarif
+          category: kics
+
+  # ── Tier 2 — deeper scans, non-blocking during initial rollout ───────────
+  # continue-on-error: true lets the workflow finish and SARIF upload to Code
+  # Scanning even when findings exist. Remove it once the initial triage of
+  # the Security tab is complete and severity thresholds are tuned.
+
+  secrets:
+    name: Secret Detection
+    runs-on: ubuntu-latest
+    continue-on-error: true # remove after initial triage
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # full history so GitLeaks can scan all commits
+
+      - name: Run GitLeaks
+        uses: gitleaks/gitleaks-action@v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GITLEAKS_LICENSE required for private repos — set in repo secrets.
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+      - name: Scan filesystem for secrets with Trivy
+        uses: ./.github/actions/scan-trivy
+        with:
+          scan-type: fs
+          target: .
+          scanners: secret
+          output: trivy-secrets.sarif
+
+      - name: Upload Trivy secrets SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-secrets.sarif
+          category: trivy-secrets
+
+  sast:
+    name: SAST (Semgrep)
+    runs-on: ubuntu-latest
+    continue-on-error: true # remove after initial triage
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Semgrep
+        run: pip install semgrep
+
+      - name: Run Semgrep
+        run: |
+          semgrep scan \
+            --config p/java-security-audit \
+            --config p/typescript \
+            --config p/python \
+            --config p/docker \
+            --config p/secrets \
+            --sarif \
+            --output semgrep.sarif \
+            .
+
+      - name: Upload Semgrep SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+  dependencies:
+    name: Dependency Vulnerabilities & SBOM
+    runs-on: ubuntu-latest
+    continue-on-error: true # remove after initial triage
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Scan dependencies with Trivy
+        uses: ./.github/actions/scan-trivy
+        with:
+          scan-type: fs
+          target: .
+          scanners: vuln
+          output: trivy-deps.sarif
+
+      - name: Upload dependency SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-deps.sarif
+          category: trivy-deps
+
+      # Produces a source-level CycloneDX SBOM from all package manifests in the
+      # repo. This is a different artifact from the image-level SBOM generated
+      # and signed by Trivy + cosign in cd.yml — that one scans the built image
+      # by digest and is attached to the registry. This one is useful for
+      # auditing dependency exposure before images are built (e.g. on a PR).
+      - name: Generate SBOM
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: cyclonedx
+          output: sbom.cdx.json
+        env:
+          TRIVY_CACHE_DIR: ${{ runner.temp }}/trivy-cache
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sbom-${{ github.sha }}
+          path: sbom.cdx.json
+          retention-days: 90

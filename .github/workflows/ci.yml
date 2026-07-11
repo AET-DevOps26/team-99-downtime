@@ -1,13 +1,44 @@
-name: Testing Pipeline
+name: CI
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, edited]
   merge_group:
 
 jobs:
-  lint:
+  # Runs on every PR event including title/body edits, which the other jobs
+  # don't care about. The 'edited' type is on the shared trigger above so this
+  # job fires then while the rest skip via github.event.action != 'edited'.
+  commitlint:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Lint PR title (can become squash merge commit message)
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: echo "$PR_TITLE" | bunx commitlint
+
+      - name: Validate PR commits with commitlint
+        run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }}
+
+  lint:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.action != 'edited'
     permissions:
       contents: read
 
@@ -15,8 +46,8 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v6
         with:
-          fetch-depth: 0 # Required for Nx affected logic
-          filter: tree:0 # Optional, but recommended by nx
+          fetch-depth: 0
+          filter: tree:0
 
       - name: Setup Build Tools
         uses: ./.github/actions/setup-build-tools
@@ -29,7 +60,7 @@ jobs:
 
   helm-lint:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && github.event.action != 'edited'
     permissions:
       contents: read
     steps:
@@ -54,7 +85,7 @@ jobs:
   # an API change must ship its spec + generated-client update in the same PR.
   openapi-drift:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event.action != 'edited'
     name: OpenAPI Drift Check
     permissions:
       contents: read
@@ -63,15 +94,11 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v6
         with:
-          # This job only reads the repo and diffs generated output; don't
-          # leave the GITHUB_TOKEN on disk for the forked service processes.
           persist-credentials: false
 
       - name: Setup Build Tools
         uses: ./.github/actions/setup-build-tools
 
-      # Same single command devs run locally — pipeline needs no change when
-      # the script's internals do.
       - name: Generate OpenAPI specs and typed client
         run: bun run openapi
 
@@ -86,7 +113,7 @@ jobs:
 
   squawk:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    if: github.event.action != 'edited'
     permissions:
       contents: read
       pull-requests: write
@@ -107,21 +134,25 @@ jobs:
         if: steps.modified-migrations.outputs.file_names != ''
         with:
           files: ${{ steps.modified-migrations.outputs.file_names }}
-          config: .squawk.toml
+          config: config/squawk.toml
 
   build-and-test:
     runs-on: ubuntu-latest
-    # lint is skipped on merge_group, hence the always() + skipped handling;
+    needs: [lint, openapi-drift, squawk]
+    # lint is skipped on merge_group and on 'edited' events, hence the always() + skipped handling.
     # openapi-drift runs on both events and must have passed — don't build or
     # publish containers against a stale API contract.
-    needs: [lint, openapi-drift, squawk]
-    if: always() && (needs.lint.result == 'success' || needs.lint.result == 'skipped') && (needs['openapi-drift'].result == 'success' || needs['openapi-drift'].result == 'skipped') && (needs.squawk.result == 'success' || needs.squawk.result == 'skipped')
+    if: >-
+      always() &&
+      github.event.action != 'edited' &&
+      (needs.lint.result == 'success' || needs.lint.result == 'skipped') &&
+      (needs['openapi-drift'].result == 'success' || needs['openapi-drift'].result == 'skipped') &&
+      (needs.squawk.result == 'success' || needs.squawk.result == 'skipped')
     name: Build, Test, and Publish Containers
-
     permissions:
       contents: read
-      actions: read # Required for nrwl/nx-set-shas
-      checks: write # Required for dorny/test-reporter
+      actions: read
+      checks: write
 
     env:
       NX_KEY: ${{ secrets.NX_KEY }}
@@ -130,8 +161,8 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v6
         with:
-          fetch-depth: 0 # Required for Nx affected logic
-          filter: tree:0 # Optional, but recommended by nx
+          fetch-depth: 0
+          filter: tree:0
 
       - name: Setup Build Tools
         uses: ./.github/actions/setup-build-tools
@@ -144,19 +175,14 @@ jobs:
         id: cache-restore
         with:
           path: .nx/cache
-          # Key includes the OS and a hash of your lockfile.
-          # We add the Run ID so it always creates a fresh entry for the next run.
           key: nx-shared-${{ runner.os }}-${{ hashFiles('bun.lock') }}-${{ github.run_id }}
-          # Restore-keys allow it to find the MOST RECENT cache if an exact match isn't found.
           restore-keys: |
             nx-shared-${{ runner.os }}-${{ hashFiles('bun.lock') }}-
             nx-shared-${{ runner.os }}-
 
-      # Run affected tests across React, Python, and Spring Boot
       - name: Run Tests
         run: bun nx affected --target=test --parallel=3 --outputStyle static
 
-      # Upload raw XML for debugging even if publishing fails
       - name: Upload Test Results
         uses: actions/upload-artifact@v7
         if: (!cancelled())
@@ -168,25 +194,20 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
-      # Creates a GitHub Check Run with per-suite pass/fail counts
       - name: Publish Test Results
         uses: dorny/test-reporter@v3
         if: (!cancelled())
         with:
           name: Test Results
           use-actions-summary: true
-          # junit.xml = vitest + pytest; TEST-*.xml = Gradle (always this naming)
           path: 'apps/**/build/test-results/**/TEST-*.xml,reports/apps/*/junit.xml'
           reporter: java-junit
-          # Don't fail here — the Run Tests step already gates the job
           fail-on-error: false
           fail-on-empty: false
 
-      # Run affected builds
       - name: Run Build
         run: bun nx affected --target=build --parallel=3 --outputStyle static
 
-      # This step runs even if the steps above fail
       - name: Save Nx Cache
         uses: actions/cache/save@v5
         if: always() && steps.cache-restore.outputs.cache-hit != 'true'
