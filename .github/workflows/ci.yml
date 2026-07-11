@@ -73,7 +73,7 @@ jobs:
 
       - name: Check for Helm chart changes
         id: helm-changes
-        uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # pinned to v3
+        uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # pinned to v4.0.2
         with:
           filters: |
             helm:
@@ -145,14 +145,16 @@ jobs:
 
   build-and-test:
     runs-on: ubuntu-latest
-    needs: [lint, openapi-drift, squawk]
-    # lint and squawk are skipped on merge_group and on 'edited' events, hence
-    # the always() + skipped handling. openapi-drift runs on both events and
-    # must have passed — don't build against a stale API contract.
+    needs: [commitlint, lint, helm-lint, openapi-drift, squawk]
+    # commitlint, lint, helm-lint, and squawk are skipped on merge_group and on
+    # 'edited' events, hence the always() + skipped handling. openapi-drift runs
+    # on both events and must have passed — don't build against a stale API contract.
     if: >-
       always() &&
       github.event.action != 'edited' &&
+      (needs.commitlint.result == 'success' || needs.commitlint.result == 'skipped') &&
       (needs.lint.result == 'success' || needs.lint.result == 'skipped') &&
+      (needs['helm-lint'].result == 'success' || needs['helm-lint'].result == 'skipped') &&
       (needs['openapi-drift'].result == 'success' || needs['openapi-drift'].result == 'skipped') &&
       (needs.squawk.result == 'success' || needs.squawk.result == 'skipped')
     name: Build, Test, and Publish Containers
