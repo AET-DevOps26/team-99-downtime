@@ -20,4 +20,6 @@ ENV PORT=3000
 EXPOSE 3000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=10 \
   CMD wget -q --spider http://localhost:3000/api/auth/ok || exit 1
+RUN addgroup -S appgroup && adduser -S -G appgroup -H appuser
+USER appuser
 CMD ["bun", "run", "src/server.ts"]

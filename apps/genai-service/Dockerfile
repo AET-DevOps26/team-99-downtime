@@ -20,5 +20,7 @@ FROM base AS prod
 WORKDIR /app
 COPY dist/apps/genai-service /app/artifacts
 RUN uv pip install --system /app/artifacts/*.whl && rm -rf /app/artifacts
+RUN groupadd -r appgroup && useradd -r -g appgroup -s /sbin/nologin appuser
 EXPOSE 8000
+USER appuser
 CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
