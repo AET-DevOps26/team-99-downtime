@@ -29,9 +29,10 @@ jobs:
           version: 'v4.2.0'
 
       - name: Deploy to t99-prod
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
-          VERSION="${{ inputs.version }}"
-          VERSION=${VERSION#v}
+          VERSION="${INPUT_VERSION#v}"
           helm upgrade --install t99 k8s/helm/t99-app/ \
             -n t99-prod \
             -f k8s/helm/t99-app/values.yaml \

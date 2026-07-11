@@ -55,7 +55,9 @@ jobs:
         uses: ./.github/actions/setup-build-tools
 
       - name: Lint changed files
-        run: bunx lint-staged --diff="origin/${{ github.base_ref }}...HEAD" --config config/lint-staged.config.mjs
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: bunx lint-staged --diff="origin/$BASE_REF...HEAD" --config config/lint-staged.config.mjs
 
       - name: Fail if linters left uncommitted changes
         run: git diff --exit-code
