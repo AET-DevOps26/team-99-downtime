@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 from pydantic import BaseModel
 
-from . import config
+from . import config, llm
 from .auth import CurrentUser, require_user
 from .categorize import (
     LlmUnavailableError,
@@ -22,6 +22,8 @@ from .summarize import NotEnoughDataError, WeeklyData, summarize
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if not config.LLM_SKIP_STARTUP_CHECK:
+        await llm.probe()
     # Summary persistence is optional: without DATABASE_URL the store stays
     # None and the summary routes answer 503 (see get_summary_store).
     app.state.summary_store = (
