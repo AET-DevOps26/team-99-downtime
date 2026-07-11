@@ -13,5 +13,6 @@ extend-exclude = [
 
 [default.extend-words]
 # Add project-specific identifiers or abbreviations that typos incorrectly flags.
-# Format: "typo" = "correct"  (both sides must differ)
-# Example: "ot" = "ot"  # keep the abbreviation "ot" as-is
+# Format: "typo" = "correct"  — both sides must match (identity mapping keeps the word as-is)
+# JULI is the German name for July, used in test fixture CSV data.
+JULI = "JULI"

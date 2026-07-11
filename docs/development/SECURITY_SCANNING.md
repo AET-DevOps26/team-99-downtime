@@ -66,7 +66,8 @@ Add project-specific words to [`config/typos.toml`](../../config/typos.toml):
 
 ```toml
 [default.extend-words]
-"ot" = "ot"  # keep the abbreviation as-is
+# Identity mapping keeps the word as-is (both sides must match).
+JULI = "JULI"  # German month name in test fixture data
 ```
 
 Inline suppression is not supported; add to the config file instead.

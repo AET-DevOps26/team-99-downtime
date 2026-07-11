@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
+        with:
+          persist-credentials: false
 
       - name: Set up kubeconfig
         run: |
@@ -46,9 +48,11 @@ jobs:
             --wait --timeout 5m --rollback-on-failure
 
       - name: Write deploy summary
+        env:
+          VERSION: ${{ inputs.version }} # zizmor: ignore[template-injection] — workflow_dispatch input, requires write access to trigger
         run: |
           {
             echo "## Deployed to Production"
-            echo "**Version:** \`${{ inputs.version }}\`"
+            echo "**Version:** \`$VERSION\`"
             echo "**URL:** https://t99.stud.k8s.aet.cit.tum.de"
           } >> "$GITHUB_STEP_SUMMARY"

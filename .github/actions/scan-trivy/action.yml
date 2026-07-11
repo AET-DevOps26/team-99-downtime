@@ -45,6 +45,5 @@ runs:
         format: sarif
         output: ${{ inputs.output }}
         exit-code: ${{ inputs.exit-code }}
-        cache: true
       env:
         TRIVY_CACHE_DIR: ${{ runner.temp }}/trivy-cache

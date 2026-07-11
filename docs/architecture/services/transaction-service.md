@@ -57,7 +57,7 @@ classDiagram
     }
 
     class TransactionService {
-        -transactionRepostiory: TransactionRepository
+        -transactionRepository: TransactionRepository
         -genAiServiceClient: GenAiServiceClient
         +processCSVImport(file: File): Task
         +normalizeData(raw: RawData): Transaction
