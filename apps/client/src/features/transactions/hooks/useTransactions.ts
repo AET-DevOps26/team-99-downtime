@@ -16,25 +16,31 @@ export function useTransactions(pageSize = 20) {
   pageRef.current = page;
 
   const load = useCallback(
-    async (p: number) => {
+    async (p: number, signal?: AbortSignal) => {
+      if (signal?.aborted) return;
       setLoading(true);
       setError(false);
       try {
-        const result = await listTransactions(p, pageSize);
+        const result = await listTransactions(p, pageSize, signal);
+        if (signal?.aborted) return;
         setTransactions(result.content);
         setTotalPages(result.totalPages);
       } catch {
+        // A cancelled request belongs to an obsolete render; its replacement
+        // or the route unmount owns the visible state now.
+        if (signal?.aborted) return;
         setError(true);
-        toast.error('Could not load transactions');
       } finally {
-        setLoading(false);
+        if (!signal?.aborted) setLoading(false);
       }
     },
     [pageSize]
   );
 
   useEffect(() => {
-    void load(page);
+    const controller = new AbortController();
+    void load(page, controller.signal);
+    return () => controller.abort();
   }, [page, load]);
 
   const refresh = useCallback(() => load(page), [load, page]);

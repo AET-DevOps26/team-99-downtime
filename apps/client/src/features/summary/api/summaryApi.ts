@@ -41,7 +41,8 @@ export async function generateSummary(): Promise<WeeklySummary | null> {
   try {
     return unwrap(await apiClient.POST('/api/genai/summarize', { body: report }));
   } catch (err) {
-    if (apiErrorInfo(err)?.status === 422) return null;
+    const info = apiErrorInfo(err);
+    if (info?.status === 422 && info.code === 'NOT_ENOUGH_DATA') return null;
     throw err;
   }
 }

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import { toast } from 'sonner';
 
 import { getBudgetStatus, type CategoryStatus } from '../api/budgetApi';
 
@@ -16,7 +15,6 @@ export function useBudgetStatus() {
       setCategories(data);
     } catch {
       setError(true);
-      toast.error('Could not load budget status');
     } finally {
       setLoading(false);
     }
