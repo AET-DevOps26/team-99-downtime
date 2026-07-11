@@ -1,2 +1,27 @@
 set -e
+
+# ── squawk: lint changed SQL migrations ────────────────────────────────────────
+modified_migrations=$(git diff --diff-filter=d --name-only origin/main...HEAD \
+  | grep 'src/main/resources/db/migration/.*\.sql$' || true)
+
+if [ -n "$modified_migrations" ]; then
+  echo "$modified_migrations" | xargs bunx squawk-cli -c .squawk.toml
+fi
+
+# ── openapi drift: regenerate specs when API source files changed ───────────────
+# Only runs when Java controllers/DTOs, Python routes, or auth-service TS changed.
+openapi_sources=$(git diff --diff-filter=d --name-only origin/main...HEAD \
+  | grep -E 'apps/(transaction|budget|notification)-service/src/main/.*\.java$|apps/genai-service/.*\.py$|apps/auth-service/src/auth\.ts$' \
+  | head -1)
+
+if [ -n "$openapi_sources" ]; then
+  bun run openapi
+  if [ -n "$(git status --porcelain -- openapi/ apps/client/src/shared/api/generated/)" ]; then
+    echo ""
+    echo "OpenAPI specs are out of date. Run 'bun run openapi' and commit the result."
+    exit 1
+  fi
+fi
+
+# ── tests: run affected projects ───────────────────────────────────────────────
 bunx nx affected -t test --base=origin/main --parallel=3 --outputStyle=static

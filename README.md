@@ -28,11 +28,11 @@ Every push to `main` is automatically deployed to **stage**. Promote to **prod**
 
 All three members contributed across the full stack throughout the project. Responsibilities rotated heavily — the areas below reflect where each person took the lead, not exclusive ownership.
 
-| Member                                                              | Primary focus                                                                                                      |
-| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Daniel Günther ([@danielgnth](https://github.com/danielgnth))       | Monorepo tooling (NX), CI/CD pipelines, Kubernetes / Helm infrastructure, GenAI service                            |
-| Stefania Mocan ([@stefaniamocan](https://github.com/stefaniamocan)) | Azure VM deployment (Terraform + Ansible), Docker Compose stack, OpenAPI generation, architecture docs             |
-| Bilgehan Savgu ([@bilgehansavgu](https://github.com/bilgehansavgu)) | Java microservices foundation, authentication (Better Auth), React client (UI/shadcn), budget feature, Caddy setup |
+| Member                                                              | Primary focus                                                                                                                     |
+| ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Daniel Günther ([@danielgnth](https://github.com/danielgnth))       | Monorepo tooling (NX), CI/CD pipelines, Kubernetes / Helm infrastructure                                                          |
+| Stefania Mocan ([@stefaniamocan](https://github.com/stefaniamocan)) | Azure VM deployment (Terraform + Ansible), Docker Compose stack, OpenAPI generation, architecture docs                            |
+| Bilgehan Savgu ([@bilgehansavgu](https://github.com/bilgehansavgu)) | Java microservices foundation, authentication (Better Auth), React client (UI/shadcn), budget feature, Caddy setup, GenAI service |
 
 ## Docs
 

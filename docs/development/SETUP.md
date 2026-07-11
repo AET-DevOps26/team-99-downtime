@@ -87,6 +87,35 @@ Other Nx targets: `build`, `test` (e.g. `bunx nx build transaction-service`).
 
 All endpoints except `/actuator/health` require a Bearer JWT. See [AUTHENTICATION.md](AUTHENTICATION.md) for the full dev guide.
 
+### Database Migrations (Flyway)
+
+`budget-service`, `transaction-service`, and `notification-service` use [Flyway](https://flywaydb.org/) for schema management. Migration files live at:
+
+```
+apps/<service>/src/main/resources/db/migration/
+  V1__init.sql          ← initial schema (already committed)
+  V2__seed_demo_data.sql
+  V3__your_change.sql   ← you write this
+```
+
+**When you change a JPA entity** (add a column, new table, index, etc.) you must write a migration:
+
+1. Create `V{n}__describe_the_change.sql` in the service's `db/migration/` directory — version must be strictly higher than the previous file.
+2. Use backwards-compatible SQL (add nullable columns, use `CREATE INDEX CONCURRENTLY`, never drop or rename live columns). squawk enforces this automatically.
+3. Never edit an already-committed migration — Flyway checksums every file and will refuse to start if one changes.
+
+**Flyway does not auto-generate migrations from JPA entities.** You write the SQL yourself. Hibernate is set to `ddl-auto: validate` in production — it checks that the schema matches the entities but never modifies it. If you forget the migration, the service will fail to start with a schema validation error, which is the safety net.
+
+**squawk** lints your migration for backwards-incompatible patterns (drop column, NOT NULL without a default, non-concurrent index creation, rename). It runs automatically on pre-push (via `bunx`) and in CI — no installation needed.
+
+To lint manually:
+
+```sh
+bunx squawk-cli apps/budget-service/src/main/resources/db/migration/V3__my_change.sql
+```
+
+**Tests** use H2 with `ddl-auto: create-drop` — Flyway is disabled in the test profile so you don't need a Postgres instance to run tests.
+
 ### Regenerating the OpenAPI Specs + Frontend Client
 
 Every service describes its API as an OpenAPI spec, and the frontend's typed client is generated from those specs — both at build time, straight from the code. Whenever you add or change an endpoint or DTO:
@@ -169,6 +198,12 @@ This project uses [Husky](https://typicode.github.io/husky/) to enforce code qua
 | `*.js`, `*.json`, `*.md`, `*.yaml`, `*.yml` | Prettier                                   |
 | `*.py`                                      | Ruff (format + lint)                       |
 | `*.java`                                    | Spotless (Google Java Format) + Checkstyle |
+
+**pre-push** — runs before every `git push`:
+
+1. **squawk** lints any SQL migration files changed relative to `origin/main` via `bunx squawk-cli` — no installation needed.
+2. **OpenAPI drift check** — if any Java controller/DTO, Python route, or `apps/auth-service/src/auth.ts` changed, regenerates all specs (`bun run openapi`) and fails if the committed files are out of date. This is scoped to avoid the Gradle startup cost on unrelated pushes.
+3. **`nx affected -t test`** runs tests for all projects affected by the push.
 
 **commit-msg** — enforces [Conventional Commits](https://www.conventionalcommits.org/) via commitlint.
 

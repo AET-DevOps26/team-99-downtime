@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+    url: jdbc:h2:mem:budgetdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
     driver-class-name: org.h2.Driver
   autoconfigure:
     exclude:
@@ -19,11 +19,7 @@ spring:
 auth:
   issuer: http://localhost:9099
 services:
-  budget:
-    url: http://budget-service:8082
-  genai:
-    url: http://genai-service:8000
-summary:
-  # Same shape as production; tests invoke the job directly, never via the clock.
-  cron: 0 0 20 * * SUN
-  zone: Europe/Berlin
+  transaction:
+    url: http://transaction-service:8080
+  notification:
+    url: http://notification-service:8081

@@ -28,3 +28,5 @@ genaiService:
 
 drizzleStudio:
   enabled: true
+
+demoUserPassword: 'demodemo1234!'

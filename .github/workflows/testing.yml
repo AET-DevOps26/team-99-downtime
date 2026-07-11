@@ -54,6 +54,7 @@ jobs:
   # an API change must ship its spec + generated-client update in the same PR.
   openapi-drift:
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     name: OpenAPI Drift Check
     permissions:
       contents: read
@@ -83,13 +84,38 @@ jobs:
             exit 1
           fi
 
+  squawk:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Find modified migrations
+        id: modified-migrations
+        run: |
+          modified=$(git diff --diff-filter=d --name-only origin/$GITHUB_BASE_REF...origin/$GITHUB_HEAD_REF \
+            | grep 'src/main/resources/db/migration/.*\.sql$' | tr '\n' ' ' || true)
+          echo "$modified"
+          echo "file_names=$modified" >> $GITHUB_OUTPUT
+
+      - uses: sbdchd/squawk-action@v2
+        if: steps.modified-migrations.outputs.file_names != ''
+        with:
+          files: ${{ steps.modified-migrations.outputs.file_names }}
+          config: .squawk.toml
+
   build-and-test:
     runs-on: ubuntu-latest
     # lint is skipped on merge_group, hence the always() + skipped handling;
     # openapi-drift runs on both events and must have passed — don't build or
     # publish containers against a stale API contract.
-    needs: [lint, openapi-drift]
-    if: always() && (needs.lint.result == 'success' || needs.lint.result == 'skipped') && needs['openapi-drift'].result == 'success'
+    needs: [lint, openapi-drift, squawk]
+    if: always() && (needs.lint.result == 'success' || needs.lint.result == 'skipped') && (needs['openapi-drift'].result == 'success' || needs['openapi-drift'].result == 'skipped') && (needs.squawk.result == 'success' || needs.squawk.result == 'skipped')
     name: Build, Test, and Publish Containers
 
     permissions:
