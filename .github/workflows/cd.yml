@@ -170,7 +170,7 @@ jobs:
       # Verifiable via: gh attestation verify oci://<image>@<digest> --repo <repo>
       - name: Attest build provenance
         id: attest
-        uses: actions/attest@f6bf1532d7d6793fce74eac584813a8eee607999 # pinned to v4
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # pinned to v4
         with:
           subject-name: ${{ matrix.image.name }}
           subject-digest: ${{ matrix.image.digest }}
@@ -189,7 +189,7 @@ jobs:
       # no key management required).
       # Verifiable via: cosign verify-attestation --type cyclonedx <image>
       - name: Generate SBOM with Trivy
-        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # pinned to v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # pinned to v0.36.0
         with:
           image-ref: ${{ matrix.image.name }}@${{ matrix.image.digest }}
           format: cyclonedx
@@ -256,7 +256,7 @@ jobs:
           echo "${{ secrets.KUBECONFIG_DATA }}" | base64 -d > ~/.kube/config
 
       - name: Set up Helm
-        uses: azure/setup-helm@bf6a7d304bc2fdb57e0331155b7ebf2c504acf0a # pinned to v4
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # pinned to v4
         with:
           version: 'v4.2.0'
 

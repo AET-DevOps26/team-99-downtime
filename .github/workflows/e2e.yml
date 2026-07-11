@@ -101,7 +101,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Publish Test Results
-        uses: dorny/test-reporter@1cc81a5edf733718d4850df304aaa21c05cd7280 # pinned to v3
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # pinned to v3
         if: (!cancelled())
         with:
           name: E2E Test Results

@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
-      - uses: crate-ci/typos@96d9af6217dc2855210655af7e1ff19d23d4e593 # pinned to v1.48.0
+      - uses: crate-ci/typos@bee27e3a4fd1ea2111cf90ab89cd076c870fce14 # pinned to v1.48.0
         with:
           config: config/typos.toml
 
@@ -74,7 +74,7 @@ jobs:
           failure-threshold: error
 
       - name: Upload Hadolint SARIF
-        uses: github/codeql-action/upload-sarif@641a925cfafe92d0fdf8b239ba4053e3f8d99d6d # pinned to v3
+        uses: github/codeql-action/upload-sarif@02c5e83432fe5497fd85b873b6c9f16a8578e1d9 # pinned to v3
         if: always()
         with:
           sarif_file: hadolint.sarif
@@ -113,7 +113,7 @@ jobs:
           exclude_paths: 'node_modules,dist,.nx,tmp'
 
       - name: Upload KICS SARIF
-        uses: github/codeql-action/upload-sarif@641a925cfafe92d0fdf8b239ba4053e3f8d99d6d # pinned to v3
+        uses: github/codeql-action/upload-sarif@02c5e83432fe5497fd85b873b6c9f16a8578e1d9 # pinned to v3
         if: always()
         with:
           sarif_file: kics-results/results.sarif
@@ -152,7 +152,7 @@ jobs:
           output: trivy-secrets.sarif
 
       - name: Upload Trivy secrets SARIF
-        uses: github/codeql-action/upload-sarif@641a925cfafe92d0fdf8b239ba4053e3f8d99d6d # pinned to v3
+        uses: github/codeql-action/upload-sarif@02c5e83432fe5497fd85b873b6c9f16a8578e1d9 # pinned to v3
         if: always()
         with:
           sarif_file: trivy-secrets.sarif
@@ -184,7 +184,7 @@ jobs:
             .
 
       - name: Upload Semgrep SARIF
-        uses: github/codeql-action/upload-sarif@641a925cfafe92d0fdf8b239ba4053e3f8d99d6d # pinned to v3
+        uses: github/codeql-action/upload-sarif@02c5e83432fe5497fd85b873b6c9f16a8578e1d9 # pinned to v3
         if: always()
         with:
           sarif_file: semgrep.sarif
@@ -209,7 +209,7 @@ jobs:
           output: trivy-deps.sarif
 
       - name: Upload dependency SARIF
-        uses: github/codeql-action/upload-sarif@641a925cfafe92d0fdf8b239ba4053e3f8d99d6d # pinned to v3
+        uses: github/codeql-action/upload-sarif@02c5e83432fe5497fd85b873b6c9f16a8578e1d9 # pinned to v3
         if: always()
         with:
           sarif_file: trivy-deps.sarif
@@ -221,7 +221,7 @@ jobs:
       # by digest and is attached to the registry. This one is useful for
       # auditing dependency exposure before images are built (e.g. on a PR).
       - name: Generate SBOM
-        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # pinned to v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # pinned to v0.36.0
         with:
           scan-type: fs
           scan-ref: .
