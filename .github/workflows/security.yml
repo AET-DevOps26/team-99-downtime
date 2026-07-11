@@ -38,17 +38,23 @@ jobs:
 
       # docker:// reference is the correct integration — rhysd/actionlint has
       # no action.yml and cannot be referenced as a GitHub Action directly.
+      # Digest pins the multi-arch image index for 1.7.12.
       - name: Run actionlint
-        uses: docker://rhysd/actionlint:1.7.12
+        uses: docker://rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 # pinned to 1.7.12
         with:
           args: -color
 
       # Pinned to SHA as recommended by zizmor's own docs. The action uploads
       # SARIF to Code Scanning automatically (advanced-security: true default).
+      # GH_TOKEN allows the impostor-commit online audit to verify SHA hashes
+      # against the GitHub API (without it the audit gets a 403 and aborts).
       - name: Run Zizmor
+        if: always()
         uses: zizmorcore/zizmor-action@192e21d79ab29983730a13d1382995c2307fbcaa # pinned to v0.5.7
         with:
           inputs: .github/workflows/
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   containers:
     name: Dockerfile Lint
