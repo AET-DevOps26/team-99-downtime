@@ -19,8 +19,8 @@ jobs:
     name: Spell Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: crate-ci/typos@v1.48.0
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
+      - uses: crate-ci/typos@96d9af6217dc2855210655af7e1ff19d23d4e593 # pinned to v1.48.0
         with:
           config: config/typos.toml
 
@@ -34,7 +34,7 @@ jobs:
       # private repos.
       actions: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
 
       # docker:// reference is the correct integration — rhysd/actionlint has
       # no action.yml and cannot be referenced as a GitHub Action directly.
@@ -46,7 +46,7 @@ jobs:
       # Pinned to SHA as recommended by zizmor's own docs. The action uploads
       # SARIF to Code Scanning automatically (advanced-security: true default).
       - name: Run Zizmor
-        uses: zizmorcore/zizmor-action@192e21d79ab29983730a13d1382995c2307fbcaa # v0.5.7
+        uses: zizmorcore/zizmor-action@192e21d79ab29983730a13d1382995c2307fbcaa # pinned to v0.5.7
         with:
           inputs: .github/workflows/
 
@@ -57,10 +57,10 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
 
       - name: Lint Dockerfiles with Hadolint
-        uses: hadolint/hadolint-action@v3.3.0
+        uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5 # pinned to v3.3.0
         with:
           recursive: true
           format: sarif
@@ -68,7 +68,7 @@ jobs:
           failure-threshold: error
 
       - name: Upload Hadolint SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@641a925cfafe92d0fdf8b239ba4053e3f8d99d6d # pinned to v3
         if: always()
         with:
           sarif_file: hadolint.sarif
@@ -81,10 +81,10 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
 
       - name: Setup tflint
-        uses: terraform-linters/setup-tflint@v6.3.0
+        uses: terraform-linters/setup-tflint@6e1e0642c0289bd619021bf6b34e3c08ed1e005a # pinned to v6.3.0
         with:
           tflint_version: v0.63.1
           tflint_config_path: infra/terraform/.tflint.hcl
@@ -98,7 +98,7 @@ jobs:
         run: tflint --format compact
 
       - name: Run KICS
-        uses: checkmarx/kics-github-action@v2.1.20
+        uses: checkmarx/kics-github-action@05aa5eb70eede1355220f4ca5238d96b397e30a6 # pinned to v2.1.20
         with:
           path: '.'
           fail_on: high,critical
@@ -107,7 +107,7 @@ jobs:
           exclude_paths: 'node_modules,dist,.nx,tmp'
 
       - name: Upload KICS SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@641a925cfafe92d0fdf8b239ba4053e3f8d99d6d # pinned to v3
         if: always()
         with:
           sarif_file: kics-results/results.sarif
@@ -126,12 +126,12 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
         with:
           fetch-depth: 0 # full history so GitLeaks can scan all commits
 
       - name: Run GitLeaks
-        uses: gitleaks/gitleaks-action@v3.0.0
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # pinned to v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # GITLEAKS_LICENSE required for private repos — set in repo secrets.
@@ -146,7 +146,7 @@ jobs:
           output: trivy-secrets.sarif
 
       - name: Upload Trivy secrets SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@641a925cfafe92d0fdf8b239ba4053e3f8d99d6d # pinned to v3
         if: always()
         with:
           sarif_file: trivy-secrets.sarif
@@ -160,7 +160,7 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
 
       - name: Install Semgrep
         run: pip install semgrep
@@ -178,7 +178,7 @@ jobs:
             .
 
       - name: Upload Semgrep SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@641a925cfafe92d0fdf8b239ba4053e3f8d99d6d # pinned to v3
         if: always()
         with:
           sarif_file: semgrep.sarif
@@ -192,7 +192,7 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
 
       - name: Scan dependencies with Trivy
         uses: ./.github/actions/scan-trivy
@@ -203,7 +203,7 @@ jobs:
           output: trivy-deps.sarif
 
       - name: Upload dependency SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@641a925cfafe92d0fdf8b239ba4053e3f8d99d6d # pinned to v3
         if: always()
         with:
           sarif_file: trivy-deps.sarif
@@ -215,7 +215,7 @@ jobs:
       # by digest and is attached to the registry. This one is useful for
       # auditing dependency exposure before images are built (e.g. on a PR).
       - name: Generate SBOM
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # pinned to v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -225,7 +225,7 @@ jobs:
           TRIVY_CACHE_DIR: ${{ runner.temp }}/trivy-cache
 
       - name: Upload SBOM artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # pinned to v7
         if: always()
         with:
           name: sbom-${{ github.sha }}

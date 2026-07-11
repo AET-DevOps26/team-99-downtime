@@ -27,7 +27,7 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
         with:
           fetch-depth: 0 # Required for Nx affected logic
           filter: tree:0 # Optional, but recommended by nx
@@ -36,10 +36,10 @@ jobs:
         uses: ./.github/actions/setup-build-tools
 
       - name: Derive appropriate SHAs for base and head for nx affected
-        uses: nrwl/nx-set-shas@v5
+        uses: nrwl/nx-set-shas@afb73a62d26e41464e9254689e1fd6122ee683c1 # pinned to v5
 
       - name: Restore Nx Cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # pinned to v5
         id: cache-restore
         with:
           path: .nx/cache
@@ -53,11 +53,11 @@ jobs:
             nx-shared-${{ runner.os }}-
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # pinned to v4
 
       # Login to GitHub Container Registry
       - name: Log in to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # pinned to v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -95,12 +95,12 @@ jobs:
         if: steps.check-release.outputs.needed == 'true'
         shell: bash
         run: |
-          for vfile in $(find tmp -name ".docker-version" 2>/dev/null); do
+          while IFS= read -r vfile; do
             image=$(cat "$vfile")
             base="${image%:*}"
             docker tag "$image" "$base:latest"
             docker push "$base:latest"
-          done
+          done < <(find tmp -name ".docker-version" 2>/dev/null)
 
       # Collect registry digest for each pushed image so the attest job can fan out
       - name: Collect image refs and digests
@@ -120,14 +120,14 @@ jobs:
             echo "| Image | Tags | Digest |"
             echo "|-------|------|--------|"
           } >> "$GITHUB_STEP_SUMMARY"
-          for vfile in $(find tmp -name ".docker-version" 2>/dev/null); do
+          while IFS= read -r vfile; do
             image=$(cat "$vfile")
             name="${image%:*}"
             tag="${image##*:}"
             digest=$(docker buildx imagetools inspect "$image" --format '{{json .Manifest}}' | jq -r '.digest')
             images=$(echo "$images" | jq -c --arg n "$name" --arg d "$digest" '. + [{"name":$n,"digest":$d}]')
             echo "| \`$name\` | \`$tag\`, \`latest\` | \`${digest:7:12}…\` |" >> "$GITHUB_STEP_SUMMARY"
-          done
+          done < <(find tmp -name ".docker-version" 2>/dev/null)
           echo "images=$images" >> "$GITHUB_OUTPUT"
 
       - name: Write no-release summary
@@ -138,7 +138,7 @@ jobs:
 
       # This step runs even if the steps above fail
       - name: Save Nx Cache
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # pinned to v5
         if: always() && steps.cache-restore.outputs.cache-hit != 'true'
         with:
           path: .nx/cache
@@ -160,7 +160,7 @@ jobs:
         image: ${{ fromJSON(needs.build-and-publish.outputs.images) }}
     steps:
       - name: Log in to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # pinned to v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -170,7 +170,7 @@ jobs:
       # Verifiable via: gh attestation verify oci://<image>@<digest> --repo <repo>
       - name: Attest build provenance
         id: attest
-        uses: actions/attest@v4
+        uses: actions/attest@f6bf1532d7d6793fce74eac584813a8eee607999 # pinned to v4
         with:
           subject-name: ${{ matrix.image.name }}
           subject-digest: ${{ matrix.image.digest }}
@@ -189,7 +189,7 @@ jobs:
       # no key management required).
       # Verifiable via: cosign verify-attestation --type cyclonedx <image>
       - name: Generate SBOM with Trivy
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # pinned to v0.36.0
         with:
           image-ref: ${{ matrix.image.name }}@${{ matrix.image.digest }}
           format: cyclonedx
@@ -199,7 +199,7 @@ jobs:
           TRIVY_PASSWORD: ${{ github.token }}
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@v4.1.2
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # pinned to v4.1.2
 
       - name: Attach SBOM to image
         run: |
@@ -246,7 +246,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
         with:
           fetch-depth: 0
 
@@ -256,7 +256,7 @@ jobs:
           echo "${{ secrets.KUBECONFIG_DATA }}" | base64 -d > ~/.kube/config
 
       - name: Set up Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@bf6a7d304bc2fdb57e0331155b7ebf2c504acf0a # pinned to v4
         with:
           version: 'v4.2.0'
 
@@ -283,9 +283,11 @@ jobs:
         run: |
           VERSION=$(git describe --tags --abbrev=0)
           VERSION=${VERSION#v}
-          echo "## Deployed to Stage" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Version:** \`$VERSION\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "**URL:** https://stage.t99.stud.k8s.aet.cit.tum.de" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## Deployed to Stage"
+            echo "**Version:** \`$VERSION\`"
+            echo "**URL:** https://stage.t99.stud.k8s.aet.cit.tum.de"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # ============================================================
   # OPTION B — Kargo warehouse refresh (commented out)

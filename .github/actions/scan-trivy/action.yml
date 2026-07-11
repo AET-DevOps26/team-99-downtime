@@ -28,7 +28,7 @@ runs:
     # not download it independently. The run_id suffix in the key ensures a
     # fresh write each run while restore-keys give cache hits on reruns.
     - name: Cache Trivy DB
-      uses: actions/cache@v4
+      uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # pinned to v5
       with:
         path: ${{ runner.temp }}/trivy-cache
         key: trivy-db-${{ runner.os }}-${{ github.run_id }}
@@ -36,7 +36,7 @@ runs:
           trivy-db-${{ runner.os }}-
 
     - name: Run Trivy
-      uses: aquasecurity/trivy-action@v0.36.0
+      uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # pinned to v0.36.0
       with:
         scan-type: ${{ inputs.scan-type }}
         scan-ref: ${{ inputs.target }}
