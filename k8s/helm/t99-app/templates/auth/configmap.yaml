@@ -4,5 +4,9 @@ metadata:
   name: {{ .Release.Name }}-auth-config
   labels:
     {{- include "t99-app.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation
 data:
   BETTER_AUTH_URL: https://{{ .Values.domain }}

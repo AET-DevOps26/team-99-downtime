@@ -74,8 +74,32 @@ if (rows.length === 0) {
   }
 
   console.log(`auth-migrate: demo user seeded (${DEMO_EMAIL}).`);
+} else if (rows[0].id !== DEMO_USER_ID) {
+  // User exists but with a different ID — previous run created the account via
+  // signUpEmail but the ID-rename transaction was rolled back. Reconcile now so
+  // the Flyway seeds in budget/transaction services get a consistent reference.
+  const existingId = rows[0].id;
+  await pool.query('BEGIN');
+  try {
+    await pool.query('ALTER TABLE "user" DISABLE TRIGGER ALL');
+    await pool.query('UPDATE "user" SET id = $1 WHERE id = $2', [DEMO_USER_ID, existingId]);
+    await pool.query('UPDATE session SET "userId" = $1 WHERE "userId" = $2', [
+      DEMO_USER_ID,
+      existingId,
+    ]);
+    await pool.query('UPDATE account SET "userId" = $1 WHERE "userId" = $2', [
+      DEMO_USER_ID,
+      existingId,
+    ]);
+    await pool.query('ALTER TABLE "user" ENABLE TRIGGER ALL');
+    await pool.query('COMMIT');
+  } catch (err) {
+    await pool.query('ROLLBACK');
+    throw err;
+  }
+  console.log(`auth-migrate: reconciled demo user ID to ${DEMO_USER_ID}.`);
 } else {
-  console.log('auth-migrate: demo user already exists, skipping.');
+  console.log('auth-migrate: demo user already exists with correct ID, skipping.');
 }
 
 await pool.end();
