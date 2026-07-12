@@ -9,7 +9,7 @@ EXPOSE 4200
 # the dev server binds IPv4 only, so the probe would always fail.
 HEALTHCHECK --interval=10s --timeout=3s --start-period=60s --retries=15 \
     CMD wget -q --spider http://127.0.0.1:4200 || exit 1
-CMD ["sh", "-c", "bun install --frozen-lockfile && bun nx serve client --host 0.0.0.0"]
+CMD ["sh", "-c", "bun install --frozen-lockfile && exec bun nx serve client --host 0.0.0.0"]
 
 #prod
 FROM joseluisq/static-web-server:2-alpine AS prod
