@@ -1,5 +1,8 @@
 #dev
 FROM oven/bun:1-alpine AS dev
+RUN apk add --no-cache openjdk21-jre-headless
+ENV JAVA_HOME=/usr/lib/jvm/default-jvm \
+    PATH="/usr/lib/jvm/default-jvm/bin:$PATH"
 WORKDIR /workspace
 COPY package.json bun.lock ./
 EXPOSE 3000

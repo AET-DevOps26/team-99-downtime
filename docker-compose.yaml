@@ -114,7 +114,7 @@ services:
       DEMO_USER_PASSWORD: ${DEMO_USER_PASSWORD:-demodemo1234!}
     # Runs the programmatic migration (better-auth/db/migration) via the service's
     # own config + pg adapter — no CLI, no native deps to compile in the image.
-    command: sh -c "cd apps/auth-service && bun run src/migrate.ts"
+    command: sh -c "bun install --frozen-lockfile --ignore-scripts && cd apps/auth-service && bun run src/migrate.ts"
     volumes:
       - .:/workspace
       - auth_service_node_modules:/workspace/node_modules
@@ -141,6 +141,9 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       PORT: '3000'
+    # Run the server directly to avoid NX processing the project graph (which
+    # invokes @nx/gradle and requires Java — not present in the bun:alpine image).
+    command: sh -c "bun install --frozen-lockfile --ignore-scripts && cd apps/auth-service && bun --watch run src/server.ts"
     ports:
       - '3000:3000'
     volumes:
