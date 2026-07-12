@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: grafana-oauth2
-  namespace: t99-stage
   labels:
     app.kubernetes.io/name: grafana-oauth2
     app.kubernetes.io/part-of: t99-observability
@@ -71,7 +70,6 @@ apiVersion: v1
 kind: Service
 metadata:
   name: grafana-oauth2
-  namespace: t99-stage
   labels:
     app.kubernetes.io/name: grafana-oauth2
     app.kubernetes.io/part-of: t99-observability

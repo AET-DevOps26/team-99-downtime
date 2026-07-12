@@ -1,0 +1,27 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: t99-stage
+
+# Metrics only: the stage quota has no room for Alertmanager + MailHog on top of
+# oauth2-proxy. Rules still surface under Prometheus > Alerts.
+resources:
+  - ../../base
+  - prometheus-config.yaml
+  - ingress.yaml
+
+patches:
+  - target:
+      kind: Deployment
+      name: grafana
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/env/3/value
+        value: https://grafana.stage.t99.stud.k8s.aet.cit.tum.de
+  - target:
+      kind: Deployment
+      name: grafana-oauth2
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/args/4
+        value: --redirect-url=https://grafana.stage.t99.stud.k8s.aet.cit.tum.de/oauth2/callback
