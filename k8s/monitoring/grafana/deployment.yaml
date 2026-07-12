@@ -45,6 +45,13 @@ spec:
             # Without this, redirects and share links point at localhost.
             - name: GF_SERVER_ROOT_URL
               value: https://grafana.stage.t99.stud.k8s.aet.cit.tum.de
+            # oauth2-proxy already authenticated whoever gets here, so skip a
+            # second login: anonymous read-only. Editing still needs the admin
+            # login (bottom of the page).
+            - name: GF_AUTH_ANONYMOUS_ENABLED
+              value: 'true'
+            - name: GF_AUTH_ANONYMOUS_ORG_ROLE
+              value: Viewer
           readinessProbe:
             httpGet:
               path: /api/health

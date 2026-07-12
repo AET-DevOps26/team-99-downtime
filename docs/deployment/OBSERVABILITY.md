@@ -86,19 +86,30 @@ pod listing. So Prometheus uses a namespaced Role and only discovers our own pod
 ./k8s/monitoring/apply.sh --delete   # tear down
 ```
 
-Grafana is public at **<https://grafana.stage.t99.stud.k8s.aet.cit.tum.de>** (nginx
-ingress + cert-manager, same as the app). Log in as `admin`:
+Grafana: **<https://grafana.stage.t99.stud.k8s.aet.cit.tum.de>** (nginx ingress +
+cert-manager, same as the app). Access is gated by **oauth2-proxy** on GitHub -
+collaborators of `aet-devops26/team-99-downtime` get in, exactly like Drizzle
+Studio. Grafana itself is never exposed; the proxy is the ingress backend.
+
+Once past the proxy you are an anonymous **Viewer** - no second login. To edit,
+log in as `admin` at the bottom of the page:
 
 ```sh
 kubectl -n t99-stage get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d
 ```
 
-Prometheus, Alertmanager and MailHog have no ingress - reach them by port-forward:
+The GitHub OAuth App's callback must be
+`https://grafana.stage.t99.stud.k8s.aet.cit.tum.de/oauth2/callback`. Pass its
+credentials on first deploy:
 
 ```sh
-kubectl -n t99-stage port-forward svc/prometheus   9090:9090
-kubectl -n t99-stage port-forward svc/alertmanager 9093:9093
-kubectl -n t99-stage port-forward svc/mailhog      8025:8025
+GITHUB_CLIENT_ID=... GITHUB_CLIENT_SECRET=... ./k8s/monitoring/apply.sh
+```
+
+Prometheus has no ingress:
+
+```sh
+kubectl -n t99-stage port-forward svc/prometheus 9090:9090
 ```
 
 ### Sizing
@@ -106,16 +117,17 @@ kubectl -n t99-stage port-forward svc/mailhog      8025:8025
 The namespace `ResourceQuota` caps **limits** (not requests) at 2500Mi / 2 CPU,
 shared with the app. The stack is sized to fit in what the app leaves:
 
-| Pod          | Memory limit | CPU limit |
-| ------------ | ------------ | --------- |
-| prometheus   | 128Mi        | 100m      |
-| grafana      | 128Mi        | 75m       |
-| alertmanager | 40Mi         | 50m       |
-| mailhog      | 24Mi         | 25m       |
-| **total**    | **320Mi**    | **250m**  |
+| Pod            | Memory limit | CPU limit |
+| -------------- | ------------ | --------- |
+| prometheus     | 128Mi        | 100m      |
+| grafana        | 128Mi        | 75m       |
+| grafana-oauth2 | 64Mi         | 50m       |
+| **total**      | **320Mi**    | **225m**  |
 
-That budget is also why there is **no Loki on the cluster** - metrics only, with
-logs staying a local-compose feature. Check headroom with
+That budget is why the cluster runs **metrics only**. There is no Loki, and no
+Alertmanager or MailHog: alert rules still evaluate and show under
+**Prometheus > Alerts**, but nothing is mailed. Logs and email alerting stay in
+the local compose stack. Check headroom with
 `kubectl get resourcequota -n t99-stage`.
 
 ## Dashboards
@@ -147,7 +159,10 @@ every 15s                 routes by severity           (localhost:8025)
 
 Rules are defined twice, in the same shape: `infra/monitoring/rules/alerts.yaml`
 (Compose) and `k8s/monitoring/prometheus/rules.yaml` (cluster). Routing lives in
-`infra/monitoring/alertmanager.yml`, shared by both.
+`infra/monitoring/alertmanager.yml`.
+
+Mail only happens locally. The cluster has no Alertmanager (namespace quota), so
+there the rules evaluate and surface under **Prometheus > Alerts** and stop there.
 
 ### The rules
 
