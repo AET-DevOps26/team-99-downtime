@@ -77,33 +77,42 @@ panel spikes, the log panels below it show what was actually thrown.
 
 ## Deploy on Kubernetes
 
-Runs in the app's own namespace (`t99-stage`), not a dedicated one: on the shared
-AET cluster we hold no cluster-scoped rights - no ClusterRole, no cross-namespace
-pod listing. So Prometheus uses a namespaced Role and only discovers our own pods.
+The stack runs in the app's own namespace, not a dedicated one: on the shared AET
+cluster we hold no cluster-scoped rights (no ClusterRole, no cross-namespace pod
+listing), so Prometheus uses a namespaced Role and discovers only our own pods.
+
+`k8s/monitoring/` is a kustomize base with one overlay per environment.
+
+### Deployment is automatic
+
+`.github/workflows/deploy-monitoring.yml` applies **stage** on every push to
+`main` touching `k8s/monitoring/**`, `infra/grafana/**` or `infra/monitoring/**`.
+**Prod** is promoted with the same workflow via _Run workflow_ → `prod`. The
+manifests are the source of truth; the cluster cannot drift from them.
+
+Manual runs use the same script CI does:
 
 ```sh
-./k8s/monitoring/apply.sh            # deploy / update
-./k8s/monitoring/apply.sh --delete   # tear down
+./k8s/monitoring/apply.sh stage             # or: prod
+./k8s/monitoring/apply.sh prod --delete     # tear down
 ```
 
-Grafana: **<https://grafana.stage.t99.stud.k8s.aet.cit.tum.de>** (nginx ingress +
-cert-manager, same as the app). Access is gated by **oauth2-proxy** on GitHub -
-collaborators of `aet-devops26/team-99-downtime` get in, exactly like Drizzle
-Studio. Grafana itself is never exposed; the proxy is the ingress backend.
+### Access
 
-Once past the proxy you are an anonymous **Viewer** - no second login. To edit,
-log in as `admin` at the bottom of the page:
+| Environment | Grafana                                             | Alertmanager | Alert mail |
+| ----------- | --------------------------------------------------- | ------------ | ---------- |
+| Stage       | <https://grafana.stage.t99.stud.k8s.aet.cit.tum.de> | -            | -          |
+| Prod        | <https://grafana.t99.stud.k8s.aet.cit.tum.de>       | `/alerts`    | `/mail`    |
+
+Everything sits behind **oauth2-proxy**, gated on collaborators of the GitHub
+repo. On prod a single proxy fans out by path, so one login covers Grafana,
+Alertmanager and the mail catcher; none of them is reachable on its own.
+
+Past the proxy you are an anonymous **Viewer** - no second login. Editing needs
+the admin account:
 
 ```sh
 kubectl -n t99-stage get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d
-```
-
-The GitHub OAuth App's callback must be
-`https://grafana.stage.t99.stud.k8s.aet.cit.tum.de/oauth2/callback`. Pass its
-credentials on first deploy:
-
-```sh
-GITHUB_CLIENT_ID=... GITHUB_CLIENT_SECRET=... ./k8s/monitoring/apply.sh
 ```
 
 Prometheus has no ingress:
@@ -112,23 +121,40 @@ Prometheus has no ingress:
 kubectl -n t99-stage port-forward svc/prometheus 9090:9090
 ```
 
+### OAuth apps
+
+One GitHub OAuth App per environment - an app allows a single callback URL:
+
+| Environment | Callback URL                                                        |
+| ----------- | ------------------------------------------------------------------- |
+| Stage       | `https://grafana.stage.t99.stud.k8s.aet.cit.tum.de/oauth2/callback` |
+| Prod        | `https://grafana.t99.stud.k8s.aet.cit.tum.de/oauth2/callback`       |
+
+CI reads them from the `GRAFANA_OAUTH_CLIENT_ID_STAGE` / `_SECRET_STAGE` and
+`..._PROD` repository secrets. For a manual first deploy:
+
+```sh
+GRAFANA_OAUTH_CLIENT_ID=... GRAFANA_OAUTH_CLIENT_SECRET=... ./k8s/monitoring/apply.sh stage
+```
+
 ### Sizing
 
-The namespace `ResourceQuota` caps **limits** (not requests) at 2500Mi / 2 CPU,
-shared with the app. The stack is sized to fit in what the app leaves:
+The namespace `ResourceQuota` caps **limits**, not requests, and is shared with
+the app. Stage has little headroom left, prod has plenty - which is why alerting
+runs on prod only:
 
-| Pod            | Memory limit | CPU limit |
-| -------------- | ------------ | --------- |
-| prometheus     | 128Mi        | 100m      |
-| grafana        | 128Mi        | 75m       |
-| grafana-oauth2 | 64Mi         | 50m       |
-| **total**      | **320Mi**    | **225m**  |
+| Pod            | Stage     | Prod      |
+| -------------- | --------- | --------- |
+| prometheus     | 128Mi     | 256Mi     |
+| grafana        | 128Mi     | 192Mi     |
+| grafana-oauth2 | 64Mi      | 64Mi      |
+| alertmanager   | -         | 64Mi      |
+| mailhog        | -         | 32Mi      |
+| **total**      | **320Mi** | **608Mi** |
 
-That budget is why the cluster runs **metrics only**. There is no Loki, and no
-Alertmanager or MailHog: alert rules still evaluate and show under
-**Prometheus > Alerts**, but nothing is mailed. Logs and email alerting stay in
-the local compose stack. Check headroom with
-`kubectl get resourcequota -n t99-stage`.
+On stage the alert rules still evaluate and show under **Prometheus > Alerts**,
+but nothing is routed. Loki runs locally only. Check headroom with
+`kubectl get resourcequota -n <namespace>`.
 
 ## Dashboards
 

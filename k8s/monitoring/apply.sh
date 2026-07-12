@@ -37,20 +37,20 @@ fi
 # allows a single callback URL. Callback:
 #   https://<grafana host>/oauth2/callback
 # Re-runs reuse the cookie secret, so existing sessions survive.
-if [[ -n "${GITHUB_CLIENT_ID:-}" && -n "${GITHUB_CLIENT_SECRET:-}" ]]; then
+if [[ -n "${GRAFANA_OAUTH_CLIENT_ID:-}" && -n "${GRAFANA_OAUTH_CLIENT_SECRET:-}" ]]; then
   cookie_secret="$(kubectl -n "$NAMESPACE" get secret grafana-github \
     -o jsonpath='{.data.cookie-secret}' 2>/dev/null | base64 -d || true)"
   [[ -n "$cookie_secret" ]] || cookie_secret="$(openssl rand -base64 32 | head -c 32)"
 
   kubectl create secret generic grafana-github \
     --namespace "$NAMESPACE" \
-    --from-literal=client-id="$GITHUB_CLIENT_ID" \
-    --from-literal=client-secret="$GITHUB_CLIENT_SECRET" \
+    --from-literal=client-id="$GRAFANA_OAUTH_CLIENT_ID" \
+    --from-literal=client-secret="$GRAFANA_OAUTH_CLIENT_SECRET" \
     --from-literal=cookie-secret="$cookie_secret" \
     --dry-run=client -o yaml | kubectl apply -f -
 elif ! kubectl -n "$NAMESPACE" get secret grafana-github >/dev/null 2>&1; then
-  echo "error: no grafana-github secret in $NAMESPACE, and GITHUB_CLIENT_ID /" >&2
-  echo "       GITHUB_CLIENT_SECRET are unset. Re-run with those two set." >&2
+  echo "error: no grafana-github secret in $NAMESPACE, and GRAFANA_OAUTH_CLIENT_ID /" >&2
+  echo "       GRAFANA_OAUTH_CLIENT_SECRET are unset. Re-run with those two set." >&2
   exit 1
 fi
 
