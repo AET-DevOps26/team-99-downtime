@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: grafana
-  namespace: monitoring
+  namespace: t99-stage
   labels:
     app.kubernetes.io/name: grafana
     app.kubernetes.io/part-of: t99-observability
@@ -42,6 +42,9 @@ spec:
                   key: admin-password
             - name: GF_USERS_ALLOW_SIGN_UP
               value: 'false'
+            # Without this, redirects and share links point at localhost.
+            - name: GF_SERVER_ROOT_URL
+              value: https://grafana.stage.t99.stud.k8s.aet.cit.tum.de
           readinessProbe:
             httpGet:
               path: /api/health
@@ -59,8 +62,8 @@ spec:
               memory: 128Mi
               cpu: 50m
             limits:
-              memory: 256Mi
-              cpu: 200m
+              memory: 128Mi
+              cpu: 75m
           volumeMounts:
             - name: data
               mountPath: /var/lib/grafana

@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: prometheus-config
-  namespace: monitoring
+  namespace: t99-stage
   labels:
     app.kubernetes.io/name: prometheus
     app.kubernetes.io/part-of: t99-observability
@@ -30,6 +30,9 @@ data:
       - job_name: kubernetes-pods
         kubernetes_sd_configs:
           - role: pod
+            # Own namespace only: a cluster-wide pod list would be denied.
+            namespaces:
+              names: [t99-stage]
         relabel_configs:
           - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
             action: keep

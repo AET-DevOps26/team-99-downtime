@@ -2,46 +2,41 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: prometheus
-  namespace: monitoring
+  namespace: t99-stage
   labels:
     app.kubernetes.io/name: prometheus
     app.kubernetes.io/part-of: t99-observability
 ---
+# Namespaced Role: we hold no cluster-scoped RBAC on the shared AET cluster.
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
+kind: Role
 metadata:
-  name: t99-prometheus
+  name: prometheus
+  namespace: t99-stage
   labels:
     app.kubernetes.io/name: prometheus
     app.kubernetes.io/part-of: t99-observability
 rules:
   - apiGroups: ['']
     resources:
-      - nodes
-      - nodes/metrics
       - services
       - endpoints
       - pods
     verbs: ['get', 'list', 'watch']
-  - apiGroups: ['']
-    resources:
-      - configmaps
-    verbs: ['get']
-  - nonResourceURLs: ['/metrics']
-    verbs: ['get']
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: RoleBinding
 metadata:
-  name: t99-prometheus
+  name: prometheus
+  namespace: t99-stage
   labels:
     app.kubernetes.io/name: prometheus
     app.kubernetes.io/part-of: t99-observability
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: t99-prometheus
+  kind: Role
+  name: prometheus
 subjects:
   - kind: ServiceAccount
     name: prometheus
-    namespace: monitoring
+    namespace: t99-stage

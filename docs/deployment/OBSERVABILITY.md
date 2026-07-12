@@ -77,21 +77,46 @@ panel spikes, the log panels below it show what was actually thrown.
 
 ## Deploy on Kubernetes
 
+Runs in the app's own namespace (`t99-stage`), not a dedicated one: on the shared
+AET cluster we hold no cluster-scoped rights - no ClusterRole, no cross-namespace
+pod listing. So Prometheus uses a namespaced Role and only discovers our own pods.
+
 ```sh
 ./k8s/monitoring/apply.sh            # deploy / update
 ./k8s/monitoring/apply.sh --delete   # tear down
 ```
 
-Access via port-forward:
+Grafana is public at **<https://grafana.stage.t99.stud.k8s.aet.cit.tum.de>** (nginx
+ingress + cert-manager, same as the app). Log in as `admin`:
 
 ```sh
-kubectl -n monitoring port-forward svc/grafana 3000:3000
-kubectl -n monitoring port-forward svc/prometheus 9090:9090
+kubectl -n t99-stage get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d
 ```
 
-> `apply.sh` generates a random Grafana admin password on first run and prints
-> it once. Read it later with:
-> `kubectl -n monitoring get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d`
+Prometheus, Alertmanager and MailHog have no ingress - reach them by port-forward:
+
+```sh
+kubectl -n t99-stage port-forward svc/prometheus   9090:9090
+kubectl -n t99-stage port-forward svc/alertmanager 9093:9093
+kubectl -n t99-stage port-forward svc/mailhog      8025:8025
+```
+
+### Sizing
+
+The namespace `ResourceQuota` caps **limits** (not requests) at 2500Mi / 2 CPU,
+shared with the app. The stack is sized to fit in what the app leaves:
+
+| Pod          | Memory limit | CPU limit |
+| ------------ | ------------ | --------- |
+| prometheus   | 128Mi        | 100m      |
+| grafana      | 128Mi        | 75m       |
+| alertmanager | 40Mi         | 50m       |
+| mailhog      | 24Mi         | 25m       |
+| **total**    | **320Mi**    | **250m**  |
+
+That budget is also why there is **no Loki on the cluster** - metrics only, with
+logs staying a local-compose feature. Check headroom with
+`kubectl get resourcequota -n t99-stage`.
 
 ## Dashboards
 
@@ -184,10 +209,10 @@ credentials exist anywhere in this repo or the cluster** - nothing to leak, and
 no personal university password sitting in a Kubernetes Secret that any
 teammate can `kubectl get -o yaml`.
 
-| UI           | Local                   | Cluster                                                         |
-| ------------ | ----------------------- | --------------------------------------------------------------- |
-| Alert mails  | <http://localhost:8025> | `kubectl -n monitoring port-forward svc/mailhog 8025:8025`      |
-| Alertmanager | <http://localhost:9093> | `kubectl -n monitoring port-forward svc/alertmanager 9093:9093` |
+| UI           | Local                   | Cluster                                                        |
+| ------------ | ----------------------- | -------------------------------------------------------------- |
+| Alert mails  | <http://localhost:8025> | `kubectl -n t99-stage port-forward svc/mailhog 8025:8025`      |
+| Alertmanager | <http://localhost:9093> | `kubectl -n t99-stage port-forward svc/alertmanager 9093:9093` |
 
 To send real mail instead, point `smtp_smarthost` at a real relay and add the
 `smtp_auth_*` settings for it. Use a shared/functional account, never a personal

@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mailhog
-  namespace: monitoring
+  namespace: t99-stage
   labels:
     app.kubernetes.io/name: mailhog
     app.kubernetes.io/part-of: t99-observability
@@ -36,8 +36,8 @@ spec:
             periodSeconds: 10
           resources:
             requests:
-              memory: 32Mi
+              memory: 16Mi
               cpu: 10m
             limits:
-              memory: 64Mi
-              cpu: 50m
+              memory: 24Mi
+              cpu: 25m

@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
-# Deploy the observability stack. Usage: ./apply.sh [--delete]
-# The grafana-dashboards ConfigMap is generated from infra/grafana/dashboards/
-# so the committed JSON stays the single source of truth. The grafana-admin
-# Secret is generated with a random password on first run (never committed).
+# Deploy the observability stack into the app's namespace. Usage: ./apply.sh [--delete]
+#
+# The ConfigMaps are generated from the committed files under infra/, which stay
+# the single source of truth. The grafana-admin Secret gets a random password on
+# first run. Pod limits are sized to the namespace quota — see OBSERVABILITY.md.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 DASHBOARD_DIR="$REPO_ROOT/infra/grafana/dashboards"
 ALERTMANAGER_CONFIG="$REPO_ROOT/infra/monitoring/alertmanager.yml"
-NAMESPACE="monitoring"
+NAMESPACE="${NAMESPACE:-t99-stage}"
 
 if [[ "${1:-}" == "--delete" ]]; then
   kubectl delete -k "$SCRIPT_DIR" --ignore-not-found
@@ -17,8 +18,6 @@ if [[ "${1:-}" == "--delete" ]]; then
   kubectl delete secret grafana-admin -n "$NAMESPACE" --ignore-not-found
   exit 0
 fi
-
-kubectl apply -f "$SCRIPT_DIR/namespace.yaml"
 
 kubectl create configmap grafana-dashboards \
   --namespace "$NAMESPACE" \

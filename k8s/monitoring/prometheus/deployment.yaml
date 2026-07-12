@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: prometheus
-  namespace: monitoring
+  namespace: t99-stage
   labels:
     app.kubernetes.io/name: prometheus
     app.kubernetes.io/part-of: t99-observability
@@ -30,7 +30,7 @@ spec:
           args:
             - --config.file=/etc/prometheus/prometheus.yml
             - --storage.tsdb.path=/prometheus
-            - --storage.tsdb.retention.time=15d
+            - --storage.tsdb.retention.time=7d
             - --web.enable-lifecycle
           ports:
             - name: http
@@ -49,11 +49,11 @@ spec:
             periodSeconds: 15
           resources:
             requests:
-              memory: 256Mi
+              memory: 128Mi
               cpu: 100m
             limits:
-              memory: 512Mi
-              cpu: 500m
+              memory: 128Mi
+              cpu: 100m
           volumeMounts:
             - name: config
               mountPath: /etc/prometheus

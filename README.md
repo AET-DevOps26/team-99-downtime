@@ -16,11 +16,14 @@ This also brings up the observability stack - metrics, logs and alerting in Graf
 
 ## Live Environments
 
-| Environment | App                                                 | Drizzle Studio                                   |
-| ----------- | --------------------------------------------------- | ------------------------------------------------ |
-| Stage       | https://stage.t99.stud.k8s.aet.cit.tum.de           | https://studio.stage.t99.stud.k8s.aet.cit.tum.de |
-| Prod        | https://t99.stud.k8s.aet.cit.tum.de                 | https://studio.t99.stud.k8s.aet.cit.tum.de       |
-| Azure VM    | https://expenseflow.spaincentral.cloudapp.azure.com | —                                                |
+| Environment | App                                                 | Drizzle Studio                                   | Grafana                                           |
+| ----------- | --------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------- |
+| Stage       | https://stage.t99.stud.k8s.aet.cit.tum.de           | https://studio.stage.t99.stud.k8s.aet.cit.tum.de | https://grafana.stage.t99.stud.k8s.aet.cit.tum.de |
+| Prod        | https://t99.stud.k8s.aet.cit.tum.de                 | https://studio.t99.stud.k8s.aet.cit.tum.de       | —                                                 |
+| Azure VM    | https://expenseflow.spaincentral.cloudapp.azure.com | —                                                | —                                                 |
+
+Grafana on stage: log in as `admin`; read the password with
+`kubectl -n t99-stage get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d`.
 
 ## Deployment
 
