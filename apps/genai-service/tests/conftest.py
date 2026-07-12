@@ -11,6 +11,14 @@ def _skip_llm_probe(monkeypatch):
     monkeypatch.setattr("src.config.LLM_SKIP_STARTUP_CHECK", True)
 
 
+@pytest.fixture(autouse=True)
+def _no_summary_store(monkeypatch):
+    """Never connect to a real database: a DATABASE_URL leaking in from the
+    environment (Nx injects the repo-root .env) would make lifespan tests
+    dial out to Postgres."""
+    monkeypatch.setattr("src.config.DATABASE_URL", "")
+
+
 @pytest.fixture
 def llm(monkeypatch):
     """Stub the LLM chat call: set ``llm["reply"]``, read back ``llm["messages"]``."""
