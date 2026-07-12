@@ -89,11 +89,22 @@ def test_probe_raises_on_403(monkeypatch):
         asyncio.run(llm.probe())
 
 
-def test_probe_raises_on_network_failure(monkeypatch):
+class _TimeoutClient(_FailingClient):
+    async def post(self, *args, **kwargs):
+        raise httpx.ReadTimeout("gateway too slow")
+
+
+def test_probe_tolerates_network_failure(monkeypatch):
+    # A gateway outage is transient — the pod must still start (issue #151).
     monkeypatch.setattr(llm.config, "LLM_API_KEY", "some-key")
     monkeypatch.setattr(llm.httpx, "AsyncClient", _FailingClient)
-    with pytest.raises(llm.LlmUnavailableError):
-        asyncio.run(llm.probe())
+    asyncio.run(llm.probe())  # must not raise
+
+
+def test_probe_tolerates_gateway_timeout(monkeypatch):
+    monkeypatch.setattr(llm.config, "LLM_API_KEY", "some-key")
+    monkeypatch.setattr(llm.httpx, "AsyncClient", _TimeoutClient)
+    asyncio.run(llm.probe())  # must not raise
 
 
 def test_probe_passes_on_200(monkeypatch):

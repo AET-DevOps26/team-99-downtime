@@ -40,7 +40,7 @@ bun deploy:k8s -n t99-prod   # deploy to a different namespace
 1. Reads the latest git tag as the image version (fails if no tags exist)
 2. Looks up the `t99-studio-oauth2` secret in the target namespace for GitHub OAuth credentials; prompts interactively if the secret is absent
 3. Runs `helm upgrade --install` with `values.yaml` + `values.stage.yaml`, setting all service image tags to the resolved version and passing the OAuth credentials via `--set`
-4. Waits up to 5 minutes for the rollout; rolls back on failure
+4. Waits up to 10 minutes for the rollout; rolls back on failure
 
 **Prerequisites:**
 

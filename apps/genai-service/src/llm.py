@@ -5,9 +5,13 @@ Every feature module (categorize, summarize) funnels its model calls through
 seam (see the ``llm`` fixture in tests/conftest.py).
 """
 
+import logging
+
 import httpx
 
 from . import config
+
+logger = logging.getLogger(__name__)
 
 
 class LlmUnavailableError(Exception):
@@ -41,8 +45,12 @@ async def chat(messages: list[dict]) -> str:
 async def probe() -> None:
     """Verify the LLM gateway accepts the configured API key.
 
-    Raises LlmUnavailableError if the key is empty, if the gateway returns
-    401/403, or if the gateway is unreachable. Returns silently on success.
+    Raises LlmUnavailableError only for definitive configuration errors: an
+    empty key, or a 401/403 from the gateway. A gateway that is merely
+    unreachable (timeout, connection error) logs a warning and lets the
+    service start — the endpoints already degrade to 502 LLM_UNAVAILABLE,
+    whereas exiting here crash-loops the pod for the whole outage and blocks
+    `helm --wait` rollouts of every service.
     """
     if not config.LLM_API_KEY:
         raise LlmUnavailableError("LLM_API_KEY is not set")
@@ -57,9 +65,13 @@ async def probe() -> None:
                     "max_tokens": 1,
                 },
             )
-            if response.status_code in (401, 403):
-                raise LlmUnavailableError(
-                    f"LLM gateway rejected the API key (HTTP {response.status_code})"
-                )
     except httpx.HTTPError as exc:
-        raise LlmUnavailableError(str(exc)) from exc
+        logger.warning(
+            "LLM gateway unreachable during startup key check, starting anyway: %s",
+            exc,
+        )
+        return
+    if response.status_code in (401, 403):
+        raise LlmUnavailableError(
+            f"LLM gateway rejected the API key (HTTP {response.status_code})"
+        )
