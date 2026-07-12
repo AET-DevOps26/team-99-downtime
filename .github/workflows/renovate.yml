@@ -13,7 +13,9 @@ jobs:
   renovate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: renovatebot/github-action@v46.1.17
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
+        with:
+          persist-credentials: false
+      - uses: renovatebot/github-action@dd5302ec17783b2fc721b19ae7209b57b1587765 # pinned to v46.1.17
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

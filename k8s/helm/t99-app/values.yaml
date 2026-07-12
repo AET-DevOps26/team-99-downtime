@@ -35,7 +35,7 @@ client:
   image:
     repository: t99-client
     tag: ''
-  port: 80
+  port: 8080
   resources:
     requests:
       memory: 32Mi

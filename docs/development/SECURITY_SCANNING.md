@@ -1,0 +1,214 @@
+# Security Scanning
+
+Security scanning runs automatically in the `security` workflow on every pull request and nightly on `main`. Findings appear in the GitHub **Security → Code Scanning** tab and as inline annotations on PR diffs.
+
+## Tools
+
+| Tool                                                         | Job            | Category                          | Blocks merge        |
+| ------------------------------------------------------------ | -------------- | --------------------------------- | ------------------- |
+| [typos](https://github.com/crate-ci/typos)                   | `spelling`     | Spell checking                    | Yes                 |
+| [actionlint](https://github.com/rhysd/actionlint)            | `workflows`    | Workflow correctness              | Yes                 |
+| [Zizmor](https://github.com/woodruffw/zizmor)                | `workflows`    | Workflow security                 | Yes                 |
+| [Hadolint](https://github.com/hadolint/hadolint)             | `containers`   | Dockerfile lint                   | Yes                 |
+| [tflint](https://github.com/terraform-linters/tflint)        | `iac`          | Terraform lint                    | Yes                 |
+| [KICS](https://github.com/Checkmarx/kics)                    | `iac`          | IaC misconfiguration              | Yes (high/critical) |
+| [GitLeaks](https://github.com/gitleaks/gitleaks)             | `secrets`      | Secret detection (git history)    | No — report only    |
+| [Trivy](https://github.com/aquasecurity/trivy) (secret mode) | `secrets`      | Secret detection (filesystem)     | No — report only    |
+| [Semgrep](https://github.com/semgrep/semgrep)                | `sast`         | SAST                              | No — report only    |
+| [Trivy](https://github.com/aquasecurity/trivy) (vuln mode)   | `dependencies` | Dependency vulnerabilities + SBOM | No — report only    |
+
+### Why each tool was chosen
+
+**typos** — Fast binary with near-zero false positives. Catches typos in code identifiers, comments, and docs before they end up in published APIs or user-facing strings.
+
+**actionlint** — Statically checks workflow YAML for syntax errors, invalid expressions, wrong `needs` references, and incorrect context usage. Catches issues the GitHub Actions parser won't surface until runtime.
+
+**Zizmor** — Security-focused companion to actionlint. Detects script injection via untrusted PR inputs (e.g. `${{ github.event.pull_request.title }}` in `run:` steps), excessive token permissions, and unpinned action references.
+
+**Hadolint** — Lints `Dockerfile` authoring best practices (pinned base images, no `apt-get upgrade`, correct `COPY` usage, etc.). Trivy scans the _built_ image for vulnerabilities; Hadolint prevents the bad practices from entering the `Dockerfile` in the first place.
+
+**tflint** — Terraform linter with the `azurerm` provider ruleset. Catches provider-specific issues like deprecated resource types and invalid argument combinations that `terraform validate` misses.
+
+**KICS** — Scans all IaC formats in the repo (Terraform, Helm, Docker Compose, raw K8s YAML) for security misconfigurations against a large rule library. More IaC-focused than Trivy's misconfiguration scanner.
+
+**GitLeaks** — Scans the full git history for accidentally committed secrets. Complements Trivy's point-in-time filesystem scan by catching secrets that were introduced and then removed in later commits.
+
+**Trivy (secret)** — Point-in-time secret scanner on the current filesystem state. Complements GitLeaks.
+
+**Semgrep** — SAST tool that matches code patterns against security rule packs for Java, TypeScript, and Python. Catches issues like SQL injection patterns, unsafe deserialization, and XSS sinks that dependency scanners cannot find.
+
+**Trivy (vuln + SBOM)** — Scans all package manifests (Java/Gradle, Python/uv, Node/bun) for known CVEs via the NVD and OSV databases. Also produces a source-level CycloneDX SBOM as a workflow artifact. This is complementary to (not a replacement for) the image-level SBOM generated in `cd.yml` — see below.
+
+**Trivy + Cosign in `cd.yml`** — After each release build, Trivy scans every built container image _by digest_ and generates a CycloneDX SBOM reflecting what actually ended up in the image. Cosign attaches it to the image in GHCR using keyless signing (GitHub OIDC — no key management required). Verifiable with `cosign verify-attestation --type cyclonedx ghcr.io/<image>@<digest>`.
+
+## Trigger strategy
+
+| Tier     | Jobs                                         | Triggers     | Merge behaviour                                                                                                                |
+| -------- | -------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| 1 — fast | `spelling`, `workflows`, `containers`, `iac` | PR + nightly | Block on any finding                                                                                                           |
+| 2 — deep | `secrets`, `sast`, `dependencies`            | PR + nightly | Report only (high/critical findings fail the job but `continue-on-error: true` prevents blocking merge during initial rollout) |
+
+Once the initial triage of pre-existing findings is complete, remove `continue-on-error: true` from the Tier 2 jobs in [security.yml](../../.github/workflows/security.yml) to make them blocking.
+
+## Where findings appear
+
+- **Security → Code Scanning tab** — persistent alerts, dismissible with a justification note. SARIF-producing tools (Hadolint, KICS, Trivy, Semgrep) upload here automatically.
+- **PR Checks tab** — per-job pass/fail with log output.
+- **PR diff annotations** — inline comments on lines touched by the PR (only for findings in changed files).
+
+Tools without SARIF output (tflint, actionlint) write GitHub Actions annotations directly, which appear in the Checks tab and as PR annotations.
+
+## Suppressing false positives
+
+### typos
+
+Add project-specific words to [`config/typos.toml`](../../config/typos.toml):
+
+```toml
+[default.extend-words]
+# Identity mapping keeps the word as-is (both sides must match).
+JULI = "JULI"  # German month name in test fixture data
+```
+
+Inline suppression is not supported; add to the config file instead.
+
+### actionlint
+
+Inline suppression on the line after the flagged expression:
+
+```yaml
+run: echo "${{ github.event.pull_request.title }}"
+# actionlint ignore: expression-syntax
+```
+
+### Zizmor
+
+Inline suppression with a comment on the flagged line:
+
+```yaml
+- run: echo "${{ github.event.pull_request.title }}" # zizmor: ignore[template-injection]
+```
+
+### Hadolint
+
+Inline suppression above the flagged instruction:
+
+```dockerfile
+# hadolint ignore=DL3008
+RUN apt-get install -y curl
+```
+
+Or add to a `.hadolint.yaml` file:
+
+```yaml
+ignore:
+  - DL3008
+```
+
+### tflint
+
+Inline annotation above the flagged block:
+
+```hcl
+# tflint-ignore: azurerm_resource_type_invalid
+resource "azurerm_some_resource" "example" { ... }
+```
+
+### KICS
+
+Inline suppression on the flagged line:
+
+```yaml
+# kics-scan ignore-line
+some_insecure_field: value
+```
+
+Or suppress an entire file by adding a comment at the top:
+
+```yaml
+# kics-scan ignore-block
+```
+
+### GitLeaks
+
+Inline suppression on the line with the false positive:
+
+```
+some_value = "not-actually-a-secret" # gitleaks:allow
+```
+
+To suppress historical findings on first run, generate a baseline and commit it:
+
+```sh
+gitleaks detect --source . --report-format json --report-path .gitleaks-baseline.json
+```
+
+Then reference it in the action via `--baseline-path .gitleaks-baseline.json`.
+
+### Trivy
+
+Add CVE IDs or file paths to [`.trivyignore`](../../.trivyignore) (create if it doesn't exist):
+
+```
+# Accepted risk: no fix available upstream
+CVE-2024-12345
+```
+
+### Semgrep
+
+Inline suppression on the flagged line:
+
+```java
+String query = "SELECT * FROM users WHERE id = " + id; // nosemgrep: java.sql.injection
+```
+
+## Running tools locally
+
+All tools can be installed locally to check before pushing.
+
+```sh
+# Spell check
+cargo install typos-cli
+typos
+
+# Dockerfile lint
+brew install hadolint
+hadolint apps/*/Dockerfile
+
+# Terraform lint
+brew install tflint
+cd infra/terraform && tflint --init && tflint
+
+# Workflow lint
+brew install actionlint
+actionlint
+
+# Zizmor
+cargo install zizmor
+zizmor .github/workflows/
+
+# Secret scan
+brew install gitleaks
+gitleaks detect --source .
+
+# SAST
+pip install semgrep
+semgrep scan --config p/java-security-audit --config p/typescript --config p/python .
+
+# Vulnerability scan
+brew install trivy
+trivy fs .
+
+# IaC scan (Docker image, ~1 GB)
+docker run --rm -v "$(pwd):/path" checkmarx/kics:latest scan -p /path
+```
+
+## First-run rollout procedure
+
+When `security.yml` is merged for the first time:
+
+1. All Tier 2 jobs have `continue-on-error: true` — the workflow completes and SARIF is uploaded even with findings.
+2. GitHub Code Scanning is seeded with the current state of the repo as the baseline. Pre-existing findings appear in the Security tab but will **not** block future PRs — only new findings introduced by a PR are flagged on that PR.
+3. Triage the Security tab: dismiss accepted risks with a justification note (e.g. "test environment only", "no upstream fix available").
+4. For GitLeaks: if there are many historical false positives, generate a baseline file (see suppression section above) and commit it.
+5. Once triage is complete, remove `continue-on-error: true` from the Tier 2 jobs in `security.yml` and open a PR to make them blocking.

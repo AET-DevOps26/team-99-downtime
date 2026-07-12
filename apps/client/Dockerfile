@@ -13,9 +13,12 @@ CMD ["sh", "-c", "bun install --frozen-lockfile && bun nx serve client --host 0.
 
 #prod
 FROM joseluisq/static-web-server:2-alpine AS prod
+RUN adduser -D -H -s /sbin/nologin appuser
 ENV SERVER_ROOT=/public \
     SERVER_FALLBACK_PAGE=/public/index.html \
     SERVER_COMPRESSION=true \
-    SERVER_CACHE_CONTROL_HEADERS=true
+    SERVER_CACHE_CONTROL_HEADERS=true \
+    SERVER_PORT=8080
 COPY dist/apps/client/client /public
-EXPOSE 80
+EXPOSE 8080
+USER appuser
