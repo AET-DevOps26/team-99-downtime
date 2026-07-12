@@ -12,6 +12,8 @@ docker compose up -d --build
 
 Open **http://localhost:9099**. See [Development Setup](docs/development/SETUP.md) for the full guide (native Nx mode, endpoints, per-service instructions).
 
+This also brings up the observability stack - metrics, logs and alerting in Grafana at **http://localhost:3001** (log in as `admin` with the `GRAFANA_ADMIN_PASSWORD` you set in `.env`). See [Observability](docs/deployment/OBSERVABILITY.md).
+
 ## Live Environments
 
 | Environment | App                                                 | Drizzle Studio                                   |
@@ -45,4 +47,5 @@ All three members contributed across the full stack throughout the project. Resp
 | Kubernetes deployment       | [docs/deployment/KUBERNETES.md](docs/deployment/KUBERNETES.md)                 |
 | VM / Terraform deployment   | [docs/deployment/TERRAFORM.md](docs/deployment/TERRAFORM.md)                   |
 | Scripts reference           | [docs/development/SCRIPTS.md](docs/development/SCRIPTS.md)                     |
+| Observability               | [docs/deployment/OBSERVABILITY.md](docs/deployment/OBSERVABILITY.md)           |
 | Problem statement           | [docs/problem/PROBLEM_STATEMENT.md](docs/problem/PROBLEM_STATEMENT.md)         |

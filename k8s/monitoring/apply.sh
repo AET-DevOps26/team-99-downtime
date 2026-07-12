@@ -8,11 +8,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 DASHBOARD_DIR="$REPO_ROOT/infra/grafana/dashboards"
+ALERTMANAGER_CONFIG="$REPO_ROOT/infra/monitoring/alertmanager.yml"
 NAMESPACE="monitoring"
 
 if [[ "${1:-}" == "--delete" ]]; then
   kubectl delete -k "$SCRIPT_DIR" --ignore-not-found
-  kubectl delete configmap grafana-dashboards -n "$NAMESPACE" --ignore-not-found
+  kubectl delete configmap grafana-dashboards alertmanager-config -n "$NAMESPACE" --ignore-not-found
   kubectl delete secret grafana-admin -n "$NAMESPACE" --ignore-not-found
   exit 0
 fi
@@ -22,6 +23,11 @@ kubectl apply -f "$SCRIPT_DIR/namespace.yaml"
 kubectl create configmap grafana-dashboards \
   --namespace "$NAMESPACE" \
   --from-file="$DASHBOARD_DIR" \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl create configmap alertmanager-config \
+  --namespace "$NAMESPACE" \
+  --from-file=alertmanager.yml="$ALERTMANAGER_CONFIG" \
   --dry-run=client -o yaml | kubectl apply -f -
 
 # Generate the Grafana admin password on first run only; re-runs keep it.
@@ -39,8 +45,14 @@ cat <<EOF
 
 Observability stack applied to namespace "$NAMESPACE".
 
-Open Grafana:     kubectl -n $NAMESPACE port-forward svc/grafana 3000:3000
-                  login as "admin"; read the password with:
-                  kubectl -n $NAMESPACE get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d
-Open Prometheus:  kubectl -n $NAMESPACE port-forward svc/prometheus 9090:9090
+Open Grafana:      kubectl -n $NAMESPACE port-forward svc/grafana 3000:3000
+                   login as "admin"; read the password with:
+                   kubectl -n $NAMESPACE get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d
+Open Prometheus:   kubectl -n $NAMESPACE port-forward svc/prometheus 9090:9090
+Open Alertmanager: kubectl -n $NAMESPACE port-forward svc/alertmanager 9093:9093
+Read alert mails:  kubectl -n $NAMESPACE port-forward svc/mailhog 8025:8025
+
+Alerts are mailed to MailHog (a capture-only SMTP server — no real credentials).
+Routing lives in infra/monitoring/alertmanager.yml; changes need a restart:
+  kubectl -n $NAMESPACE rollout restart deployment/alertmanager
 EOF

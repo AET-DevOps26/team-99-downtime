@@ -1,0 +1,105 @@
+# Unit tests for alerts.yaml — a rule that never fires looks like coverage but
+# isn't. Run: promtool test rules infra/monitoring/rules/alerts_test.yaml
+rule_files:
+  - alerts.yaml
+
+evaluation_interval: 1m
+
+tests:
+  # A scrape target at 0 for longer than `for` — and the service name must be
+  # carried over into `application`.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="expenseflow-services", service="genai", instance="genai-service:8000"}'
+        values: '0x10'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: ServiceDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              application: genai
+              service: genai
+              job: expenseflow-services
+              instance: genai-service:8000
+            exp_annotations:
+              summary: 'Service genai is down'
+              description: 'Prometheus has been unable to scrape genai for more than 2 minutes.'
+
+  # 50% of requests are 5xx: trips the warning at 5% AND the critical at 20%.
+  - interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{application="budget-service", status="500"}'
+        values: '0+30x10'
+      - series: 'http_server_requests_seconds_count{application="budget-service", status="200"}'
+        values: '0+30x10'
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: CriticalHttpErrorRate
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              application: budget-service
+            exp_annotations:
+              summary: 'Critical 5xx error rate on budget-service'
+              description: 'budget-service is returning more than 20% server errors over the last 5 minutes.'
+      - eval_time: 8m
+        alertname: HighHttpErrorRate
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              application: budget-service
+            exp_annotations:
+              summary: 'High 5xx error rate on budget-service'
+              description: 'budget-service is returning more than 5% server errors over the last 5 minutes.'
+
+  # genai answering 502 = the Logos gateway is unreachable.
+  - interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{application="genai-service", status="502"}'
+        values: '0+6x10'
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: LlmGatewayUnavailable
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              application: genai-service
+            exp_annotations:
+              summary: 'LLM gateway unreachable'
+              description: 'genai-service has been answering 502 LLM_UNAVAILABLE for 2 minutes; categorization and summaries are down.'
+
+  # Sustained CPU above 80%.
+  - interval: 1m
+    input_series:
+      - series: 'process_cpu_usage{application="auth-service", version="dev"}'
+        values: '0.9x10'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: HighCpuUsage
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              application: auth-service
+              version: dev
+            exp_annotations:
+              summary: 'High CPU on auth-service'
+              description: 'auth-service has been above 80% CPU for 5 minutes.'
+
+  # A service restarting in a loop. It only crosses "more than 5 restarts" at
+  # t=6m, and `for: 5m` means it cannot fire before t=11m.
+  - interval: 1m
+    input_series:
+      - series: 'process_start_time_seconds{application="auth-service", version="dev"}'
+        values: '1+1x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: PodRestartsHigh
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              application: auth-service
+              version: dev
+            exp_annotations:
+              summary: 'Crash loop on auth-service'
+              description: 'auth-service has restarted more than 5 times in the last hour.'

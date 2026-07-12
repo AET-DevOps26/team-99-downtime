@@ -21,6 +21,11 @@ spec:
       labels:
         {{- include "t99-app.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: genai
+        monitoring: "true"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /metrics
+        prometheus.io/port: "8000"
     spec:
       containers:
         - name: genai
@@ -42,6 +47,8 @@ spec:
             # Weekly summaries are persisted in the service's own database.
             - name: DATABASE_URL
               value: "postgresql://postgres:$(DB_PASSWORD)@{{ .Release.Name }}-postgresql:5432/genai_db"
+            - name: APP_VERSION
+              value: {{ .Values.genaiService.image.tag | default .Chart.AppVersion | quote }}
           envFrom:
             - configMapRef:
                 name: {{ .Release.Name }}-genai-config

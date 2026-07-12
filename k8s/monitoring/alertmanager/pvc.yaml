@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: alertmanager-data
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/part-of: t99-observability
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      # Only silences and notification state — it does not store metrics.
+      storage: 1Gi

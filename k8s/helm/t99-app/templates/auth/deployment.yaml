@@ -21,6 +21,11 @@ spec:
       labels:
         {{- include "t99-app.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: auth
+        monitoring: "true"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /metrics
+        prometheus.io/port: "3000"
     spec:
       containers:
         - name: auth
@@ -41,6 +46,8 @@ spec:
                 secretKeyRef:
                   name: t99-app-secrets
                   key: jwtSigningKey
+            - name: APP_VERSION
+              value: {{ .Values.authService.image.tag | default .Chart.AppVersion | quote }}
           envFrom:
             - configMapRef:
                 name: {{ .Release.Name }}-auth-config

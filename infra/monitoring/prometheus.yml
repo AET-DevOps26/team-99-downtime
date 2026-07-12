@@ -7,20 +7,39 @@ global:
 rule_files:
   - /etc/prometheus/rules/alerts.yaml
 
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
 scrape_configs:
   - job_name: prometheus
     static_configs:
       - targets: ['localhost:9090']
 
+  # One job for every service, so the dashboards and alerts key off a single
+  # job name. Spring exposes Micrometer under /actuator/prometheus; the Node and
+  # Python services expose the same metric names under /metrics, so the path is
+  # set per target rather than per job.
   - job_name: expenseflow-services
-    metrics_path: /actuator/prometheus
     static_configs:
       - targets: ['transaction-service:8080']
         labels:
           service: transaction
+          __metrics_path__: /actuator/prometheus
       - targets: ['notification-service:8081']
         labels:
           service: notification
+          __metrics_path__: /actuator/prometheus
       - targets: ['budget-service:8082']
         labels:
           service: budget
+          __metrics_path__: /actuator/prometheus
+      - targets: ['auth-service:3000']
+        labels:
+          service: auth
+          __metrics_path__: /metrics
+      - targets: ['genai-service:8000']
+        labels:
+          service: genai
+          __metrics_path__: /metrics
