@@ -16,14 +16,25 @@ This also brings up the observability stack - metrics, logs and alerting in Graf
 
 ## Live Environments
 
-| Environment | App                                                 | Drizzle Studio                                   | Grafana                                           |
-| ----------- | --------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------- |
-| Stage       | https://stage.t99.stud.k8s.aet.cit.tum.de           | https://studio.stage.t99.stud.k8s.aet.cit.tum.de | https://grafana.stage.t99.stud.k8s.aet.cit.tum.de |
-| Prod        | https://t99.stud.k8s.aet.cit.tum.de                 | https://studio.t99.stud.k8s.aet.cit.tum.de       | —                                                 |
-| Azure VM    | https://expenseflow.spaincentral.cloudapp.azure.com | —                                                | —                                                 |
+| Environment | App                                                 | Drizzle Studio                                   |
+| ----------- | --------------------------------------------------- | ------------------------------------------------ |
+| Stage       | https://stage.t99.stud.k8s.aet.cit.tum.de           | https://studio.stage.t99.stud.k8s.aet.cit.tum.de |
+| Prod        | https://t99.stud.k8s.aet.cit.tum.de                 | https://studio.t99.stud.k8s.aet.cit.tum.de       |
+| Azure VM    | https://expenseflow.spaincentral.cloudapp.azure.com | —                                                |
 
-Grafana on stage: log in as `admin`; read the password with
-`kubectl -n t99-stage get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d`.
+### Observability
+
+Metrics, dashboards and alerting. Gated by GitHub - repo collaborators only, one
+login per environment.
+
+| Environment | Grafana                                           | Alertmanager                                       | Alert mail                                       |
+| ----------- | ------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------ |
+| Stage       | https://grafana.stage.t99.stud.k8s.aet.cit.tum.de | — (quota)                                          | — (quota)                                        |
+| Prod        | https://grafana.t99.stud.k8s.aet.cit.tum.de       | https://grafana.t99.stud.k8s.aet.cit.tum.de/alerts | https://grafana.t99.stud.k8s.aet.cit.tum.de/mail |
+| Local       | http://localhost:3001                             | http://localhost:9093                              | http://localhost:8025                            |
+
+Alert mail is captured by MailHog, not delivered; no SMTP credentials are stored.
+Stage runs metrics only. See [Observability](docs/deployment/OBSERVABILITY.md).
 
 ## Deployment
 
