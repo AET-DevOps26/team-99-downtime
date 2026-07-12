@@ -3,7 +3,9 @@ name: E2E Tests
 # Playwright suite against the deployed stage environment. Runs after every
 # Continuous Deployment run that actually deployed to stage, plus on demand.
 # Deliberately a separate workflow: a failing e2e run is a visible red run on
-# main but never blocks PRs or the CD pipeline.
+# main but never blocks PRs or the CD pipeline. When the suite fails, stage is
+# rolled back to the previous Helm revision (manual runs can opt out via the
+# rollback_on_failure input, e.g. to inspect a broken deploy in place).
 on:
   workflow_run:
     workflows: ['Continuous Deployment']
@@ -15,6 +17,10 @@ on:
         description: 'Base URL to run the suite against'
         default: 'https://stage.t99.stud.k8s.aet.cit.tum.de'
         type: string
+      rollback_on_failure:
+        description: 'Roll back the stage release if the suite fails'
+        default: true
+        type: boolean
 
 # Two releases in quick succession: only the run against the newest deploy matters.
 concurrency:
@@ -111,3 +117,52 @@ jobs:
           # The Run E2E Tests step already gates the job
           fail-on-error: false
           fail-on-empty: false
+
+  # A failing suite against a fresh deploy means stage is functionally broken
+  # even though the Helm release itself went healthy (cd.yml's
+  # --rollback-on-failure only covers deploys that never became healthy).
+  # Roll back to the previous revision — the last release the suite passed on.
+  # Manual runs only roll back when they actually tested stage AND the
+  # rollback_on_failure box stayed checked; automatic runs always roll back.
+  rollback:
+    name: Rollback Stage Deploy
+    needs: e2e
+    if: >-
+      failure() && needs.e2e.result == 'failure' &&
+      (github.event_name != 'workflow_dispatch' ||
+        (inputs.rollback_on_failure &&
+         inputs.base_url == 'https://stage.t99.stud.k8s.aet.cit.tum.de'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Talks only to the cluster — no GitHub token needed.
+    permissions: {}
+    steps:
+      - name: Set up kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG_DATA }}" | base64 -d > ~/.kube/config
+
+      - name: Set up Helm
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # pinned to v5
+        with:
+          version: 'v4.2.0'
+
+      # No revision argument: helm targets the previous revision. Fails loudly
+      # (instead of guessing) when there is no earlier revision to return to.
+      - name: Rollback t99-stage
+        run: |
+          echo "Release history before rollback:"
+          helm history t99 -n t99-stage --max 5
+          helm rollback t99 -n t99-stage --wait --timeout 10m
+
+      - name: Write rollback summary
+        run: |
+          {
+            echo "## Stage Rolled Back"
+            echo ""
+            echo "E2E tests failed — \`t99-stage\` was rolled back to the previous release."
+            echo ""
+            echo '```'
+            helm history t99 -n t99-stage --max 5
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
