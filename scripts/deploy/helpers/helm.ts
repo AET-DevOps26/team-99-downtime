@@ -13,16 +13,14 @@ export function setPath(obj: Record<string, unknown>, path: string, value: strin
   if (parts.some((k) => UNSAFE_KEYS.has(k))) {
     throw new Error(`Unsafe helm path segment in: ${path}`);
   }
-  let cur = obj;
-  for (let i = 0; i < parts.length - 1; i++) {
-    // Object.create(null) produces a prototype-less node — eliminates the
-    // prototype pollution vector even if the key guard above were bypassed.
-    if (cur[parts[i]] === undefined || cur[parts[i]] === null) {
-      cur[parts[i]] = Object.create(null) as Record<string, unknown>;
+  const leaf = parts[parts.length - 1];
+  const parent = parts.slice(0, -1).reduce<Record<string, unknown>>((cur, key) => {
+    if (cur[key] === undefined || cur[key] === null) {
+      cur[key] = Object.create(null) as Record<string, unknown>;
     }
-    cur = cur[parts[i]] as Record<string, unknown>;
-  }
-  cur[parts[parts.length - 1]] = value;
+    return cur[key] as Record<string, unknown>;
+  }, obj);
+  parent[leaf] = value;
 }
 
 /** Serialises a plain object to indented YAML (string leaf values only). */
