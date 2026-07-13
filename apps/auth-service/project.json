@@ -21,7 +21,7 @@
       "options": {
         "cwd": "apps/auth-service"
       },
-      "command": "bun test --reporter junit --reporter-outfile ../../reports/apps/auth-service/junit.xml",
+      "command": "mkdir -p ../../reports/apps/auth-service && bun test --reporter junit --reporter-outfile ../../reports/apps/auth-service/junit.xml",
       "cache": true,
       "outputs": ["{workspaceRoot}/reports/apps/auth-service"]
     }
