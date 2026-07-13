@@ -235,12 +235,16 @@ jobs:
         env:
           CHANGED_FILES: ${{ steps.changed.outputs.files }}
         run: |
-          includes=$(echo "$CHANGED_FILES" | tr ' ' '\n' | grep -v '^$' | sed 's/^/--include /' | tr '\n' ' ')
+          read -ra changed_files <<< "$CHANGED_FILES"
+          include_args=()
+          for f in "${changed_files[@]}"; do
+            include_args+=(--include "$f")
+          done
           semgrep scan \
             --config auto \
             --sarif \
             --output semgrep.sarif \
-            $includes \
+            "${include_args[@]}" \
             . || true
           [ -s semgrep.sarif ] || echo '{"version":"2.1.0","runs":[]}' > semgrep.sarif
 
