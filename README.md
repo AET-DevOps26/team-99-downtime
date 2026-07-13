@@ -27,14 +27,13 @@ This also brings up the observability stack - metrics, logs and alerting in Graf
 Metrics, dashboards and alerting. Gated by GitHub - repo collaborators only, one
 login per environment.
 
-| Environment | Grafana                                           | Alertmanager                                       | Alert mail                                       |
-| ----------- | ------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------ |
-| Stage       | https://grafana.stage.t99.stud.k8s.aet.cit.tum.de | — (quota)                                          | — (quota)                                        |
-| Prod        | https://grafana.t99.stud.k8s.aet.cit.tum.de       | https://grafana.t99.stud.k8s.aet.cit.tum.de/alerts | https://grafana.t99.stud.k8s.aet.cit.tum.de/mail |
-| Local       | http://localhost:3001                             | http://localhost:9093                              | http://localhost:8025                            |
+| Environment | Grafana                                     | Alertmanager                                       | Alert mail                                       |
+| ----------- | ------------------------------------------- | -------------------------------------------------- | ------------------------------------------------ |
+| Prod        | https://grafana.t99.stud.k8s.aet.cit.tum.de | https://grafana.t99.stud.k8s.aet.cit.tum.de/alerts | https://grafana.t99.stud.k8s.aet.cit.tum.de/mail |
+| Local       | http://localhost:3001                       | http://localhost:9093                              | http://localhost:8025                            |
 
 Alert mail is captured by MailHog, not delivered; no SMTP credentials are stored.
-Stage runs metrics only. See [Observability](docs/deployment/OBSERVABILITY.md).
+See [Observability](docs/deployment/OBSERVABILITY.md).
 
 ## Deployment
 

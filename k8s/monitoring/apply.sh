@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-# Deploy the observability stack. Usage: ./apply.sh [stage|prod] [--delete]
+# Deploy the observability stack. Usage: ./apply.sh [--delete]
 #
 # It runs in the app's own namespace — on the shared AET cluster we hold no
-# cluster-scoped rights. Stage is metrics only (quota); prod also runs
-# Alertmanager + MailHog. See docs/deployment/OBSERVABILITY.md.
+# cluster-scoped rights. See docs/deployment/OBSERVABILITY.md.
 #
 # The dashboards and alertmanager ConfigMaps are generated from the committed
 # files under infra/, which stay the single source of truth. The Grafana admin
@@ -14,28 +13,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 DASHBOARD_DIR="$REPO_ROOT/infra/grafana/dashboards"
 ALERTMANAGER_CONFIG="$REPO_ROOT/infra/monitoring/alertmanager.yml"
+NAMESPACE="t99-prod"
+HOST="grafana.t99.stud.k8s.aet.cit.tum.de"
 
-ENV="${1:-stage}"
-case "$ENV" in
-  stage) NAMESPACE="t99-stage" ;;
-  prod) NAMESPACE="t99-prod" ;;
-  *)
-    echo "usage: $0 [stage|prod] [--delete]" >&2
-    exit 1
-    ;;
-esac
-OVERLAY="$SCRIPT_DIR/overlays/$ENV"
-
-if [[ "${2:-}" == "--delete" ]]; then
-  kubectl delete -k "$OVERLAY" --ignore-not-found
+if [[ "${1:-}" == "--delete" ]]; then
+  kubectl delete -k "$SCRIPT_DIR" --ignore-not-found
   kubectl delete configmap grafana-dashboards alertmanager-config -n "$NAMESPACE" --ignore-not-found
   kubectl delete secret grafana-admin grafana-github -n "$NAMESPACE" --ignore-not-found
   exit 0
 fi
 
-# GitHub OAuth app for oauth2-proxy — one per environment, since an OAuth app
-# allows a single callback URL. Callback:
-#   https://<grafana host>/oauth2/callback
+# GitHub OAuth app for oauth2-proxy. Callback: https://$HOST/oauth2/callback
 # Re-runs reuse the cookie secret, so existing sessions survive.
 if [[ -n "${GRAFANA_OAUTH_CLIENT_ID:-}" && -n "${GRAFANA_OAUTH_CLIENT_SECRET:-}" ]]; then
   cookie_secret="$(kubectl -n "$NAMESPACE" get secret grafana-github \
@@ -59,12 +47,10 @@ kubectl create configmap grafana-dashboards \
   --from-file="$DASHBOARD_DIR" \
   --dry-run=client -o yaml | kubectl apply -f -
 
-if [[ "$ENV" == "prod" ]]; then
-  kubectl create configmap alertmanager-config \
-    --namespace "$NAMESPACE" \
-    --from-file=alertmanager.yml="$ALERTMANAGER_CONFIG" \
-    --dry-run=client -o yaml | kubectl apply -f -
-fi
+kubectl create configmap alertmanager-config \
+  --namespace "$NAMESPACE" \
+  --from-file=alertmanager.yml="$ALERTMANAGER_CONFIG" \
+  --dry-run=client -o yaml | kubectl apply -f -
 
 # Generate the Grafana admin password on first run only; re-runs keep it.
 if ! kubectl -n "$NAMESPACE" get secret grafana-admin >/dev/null 2>&1; then
@@ -75,26 +61,15 @@ if ! kubectl -n "$NAMESPACE" get secret grafana-admin >/dev/null 2>&1; then
   echo "Generated Grafana admin password (store it now): $admin_password"
 fi
 
-kubectl apply -k "$OVERLAY"
-
-if [[ "$ENV" == "prod" ]]; then
-  host="grafana.t99.stud.k8s.aet.cit.tum.de"
-else
-  host="grafana.stage.t99.stud.k8s.aet.cit.tum.de"
-fi
+kubectl apply -k "$SCRIPT_DIR"
 
 cat <<EOF
 
 Observability stack applied to "$NAMESPACE".
 
-Grafana:    https://$host
-$(if [[ "$ENV" == "prod" ]]; then
-  echo "Alerts:     https://$host/alerts   (Alertmanager)"
-  echo "Alert mail: https://$host/mail     (MailHog)"
-else
-  echo "            stage is metrics only: no Alertmanager, no mail. Alert rules"
-  echo "            show under Prometheus > Alerts."
-fi)
+Grafana:    https://$HOST
+Alerts:     https://$HOST/alerts   (Alertmanager)
+Alert mail: https://$HOST/mail     (MailHog)
 
 All of it sits behind oauth2-proxy: collaborators of the GitHub repo get in as
 Viewer. To edit dashboards, log in as "admin" at the bottom of the Grafana page:

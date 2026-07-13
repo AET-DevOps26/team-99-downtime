@@ -43,7 +43,7 @@ spec:
               value: 'false'
             # Without this, redirects and share links point at localhost.
             - name: GF_SERVER_ROOT_URL
-              value: https://grafana.stage.t99.stud.k8s.aet.cit.tum.de
+              value: https://grafana.t99.stud.k8s.aet.cit.tum.de
             # oauth2-proxy already authenticated whoever gets here, so skip a
             # second login: anonymous read-only. Editing still needs the admin
             # login (bottom of the page).
@@ -68,7 +68,7 @@ spec:
               memory: 128Mi
               cpu: 50m
             limits:
-              memory: 128Mi
+              memory: 192Mi
               cpu: 75m
           volumeMounts:
             - name: data

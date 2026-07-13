@@ -1,8 +1,7 @@
 name: Deploy Monitoring
 
 # Keeps the observability stack in sync with the manifests, so it never drifts
-# from what is committed. Stage deploys on every push to main that touches the
-# monitoring config; prod is promoted manually.
+# from what is committed.
 on:
   push:
     branches: [main]
@@ -12,19 +11,13 @@ on:
       - 'infra/monitoring/**'
       - '.github/workflows/deploy-monitoring.yml'
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Environment to deploy'
-        default: 'stage'
-        type: choice
-        options: [stage, prod]
 
 jobs:
   deploy:
-    name: Deploy monitoring (${{ inputs.environment || 'stage' }})
+    name: Deploy monitoring
     runs-on: ubuntu-latest
-    # Lets prod be gated with required reviewers in the repo settings.
-    environment: ${{ inputs.environment || 'stage' }}
+    # Lets the deploy be gated with required reviewers in the repo settings.
+    environment: prod
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
@@ -36,20 +29,16 @@ jobs:
           mkdir -p ~/.kube
           echo "${{ secrets.KUBECONFIG_DATA }}" | base64 -d > ~/.kube/config
 
-      # The dashboards and Alertmanager ConfigMaps, the Grafana admin password
-      # and the oauth2-proxy secret are all handled by apply.sh, so CI runs the
-      # same script a developer would.
+      # The ConfigMaps, the Grafana admin password and the oauth2-proxy secret
+      # are all handled by apply.sh, so CI runs the same script a developer does.
       - name: Deploy
         env:
-          ENVIRONMENT: ${{ inputs.environment || 'stage' }}
-          GRAFANA_OAUTH_CLIENT_ID: ${{ inputs.environment == 'prod' && secrets.GRAFANA_OAUTH_CLIENT_ID_PROD || secrets.GRAFANA_OAUTH_CLIENT_ID_STAGE }}
-          GRAFANA_OAUTH_CLIENT_SECRET: ${{ inputs.environment == 'prod' && secrets.GRAFANA_OAUTH_CLIENT_SECRET_PROD || secrets.GRAFANA_OAUTH_CLIENT_SECRET_STAGE }}
-        run: ./k8s/monitoring/apply.sh "$ENVIRONMENT"
+          GRAFANA_OAUTH_CLIENT_ID: ${{ secrets.GRAFANA_OAUTH_CLIENT_ID }}
+          GRAFANA_OAUTH_CLIENT_SECRET: ${{ secrets.GRAFANA_OAUTH_CLIENT_SECRET }}
+        run: ./k8s/monitoring/apply.sh
 
       - name: Wait for rollout
-        env:
-          NAMESPACE: ${{ inputs.environment == 'prod' && 't99-prod' || 't99-stage' }}
         run: |
-          kubectl -n "$NAMESPACE" rollout status deploy/prometheus --timeout=3m
-          kubectl -n "$NAMESPACE" rollout status deploy/grafana --timeout=3m
-          kubectl -n "$NAMESPACE" rollout status deploy/grafana-oauth2 --timeout=3m
+          for d in prometheus grafana grafana-oauth2 alertmanager mailhog; do
+            kubectl -n t99-prod rollout status "deploy/$d" --timeout=3m
+          done

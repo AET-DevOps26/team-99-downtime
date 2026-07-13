@@ -81,80 +81,74 @@ The stack runs in the app's own namespace, not a dedicated one: on the shared AE
 cluster we hold no cluster-scoped rights (no ClusterRole, no cross-namespace pod
 listing), so Prometheus uses a namespaced Role and discovers only our own pods.
 
-`k8s/monitoring/` is a kustomize base with one overlay per environment.
+It runs in **prod** (`t99-prod`) only. Stage's quota leaves no room for the
+alerting pods, and a metrics-only half-stack there is not worth the drift.
 
 ### Deployment is automatic
 
-`.github/workflows/deploy-monitoring.yml` applies **stage** on every push to
-`main` touching `k8s/monitoring/**`, `infra/grafana/**` or `infra/monitoring/**`.
-**Prod** is promoted with the same workflow via _Run workflow_ → `prod`. The
+`.github/workflows/deploy-monitoring.yml` applies on every push to `main`
+touching `k8s/monitoring/**`, `infra/grafana/**` or `infra/monitoring/**`. The
 manifests are the source of truth; the cluster cannot drift from them.
 
 Manual runs use the same script CI does:
 
 ```sh
-./k8s/monitoring/apply.sh stage             # or: prod
-./k8s/monitoring/apply.sh prod --delete     # tear down
+./k8s/monitoring/apply.sh            # deploy / update
+./k8s/monitoring/apply.sh --delete   # tear down
 ```
 
 ### Access
 
-| Environment | Grafana                                             | Alertmanager | Alert mail |
-| ----------- | --------------------------------------------------- | ------------ | ---------- |
-| Stage       | <https://grafana.stage.t99.stud.k8s.aet.cit.tum.de> | -            | -          |
-| Prod        | <https://grafana.t99.stud.k8s.aet.cit.tum.de>       | `/alerts`    | `/mail`    |
+| UI           | URL                                                  |
+| ------------ | ---------------------------------------------------- |
+| Grafana      | <https://grafana.t99.stud.k8s.aet.cit.tum.de>        |
+| Alertmanager | <https://grafana.t99.stud.k8s.aet.cit.tum.de/alerts> |
+| Alert mail   | <https://grafana.t99.stud.k8s.aet.cit.tum.de/mail>   |
 
 Everything sits behind **oauth2-proxy**, gated on collaborators of the GitHub
-repo. On prod a single proxy fans out by path, so one login covers Grafana,
-Alertmanager and the mail catcher; none of them is reachable on its own.
+repo. A single proxy fans out by path, so one login covers all three; none of
+them is reachable on its own.
 
 Past the proxy you are an anonymous **Viewer** - no second login. Editing needs
 the admin account:
 
 ```sh
-kubectl -n t99-stage get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d
+kubectl -n t99-prod get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d
 ```
 
 Prometheus has no ingress:
 
 ```sh
-kubectl -n t99-stage port-forward svc/prometheus 9090:9090
+kubectl -n t99-prod port-forward svc/prometheus 9090:9090
 ```
 
-### OAuth apps
+### OAuth app
 
-One GitHub OAuth App per environment - an app allows a single callback URL:
-
-| Environment | Callback URL                                                        |
-| ----------- | ------------------------------------------------------------------- |
-| Stage       | `https://grafana.stage.t99.stud.k8s.aet.cit.tum.de/oauth2/callback` |
-| Prod        | `https://grafana.t99.stud.k8s.aet.cit.tum.de/oauth2/callback`       |
-
-CI reads them from the `GRAFANA_OAUTH_CLIENT_ID_STAGE` / `_SECRET_STAGE` and
-`..._PROD` repository secrets. For a manual first deploy:
+A GitHub OAuth App with the callback
+`https://grafana.t99.stud.k8s.aet.cit.tum.de/oauth2/callback`. CI reads its
+credentials from the `GRAFANA_OAUTH_CLIENT_ID` / `GRAFANA_OAUTH_CLIENT_SECRET`
+repository secrets. For a manual first deploy:
 
 ```sh
-GRAFANA_OAUTH_CLIENT_ID=... GRAFANA_OAUTH_CLIENT_SECRET=... ./k8s/monitoring/apply.sh stage
+GRAFANA_OAUTH_CLIENT_ID=... GRAFANA_OAUTH_CLIENT_SECRET=... ./k8s/monitoring/apply.sh
 ```
 
 ### Sizing
 
 The namespace `ResourceQuota` caps **limits**, not requests, and is shared with
-the app. Stage has little headroom left, prod has plenty - which is why alerting
-runs on prod only:
+the app:
 
-| Pod            | Stage     | Prod      |
-| -------------- | --------- | --------- |
-| prometheus     | 128Mi     | 256Mi     |
-| grafana        | 128Mi     | 192Mi     |
-| grafana-oauth2 | 64Mi      | 64Mi      |
-| alertmanager   | -         | 64Mi      |
-| mailhog        | -         | 32Mi      |
-| **total**      | **320Mi** | **608Mi** |
+| Pod            | Memory limit | CPU limit |
+| -------------- | ------------ | --------- |
+| prometheus     | 256Mi        | 150m      |
+| grafana        | 192Mi        | 75m       |
+| grafana-oauth2 | 64Mi         | 50m       |
+| alertmanager   | 64Mi         | 40m       |
+| mailhog        | 32Mi         | 20m       |
+| **total**      | **608Mi**    | **335m**  |
 
-On stage the alert rules still evaluate and show under **Prometheus > Alerts**,
-but nothing is routed. Loki runs locally only. Check headroom with
-`kubectl get resourcequota -n <namespace>`.
+Loki runs locally only. Check headroom with
+`kubectl get resourcequota -n t99-prod`.
 
 ## Dashboards
 
@@ -250,10 +244,10 @@ credentials exist anywhere in this repo or the cluster** - nothing to leak, and
 no personal university password sitting in a Kubernetes Secret that any
 teammate can `kubectl get -o yaml`.
 
-| UI           | Local                   | Cluster                                                        |
-| ------------ | ----------------------- | -------------------------------------------------------------- |
-| Alert mails  | <http://localhost:8025> | `kubectl -n t99-stage port-forward svc/mailhog 8025:8025`      |
-| Alertmanager | <http://localhost:9093> | `kubectl -n t99-stage port-forward svc/alertmanager 9093:9093` |
+| UI           | Local                   | Cluster                                              |
+| ------------ | ----------------------- | ---------------------------------------------------- |
+| Alert mails  | <http://localhost:8025> | <https://grafana.t99.stud.k8s.aet.cit.tum.de/mail>   |
+| Alertmanager | <http://localhost:9093> | <https://grafana.t99.stud.k8s.aet.cit.tum.de/alerts> |
 
 To send real mail instead, point `smtp_smarthost` at a real relay and add the
 `smtp_auth_*` settings for it. Use a shared/functional account, never a personal
