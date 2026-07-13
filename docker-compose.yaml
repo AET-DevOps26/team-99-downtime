@@ -1,3 +1,7 @@
+# Promtail needs a read-only docker.sock to discover containers and tail their
+# logs. This is the local dev stack; nothing mounts the socket on the cluster.
+# Disabled per-file, so the rules still apply to every other manifest.
+# kics-scan disable=d6355c88-1e8d-49e9-b2f2-f8a1ca12c75b,1c1325ff-831d-43a1-973e-839ae57dfcc0
 name: team-99-downtime
 
 x-java-dev: &java-dev
@@ -327,7 +331,7 @@ services:
       GF_USERS_ALLOW_SIGN_UP: 'false'
     volumes:
       - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./k8s/helm/t99-app/files/dashboards:/var/lib/grafana/dashboards:ro
       - grafana_data:/var/lib/grafana
     ports:
       - '3001:3000'

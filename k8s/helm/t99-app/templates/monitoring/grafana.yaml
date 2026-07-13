@@ -1,0 +1,240 @@
+{{- if .Values.monitoring.enabled }}
+{{- $adminSecret := lookup "v1" "Secret" .Release.Namespace (printf "%s-grafana-admin" .Release.Name) -}}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Release.Name }}-grafana-admin
+  labels:
+    {{- include "t99-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+  annotations:
+    helm.sh/resource-policy: keep
+type: Opaque
+data:
+  admin-user: {{ "admin" | b64enc }}
+  {{- if and $adminSecret $adminSecret.data }}
+  admin-password: {{ index $adminSecret.data "admin-password" }}
+  {{- else }}
+  admin-password: {{ randAlphaNum 24 | b64enc }}
+  {{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-grafana-provisioning
+  labels:
+    {{- include "t99-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+data:
+  datasource.yml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        uid: prometheus
+        type: prometheus
+        access: proxy
+        url: http://{{ .Release.Name }}-prometheus:9090
+        isDefault: true
+        editable: false
+  provider.yml: |
+    apiVersion: 1
+    providers:
+      - name: expenseflow
+        orgId: 1
+        folder: ExpenseFlow
+        type: file
+        disableDeletion: false
+        allowUiUpdates: false
+        updateIntervalSeconds: 30
+        options:
+          path: /var/lib/grafana/dashboards
+          foldersFromFilesStructure: false
+---
+# The committed JSON stays the single source of truth — the same files the
+# Compose stack mounts.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-grafana-dashboards
+  labels:
+    {{- include "t99-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+data:
+{{ (.Files.Glob "files/dashboards/*.json").AsConfig | indent 2 }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-grafana-data
+  labels:
+    {{- include "t99-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+spec:
+  accessModes: [ReadWriteOnce]
+  {{- with .Values.monitoring.grafana.storageClass }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.monitoring.grafana.storage }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-grafana
+  labels:
+    {{- include "t99-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "t99-app.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: grafana
+  template:
+    metadata:
+      labels:
+        {{- include "t99-app.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: grafana
+      annotations:
+        # Roll the pod when a dashboard changes.
+        checksum/dashboards: {{ (.Files.Glob "files/dashboards/*.json").AsConfig | sha256sum }}
+    spec:
+      securityContext:
+        runAsUser: 472
+        runAsNonRoot: true
+        fsGroup: 472
+      containers:
+        - name: grafana
+          image: {{ .Values.monitoring.grafana.image }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-grafana-admin
+                  key: admin-user
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-grafana-admin
+                  key: admin-password
+            - name: GF_USERS_ALLOW_SIGN_UP
+              value: 'false'
+            - name: GF_SERVER_ROOT_URL
+              value: https://grafana.{{ .Values.domain }}
+            {{- if and .Values.drizzleStudio.enabled .Values.drizzleStudio.oauth.enabled }}
+            # oauth2-proxy already authenticated whoever reaches us, so skip a
+            # second login. Editing still needs the admin account.
+            - name: GF_AUTH_ANONYMOUS_ENABLED
+              value: 'true'
+            - name: GF_AUTH_ANONYMOUS_ORG_ROLE
+              value: Viewer
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: 3000
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.monitoring.grafana.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/grafana
+            - name: provisioning-datasources
+              mountPath: /etc/grafana/provisioning/datasources
+            - name: provisioning-dashboards
+              mountPath: /etc/grafana/provisioning/dashboards
+            - name: dashboards
+              mountPath: /var/lib/grafana/dashboards
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-grafana-data
+        - name: provisioning-datasources
+          configMap:
+            name: {{ .Release.Name }}-grafana-provisioning
+            items:
+              - key: datasource.yml
+                path: datasource.yml
+        - name: provisioning-dashboards
+          configMap:
+            name: {{ .Release.Name }}-grafana-provisioning
+            items:
+              - key: provider.yml
+                path: provider.yml
+        - name: dashboards
+          configMap:
+            name: {{ .Release.Name }}-grafana-dashboards
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-grafana
+  labels:
+    {{- include "t99-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "t99-app.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+---
+# Grafana and Alertmanager reuse Drizzle Studio's oauth2-proxy through nginx's
+# external-auth hooks, so all three sit behind one GitHub OAuth app. The proxy
+# sets a cookie for the whole parent domain, so one login covers every subdomain.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-monitoring-ingress
+  labels:
+    {{- include "t99-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: monitoring
+  annotations:
+    cert-manager.io/cluster-issuer: {{ .Values.clusterIssuer | quote }}
+    {{- if and .Values.drizzleStudio.enabled .Values.drizzleStudio.oauth.enabled }}
+    nginx.ingress.kubernetes.io/auth-url: https://studio.{{ .Values.domain }}/oauth2/auth
+    nginx.ingress.kubernetes.io/auth-signin: https://studio.{{ .Values.domain }}/oauth2/start?rd=$escaped_request_uri
+    {{- end }}
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - grafana.{{ .Values.domain }}
+        - alerts.{{ .Values.domain }}
+      secretName: {{ .Release.Name }}-monitoring-tls
+  rules:
+    - host: grafana.{{ .Values.domain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-grafana
+                port:
+                  number: 3000
+    - host: alerts.{{ .Values.domain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-alertmanager
+                port:
+                  number: 9093
+{{- end }}

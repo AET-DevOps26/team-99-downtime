@@ -33,6 +33,10 @@ spec:
             - --email-domain=*
             - --cookie-secure=true
             - --cookie-name=_t99_studio_oauth2
+            # Cookie valid for every subdomain, so this one proxy also authorises
+            # grafana.<domain> and alerts.<domain> via nginx's auth-url hooks.
+            - --cookie-domain=.{{ .Values.domain }}
+            - --whitelist-domain=.{{ .Values.domain }}
             - --reverse-proxy=true
             - --banner=ExpenseFlow Drizzle Studio — members of aet-devops26 only
             - '--scope=user:email read:org'

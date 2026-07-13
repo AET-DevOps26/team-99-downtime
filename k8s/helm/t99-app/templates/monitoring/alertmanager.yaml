@@ -1,0 +1,183 @@
+{{- if .Values.monitoring.enabled }}
+{{- $secret := lookup "v1" "Secret" .Release.Namespace (printf "%s-alertmanager-smtp" .Release.Name) -}}
+{{- $apiKey := .Values.alertmanager.resendApiKey -}}
+{{- if and (not $apiKey) $secret $secret.data -}}
+  {{- $apiKey = index $secret.data "resend-api-key" | b64dec -}}
+{{- end -}}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Release.Name }}-alertmanager-smtp
+  labels:
+    {{- include "t99-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: alertmanager
+  annotations:
+    # Survives a deploy that does not pass the key (CI without the secret set).
+    helm.sh/resource-policy: keep
+type: Opaque
+data:
+  resend-api-key: {{ $apiKey | b64enc | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-alertmanager-config
+  labels:
+    {{- include "t99-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: alertmanager
+data:
+  alertmanager.yml: |
+    global:
+      resolve_timeout: 5m
+    {{- if $apiKey }}
+      # Resend's SMTP relay. The username is literally "resend"; the password is
+      # the API key, read from a file so it never lands in an env var.
+      smtp_smarthost: 'smtp.resend.com:587'
+      smtp_from: {{ .Values.alertmanager.from | quote }}
+      smtp_auth_username: 'resend'
+      smtp_auth_password_file: /etc/alertmanager/smtp/resend-api-key
+      smtp_require_tls: true
+    {{- end }}
+
+    # Alerts sharing an alertname + application collapse into one mail; repeats
+    # wait for repeat_interval. Without this, one outage means one mail per rule
+    # per scrape.
+    route:
+      receiver: team
+      group_by: ['alertname', 'application']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+      routes:
+        # Same inbox, but critical mails sooner and nags 12x more often.
+        - matchers:
+            - severity = "critical"
+          group_wait: 10s
+          repeat_interval: 1h
+
+    receivers:
+      - name: team
+    {{- if $apiKey }}
+        email_configs:
+          - to: {{ .Values.alertmanager.to | quote }}
+            send_resolved: true
+            headers:
+              Subject: '[T99 {{ `{{ .CommonLabels.severity | toUpper }}` }} {{ `{{ .Status | toUpper }}` }}] {{ `{{ .CommonLabels.alertname }}` }} ({{ `{{ .CommonLabels.application }}` }})'
+    {{- else }}
+        # No Resend API key: alerts still fire and show in the Alertmanager UI,
+        # but nothing is mailed.
+    {{- end }}
+
+    # A service that is down also breaches its error-rate and latency rules.
+    # One incident, one mail.
+    inhibit_rules:
+      - source_matchers:
+          - severity = "critical"
+        target_matchers:
+          - severity = "warning"
+        equal: ['application']
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-alertmanager-data
+  labels:
+    {{- include "t99-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: alertmanager
+spec:
+  accessModes: [ReadWriteOnce]
+  {{- with .Values.monitoring.alertmanager.storageClass }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      # Silences and notification state only — it stores no metrics.
+      storage: {{ .Values.monitoring.alertmanager.storage }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-alertmanager
+  labels:
+    {{- include "t99-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: alertmanager
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "t99-app.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: alertmanager
+  template:
+    metadata:
+      labels:
+        {{- include "t99-app.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: alertmanager
+      annotations:
+        # Roll the pod when the routing or the sender/recipient changes.
+        checksum/config: {{ printf "%s|%s|%t" .Values.alertmanager.from .Values.alertmanager.to (ne $apiKey "") | sha256sum }}
+    spec:
+      securityContext:
+        runAsUser: 65534
+        runAsNonRoot: true
+        fsGroup: 65534
+      containers:
+        - name: alertmanager
+          image: {{ .Values.monitoring.alertmanager.image }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          args:
+            - --config.file=/etc/alertmanager/alertmanager.yml
+            - --storage.path=/alertmanager
+            - --web.external-url=https://alerts.{{ .Values.domain }}
+          ports:
+            - name: http
+              containerPort: 9093
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 9093
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.monitoring.alertmanager.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/alertmanager
+            - name: smtp
+              mountPath: /etc/alertmanager/smtp
+              readOnly: true
+            - name: data
+              mountPath: /alertmanager
+      volumes:
+        - name: config
+          configMap:
+            name: {{ .Release.Name }}-alertmanager-config
+        - name: smtp
+          secret:
+            secretName: {{ .Release.Name }}-alertmanager-smtp
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-alertmanager-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-alertmanager
+  labels:
+    {{- include "t99-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: alertmanager
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "t99-app.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: alertmanager
+  ports:
+    - name: http
+      port: 9093
+      targetPort: 9093
+{{- end }}

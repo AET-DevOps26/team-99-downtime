@@ -8,13 +8,14 @@ Two of the three pillars, wired into one Grafana:
 | **Logs**    | Promtail tailing container stdout          | Loki       | _Why is it not working?_ |
 | Traces      | not collected                              | -          | -                        |
 
-**Alertmanager** mails out firing alerts; **MailHog** catches those mails so no
-SMTP credentials are needed. Everything is configured from files in the repo -
-nothing is set up through the Grafana UI.
+**Alertmanager** mails out firing alerts: through **Resend** on the cluster, and
+into **MailHog** locally so no SMTP credentials are needed for dev. Everything is
+configured from files in the repo - nothing is set up through the Grafana UI.
 
 - Local stack: [`docker-compose.yaml`](../../docker-compose.yaml) (the observability block at the bottom)
-- K8s manifests: [`k8s/monitoring/`](../../k8s/monitoring/)
-- Config: [`infra/monitoring/`](../../infra/monitoring/) · Dashboards: [`infra/grafana/dashboards/`](../../infra/grafana/dashboards/)
+- Cluster: the app's Helm chart, [`k8s/helm/t99-app/templates/monitoring/`](../../k8s/helm/t99-app/templates/monitoring/)
+- Compose config: [`infra/monitoring/`](../../infra/monitoring/)
+- Dashboards and alert rules: [`k8s/helm/t99-app/files/`](../../k8s/helm/t99-app/files/) - shared by both
 
 All five backend services expose the same metric names, so they share one set of
 dashboard panels and alert rules:
@@ -77,78 +78,71 @@ panel spikes, the log panels below it show what was actually thrown.
 
 ## Deploy on Kubernetes
 
-The stack runs in the app's own namespace, not a dedicated one: on the shared AET
+Part of the app's Helm chart (`k8s/helm/t99-app`), deployed to **stage and prod**
+by the same pipeline as the app - no separate tool, no separate workflow. Guarded
+by `monitoring.enabled`.
+
+It lives in the app's own namespace rather than a dedicated one: on the shared AET
 cluster we hold no cluster-scoped rights (no ClusterRole, no cross-namespace pod
 listing), so Prometheus uses a namespaced Role and discovers only our own pods.
 
-It runs in **prod** (`t99-prod`) only. Stage's quota leaves no room for the
-alerting pods, and a metrics-only half-stack there is not worth the drift.
-
-### Deployment is automatic
-
-`.github/workflows/deploy-monitoring.yml` applies on every push to `main`
-touching `k8s/monitoring/**`, `infra/grafana/**` or `infra/monitoring/**`. The
-manifests are the source of truth; the cluster cannot drift from them.
-
-Manual runs use the same script CI does:
-
-```sh
-./k8s/monitoring/apply.sh            # deploy / update
-./k8s/monitoring/apply.sh --delete   # tear down
-```
-
 ### Access
 
-| UI           | URL                                                  |
-| ------------ | ---------------------------------------------------- |
-| Grafana      | <https://grafana.t99.stud.k8s.aet.cit.tum.de>        |
-| Alertmanager | <https://grafana.t99.stud.k8s.aet.cit.tum.de/alerts> |
-| Alert mail   | <https://grafana.t99.stud.k8s.aet.cit.tum.de/mail>   |
+| UI           | Stage                                               | Prod                                          |
+| ------------ | --------------------------------------------------- | --------------------------------------------- |
+| Grafana      | <https://grafana.stage.t99.stud.k8s.aet.cit.tum.de> | <https://grafana.t99.stud.k8s.aet.cit.tum.de> |
+| Alertmanager | <https://alerts.stage.t99.stud.k8s.aet.cit.tum.de>  | <https://alerts.t99.stud.k8s.aet.cit.tum.de>  |
 
-Everything sits behind **oauth2-proxy**, gated on collaborators of the GitHub
-repo. A single proxy fans out by path, so one login covers all three; none of
-them is reachable on its own.
+Both sit behind **Drizzle Studio's oauth2-proxy**, reached through nginx's
+external-auth hooks. The proxy sets its cookie on the parent domain, so one
+GitHub login covers Studio, Grafana and Alertmanager - one OAuth app per
+environment, no second one to register.
 
-Past the proxy you are an anonymous **Viewer** - no second login. Editing needs
+Past the proxy you are an anonymous Grafana **Viewer**. Editing dashboards needs
 the admin account:
 
 ```sh
-kubectl -n t99-prod get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d
+kubectl -n t99-stage get secret t99-grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d
 ```
 
 Prometheus has no ingress:
 
 ```sh
-kubectl -n t99-prod port-forward svc/prometheus 9090:9090
+kubectl -n t99-stage port-forward svc/t99-prometheus 9090:9090
 ```
 
-### OAuth app
+### Email
 
-A GitHub OAuth App with the callback
-`https://grafana.t99.stud.k8s.aet.cit.tum.de/oauth2/callback`. CI reads its
-credentials from the `GRAFANA_OAUTH_CLIENT_ID` / `GRAFANA_OAUTH_CLIENT_SECRET`
-repository secrets. For a manual first deploy:
+Alertmanager sends through **Resend**'s SMTP relay. The only credential is a
+Resend API key, which doubles as the SMTP password (the username is literally
+`resend`). It is stored in a Secret and mounted as a file, so it never appears in
+an env var or in the rendered manifests.
 
-```sh
-GRAFANA_OAUTH_CLIENT_ID=... GRAFANA_OAUTH_CLIENT_SECRET=... ./k8s/monitoring/apply.sh
-```
+| Value                       | Where                                              |
+| --------------------------- | -------------------------------------------------- |
+| `alertmanager.from` / `.to` | `values.yaml` - plain config, not a secret         |
+| `alertmanager.resendApiKey` | `RESEND_API_KEY` repo secret, or the deploy script |
+
+**The key is optional.** Without it the stack still deploys - Alertmanager just
+has no receiver, so alerts fire and show in its UI but nothing is mailed. That
+keeps `bun deploy:k8s` working for anyone without the key.
 
 ### Sizing
 
 The namespace `ResourceQuota` caps **limits**, not requests, and is shared with
 the app:
 
-| Pod            | Memory limit | CPU limit |
-| -------------- | ------------ | --------- |
-| prometheus     | 256Mi        | 150m      |
-| grafana        | 192Mi        | 75m       |
-| grafana-oauth2 | 64Mi         | 50m       |
-| alertmanager   | 64Mi         | 40m       |
-| mailhog        | 32Mi         | 20m       |
-| **total**      | **608Mi**    | **335m**  |
+| Pod          | Memory limit | CPU limit |
+| ------------ | ------------ | --------- |
+| prometheus   | 256Mi        | 150m      |
+| grafana      | 192Mi        | 75m       |
+| alertmanager | 64Mi         | 40m       |
+| **total**    | **512Mi**    | **265m**  |
 
-Loki runs locally only. Check headroom with
-`kubectl get resourcequota -n t99-prod`.
+Leave headroom: cert-manager starts a short-lived 64Mi/100m pod to issue and
+renew the TLS certificates. Check with `kubectl get resourcequota -n t99-stage`.
+
+Loki and MailHog run locally only.
 
 ## Dashboards
 
@@ -157,14 +151,16 @@ Loki runs locally only. Check headroom with
 | Service Overview (availability, request rate, errors, latency, version, **logs**) | `service-overview.json` |
 | JVM Runtime (heap, GC, threads, CPU, uptime)                                      | `jvm-runtime.json`      |
 
-Dashboards are provisioned from JSON, so you don't import them by hand. To
-**update** one, edit its file in `infra/grafana/dashboards/` and re-apply
-(`./k8s/monitoring/apply.sh`, or restart the Grafana container locally).
+Dashboards are provisioned from JSON, so you don't import them by hand. They live
+in `k8s/helm/t99-app/files/dashboards/` - inside the chart, because Helm can only
+read files under the chart directory. The Compose stack mounts the same folder, so
+there is one copy, not two. To **update** one, edit the JSON and redeploy (or
+restart the Grafana container locally).
 
 To **export** a change made in the Grafana UI back into the repo: open the
 dashboard → **Share → Export → Save to file** (leave _Export for sharing
 externally_ off), then overwrite the matching file in
-`infra/grafana/dashboards/`.
+`k8s/helm/t99-app/files/dashboards/`.
 
 To **import** into a Grafana that isn't using provisioning: **Dashboards → New →
 Import → Upload JSON file** and pick the Prometheus data source.
@@ -178,11 +174,12 @@ every 15s                 routes by severity           (localhost:8025)
 ```
 
 Rules are defined twice, in the same shape: `infra/monitoring/rules/alerts.yaml`
-(Compose) and `k8s/monitoring/prometheus/rules.yaml` (cluster). Routing lives in
-`infra/monitoring/alertmanager.yml`.
+(Compose) and `k8s/helm/t99-app/files/rules/alerts.yaml` (cluster). They differ
+only in the `ServiceDown` scrape job, since discovery works differently.
 
-Mail only happens locally. The cluster has no Alertmanager (namespace quota), so
-there the rules evaluate and surface under **Prometheus > Alerts** and stop there.
+Routing lives in `infra/monitoring/alertmanager.yml` for Compose, and in the
+chart's `alertmanager.yaml` template for the cluster - same grouping, inhibition
+and severity timings, different SMTP target (MailHog vs Resend).
 
 ### The rules
 
@@ -238,21 +235,12 @@ Add a test to `alerts_test.yaml` whenever you add a rule.
 
 ### Where the mail goes
 
-Alertmanager sends to **MailHog**, a capture-only SMTP server: it accepts every
-message and shows it in a web UI instead of delivering it. That means **no SMTP
-credentials exist anywhere in this repo or the cluster** - nothing to leak, and
-no personal university password sitting in a Kubernetes Secret that any
-teammate can `kubectl get -o yaml`.
+**On the cluster:** Resend's SMTP relay delivers it for real. See
+[Email](#email) above.
 
-| UI           | Local                   | Cluster                                              |
-| ------------ | ----------------------- | ---------------------------------------------------- |
-| Alert mails  | <http://localhost:8025> | <https://grafana.t99.stud.k8s.aet.cit.tum.de/mail>   |
-| Alertmanager | <http://localhost:9093> | <https://grafana.t99.stud.k8s.aet.cit.tum.de/alerts> |
-
-To send real mail instead, point `smtp_smarthost` at a real relay and add the
-`smtp_auth_*` settings for it. Use a shared/functional account, never a personal
-one: a Kubernetes Secret is only base64, so anyone with `kubectl` can read it
-back.
+**Locally:** **MailHog**, a capture-only SMTP server - it accepts every message
+and shows it in a web UI instead of delivering it. No credentials needed to
+develop against the alerting path, and no risk of a dev stack mailing anyone.
 
 ### Test that mail actually arrives
 
@@ -269,3 +257,6 @@ It shows in the Alertmanager UI immediately, and the mail lands in MailHog
 (<http://localhost:8025>) about 10s later - that is the `group_wait` for
 `critical`. A `warning` takes 30s. If it appears in Alertmanager but never in
 MailHog, check `docker compose logs alertmanager`.
+
+The same request works against the cluster's Alertmanager
+(`https://alerts.<domain>/api/v2/alerts`) to test the Resend path end to end.
