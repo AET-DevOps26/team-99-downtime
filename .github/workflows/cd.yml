@@ -1,4 +1,4 @@
-name: Continuous Deployment
+name: Continuous Delivery
 
 on:
   push:
@@ -238,93 +238,9 @@ jobs:
       contents: read
       packages: read
       deployments: write
-    uses: ./.github/workflows/deploy.yml
+    uses: ./.github/workflows/deploy-azure.yml
     with:
       image_tag: ${{ needs.build-and-publish.outputs.version }}
     secrets: inherit
 
-  # ============================================================
-  # OPTION A — Direct Helm deploy (active)
-  # Requires: KUBECONFIG_DATA secret (base64-encoded kubeconfig)
-  # No manual bootstrap needed — secrets are created by Helm on first deploy.
-  # ============================================================
-  deploy-stage:
-    name: Deploy to Stage
-    needs: [build-and-publish, attest]
-    if: needs.build-and-publish.outputs.images != '' && needs.build-and-publish.outputs.images != '[]'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Set up kubeconfig
-        run: |
-          mkdir -p ~/.kube
-          echo "${{ secrets.KUBECONFIG_DATA }}" | base64 -d > ~/.kube/config
-
-      - name: Set up Helm
-        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # pinned to v5
-        with:
-          version: 'v4.2.0'
-
-      - name: Deploy to t99-stage
-        run: |
-          VERSION=$(git describe --tags --abbrev=0)
-          VERSION=${VERSION#v}
-          helm upgrade --install t99 k8s/helm/t99-app/ \
-            -n t99-stage \
-            -f k8s/helm/t99-app/values.yaml \
-            -f k8s/helm/t99-app/values.stage.yaml \
-            --set authService.image.tag="$VERSION" \
-            --set client.image.tag="$VERSION" \
-            --set transactionService.image.tag="$VERSION" \
-            --set notificationService.image.tag="$VERSION" \
-            --set budgetService.image.tag="$VERSION" \
-            --set genaiService.image.tag="$VERSION" \
-            --set genaiService.llmApiKey="${{ secrets.LLM_API_KEY }}" \
-            --set drizzleStudio.github.clientId="${{ secrets.STUDIO_GITHUB_CLIENT_ID }}" \
-            --set drizzleStudio.github.clientSecret="${{ secrets.STUDIO_GITHUB_CLIENT_SECRET }}" \
-            --set alertmanager.resendApiKey="${{ secrets.RESEND_API_KEY }}" \
-            --wait --timeout 10m --rollback-on-failure
-
-      - name: Write deploy summary
-        run: |
-          VERSION=$(git describe --tags --abbrev=0)
-          VERSION=${VERSION#v}
-          {
-            echo "## Deployed to Stage"
-            echo "**Version:** \`$VERSION\`"
-            echo "**URL:** https://stage.t99.stud.k8s.aet.cit.tum.de"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-  # ============================================================
-  # OPTION B — Kargo warehouse refresh (commented out)
-  # Requires: KARGO_API_TOKEN secret, KARGO_SERVER variable
-  # Bootstrap: bun run scripts/bootstrap-argocd-kargo.ts
-  # To activate: uncomment this job and comment out deploy-stage above.
-  # ============================================================
-  # deploy-stage-kargo:
-  #   name: Trigger Kargo Stage Promotion
-  #   needs: [build-and-publish, attest]
-  #   if: needs.build-and-publish.outputs.images != '' && needs.build-and-publish.outputs.images != '[]'
-  #   runs-on: ubuntu-latest
-  #   env:
-  #     KARGO_SERVER: ${{ vars.KARGO_SERVER }}
-  #     KARGO_TOKEN: ${{ secrets.KARGO_API_TOKEN }}
-  #   steps:
-  #     - name: Install Kargo CLI
-  #       uses: akuity/setup-kargo@v0.0.14
-  #
-  #     - name: Trigger Kargo warehouse refresh
-  #       run: |
-  #         kargo login "$KARGO_SERVER" --token "$KARGO_TOKEN" --insecure-skip-tls-verify
-  #         kargo refresh warehouse t99-app-warehouse --project t99 --wait
-  #
-  #     - name: Write deploy summary
-  #       run: |
-  #         echo "## Deploy" >> "$GITHUB_STEP_SUMMARY"
-  #         echo "Kargo warehouse refresh triggered at $(date -u '+%Y-%m-%d %H:%M UTC')" >> "$GITHUB_STEP_SUMMARY"
-  #         echo "Stage: auto-promoting via Kargo. Prod: requires manual approval in Kargo UI." >> "$GITHUB_STEP_SUMMARY"
+  # Stage deployment is handled by deploy-stage.yml, triggered on release: released.
