@@ -2,7 +2,7 @@ groups:
   - name: t99-availability
     rules:
       - alert: ServiceDown
-        expr: up{job="expenseflow-services"} == 0
+        expr: up{job="kubernetes-pods"} == 0
         for: 2m
         labels:
           severity: critical
@@ -12,7 +12,7 @@ groups:
           application: '{{ $labels.service }}-service'
         annotations:
           summary: 'Service {{ $labels.service }} is down'
-          description: 'Prometheus has been unable to scrape {{ $labels.service }} for more than 2 minutes.'
+          description: 'Prometheus has been unable to scrape {{ $labels.pod }} for more than 2 minutes.'
 
   - name: t99-traffic
     rules:
@@ -29,7 +29,7 @@ groups:
           summary: 'High 5xx error rate on {{ $labels.application }}'
           description: '{{ $labels.application }} is returning more than 5% server errors over the last 5 minutes.'
 
-      # Same signal as the warning above, one tier up: this is an outage, not a blip.
+      # Same signal as the warning above, one tier up: an outage, not a blip.
       - alert: CriticalHttpErrorRate
         expr: |
           sum by (application) (rate(http_server_requests_seconds_count{status=~"5.."}[5m]))
@@ -80,7 +80,7 @@ groups:
           severity: critical
         annotations:
           summary: 'Crash loop on {{ $labels.application }}'
-          description: '{{ $labels.application }} has restarted more than 5 times in the last hour.'
+          description: '{{ $labels.pod }} ({{ $labels.application }}) has restarted more than 5 times in the last hour.'
 
       # Fraction of all cores, 0-1. Every service exports it: Micrometer on the
       # JVM side, hand-rolled in auth/genai to the same definition.

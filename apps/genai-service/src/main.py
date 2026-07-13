@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 from pydantic import BaseModel
 
-from . import config, llm
+from . import config, llm, metrics
 from .auth import CurrentUser, require_user
 from .categorize import (
     LlmUnavailableError,
@@ -194,5 +194,8 @@ def health_check():
     # Public: no auth, so the container healthcheck keeps working.
     return {"status": "healthy"}
 
+
+# Adds the request middleware and the (public) /metrics endpoint Prometheus scrapes.
+metrics.install(app)
 
 app.include_router(router)

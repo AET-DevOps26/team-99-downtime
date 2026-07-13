@@ -1,0 +1,41 @@
+# Mails firing Prometheus alerts. Used by both the compose stack and the cluster
+# (apply.sh generates the alertmanager-config ConfigMap from this file).
+global:
+  resolve_timeout: 5m
+  # MailHog captures the mail instead of delivering it — no auth, no TLS, no
+  # credentials in the repo.
+  smtp_smarthost: 'mailhog:1025'
+  smtp_from: 'alerts@t99.local'
+  smtp_require_tls: false
+
+# Alerts sharing an alertname + application collapse into one mail; repeats wait
+# for repeat_interval. Without this, one outage means one mail per rule per scrape.
+route:
+  receiver: team-email
+  group_by: ['alertname', 'application']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 12h
+  routes:
+    # Same inbox, but critical mails sooner and nags 12x more often.
+    - matchers:
+        - severity = "critical"
+      group_wait: 10s
+      repeat_interval: 1h
+
+receivers:
+  - name: team-email
+    email_configs:
+      - to: 'team99@t99.local'
+        send_resolved: true
+        headers:
+          Subject: '[T99 {{ .CommonLabels.severity | toUpper }} {{ .Status | toUpper }}] {{ .CommonLabels.alertname }} ({{ .CommonLabels.application }})'
+
+# A service that is down also breaches its error-rate and latency rules. One
+# incident, one mail.
+inhibit_rules:
+  - source_matchers:
+      - severity = "critical"
+    target_matchers:
+      - severity = "warning"
+    equal: ['application']

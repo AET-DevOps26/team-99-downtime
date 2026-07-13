@@ -12,6 +12,8 @@ docker compose up -d --build
 
 Open **http://localhost:9099**. See [Development Setup](docs/development/SETUP.md) for the full guide (native Nx mode, endpoints, per-service instructions).
 
+This also brings up the observability stack - metrics, logs and alerting in Grafana at **http://localhost:3001** (log in as `admin` with the `GRAFANA_ADMIN_PASSWORD` you set in `.env`). See [Observability](docs/deployment/OBSERVABILITY.md).
+
 ## Live Environments
 
 | Environment | App                                                 | Drizzle Studio                                   |
@@ -19,6 +21,22 @@ Open **http://localhost:9099**. See [Development Setup](docs/development/SETUP.m
 | Stage       | https://stage.t99.stud.k8s.aet.cit.tum.de           | https://studio.stage.t99.stud.k8s.aet.cit.tum.de |
 | Prod        | https://t99.stud.k8s.aet.cit.tum.de                 | https://studio.t99.stud.k8s.aet.cit.tum.de       |
 | Azure VM    | https://expenseflow.spaincentral.cloudapp.azure.com | —                                                |
+
+### Observability
+
+Metrics, dashboards and alerting. Behind the same GitHub OAuth gate as Drizzle
+Studio - repo collaborators only, one login per environment covers all three.
+
+| Environment | Grafana                                           | Alertmanager                                     | Alert mail                      |
+| ----------- | ------------------------------------------------- | ------------------------------------------------ | ------------------------------- |
+| Stage       | https://grafana.stage.t99.stud.k8s.aet.cit.tum.de | https://alerts.stage.t99.stud.k8s.aet.cit.tum.de | Resend → `noreply@1ho.st`       |
+| Prod        | https://grafana.t99.stud.k8s.aet.cit.tum.de       | https://alerts.t99.stud.k8s.aet.cit.tum.de       | Resend → `noreply@1ho.st`       |
+| Local       | http://localhost:3001                             | http://localhost:9093                            | http://localhost:8025 (MailHog) |
+
+Part of the app's Helm chart, so it deploys with everything else. Firing alerts are
+emailed through Resend on the cluster; locally they are captured by **MailHog** at
+http://localhost:8025 instead of being delivered, so no SMTP credentials are needed
+for dev. See [Observability](docs/deployment/OBSERVABILITY.md).
 
 ## Deployment
 
@@ -45,4 +63,5 @@ All three members contributed across the full stack throughout the project. Resp
 | Kubernetes deployment       | [docs/deployment/KUBERNETES.md](docs/deployment/KUBERNETES.md)                 |
 | VM / Terraform deployment   | [docs/deployment/TERRAFORM.md](docs/deployment/TERRAFORM.md)                   |
 | Scripts reference           | [docs/development/SCRIPTS.md](docs/development/SCRIPTS.md)                     |
+| Observability               | [docs/deployment/OBSERVABILITY.md](docs/deployment/OBSERVABILITY.md)           |
 | Problem statement           | [docs/problem/PROBLEM_STATEMENT.md](docs/problem/PROBLEM_STATEMENT.md)         |

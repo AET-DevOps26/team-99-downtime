@@ -1,3 +1,7 @@
+# Promtail needs a read-only docker.sock to discover containers and tail their
+# logs. This is the local dev stack; nothing mounts the socket on the cluster.
+# Disabled per-file, so the rules still apply to every other manifest.
+# kics-scan disable=d6355c88-1e8d-49e9-b2f2-f8a1ca12c75b,1c1325ff-831d-43a1-973e-839ae57dfcc0
 name: team-99-downtime
 
 x-java-dev: &java-dev
@@ -247,6 +251,99 @@ services:
       - client_node_modules:/workspace/node_modules
     networks: [team99]
 
+  # Observability: metrics (Prometheus) + logs (Loki) in Grafana, alerts mailed
+  # by Alertmanager. Config in ./infra — see docs/deployment/OBSERVABILITY.md.
+  prometheus:
+    image: prom/prometheus:v3.5.5
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --web.enable-lifecycle
+    volumes:
+      - ./infra/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/monitoring/rules:/etc/prometheus/rules:ro
+      - prometheus_data:/prometheus
+    ports:
+      - '9090:9090'
+    depends_on:
+      - alertmanager
+    networks: [team99]
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    volumes:
+      - ./infra/monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    ports:
+      - '9093:9093'
+    depends_on:
+      - mailhog
+    networks: [team99]
+
+  # Capture-only SMTP: holds the alert mails instead of delivering them, so the
+  # stack needs no real SMTP credentials.
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    restart: unless-stopped
+    ports:
+      - '8025:8025'
+    networks: [team99]
+
+  loki:
+    image: grafana/loki:3.5.1
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki-config.yaml
+    volumes:
+      - ./infra/monitoring/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+      - loki_data:/loki
+    ports:
+      - '3100:3100'
+    networks: [team99]
+
+  promtail:
+    image: grafana/promtail:3.5.1
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/promtail-config.yaml
+    volumes:
+      - ./infra/monitoring/promtail-config.yaml:/etc/promtail/promtail-config.yaml:ro
+      # Container discovery + log streaming both go through the daemon socket.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - promtail_positions:/tmp
+    depends_on:
+      - loki
+    networks: [team99]
+
+  grafana:
+    image: grafana/grafana:12.4.5
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      # No default on purpose: `:?` refuses to start rather than fall back to a
+      # guessable admin/admin.
+      # kics-scan ignore-line
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env - see .env.example}
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      # The chart's dashboards are Prometheus-only so they also render in the
+      # cluster, where no Loki is deployed. The log panels live alongside them
+      # here, where Loki and Promtail are part of the stack.
+      - ./k8s/helm/t99-app/files/dashboards:/var/lib/grafana/dashboards/shared:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards/local:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - '3001:3000'
+    depends_on:
+      - prometheus
+      - loki
+    networks: [team99]
+
 volumes:
   postgres_data:
   gradle_cache_transaction:
@@ -257,6 +354,11 @@ volumes:
   gradle_project_budget:
   client_node_modules:
   auth_service_node_modules:
+  prometheus_data:
+  grafana_data:
+  alertmanager_data:
+  loki_data:
+  promtail_positions:
 
 networks:
   team99:
