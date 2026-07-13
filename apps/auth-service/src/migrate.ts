@@ -112,7 +112,9 @@ await Promise.race([
       resolve();
     }, 5_000)
   ),
-]);
+]).catch((err) => {
+  console.error('auth-migrate: error closing pg pool:', err);
+});
 
 // better-auth holds an internal connection pool with no public close() method;
 // without an explicit exit the process hangs indefinitely.
