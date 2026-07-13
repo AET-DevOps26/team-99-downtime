@@ -7,8 +7,7 @@ metadata:
     {{- include "t99-app.labels" . | nindent 4 }}
     app.kubernetes.io/component: prometheus
 ---
-# Namespaced Role, not a ClusterRole: on the shared AET cluster we hold no
-# cluster-scoped RBAC, and Prometheus only discovers pods in this namespace.
+# Namespaced Role: we hold no cluster-scoped RBAC on the shared AET cluster.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -147,7 +146,6 @@ spec:
         {{- include "t99-app.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: prometheus
       annotations:
-        # Roll the pod when the scrape config or the rules change.
         checksum/rules: {{ .Files.Get "files/rules/alerts.yaml" | sha256sum }}
         checksum/config: {{ printf "%s-%s" .Release.Namespace .Release.Name | sha256sum }}
     spec:

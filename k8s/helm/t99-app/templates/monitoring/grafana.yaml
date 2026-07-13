@@ -50,8 +50,6 @@ data:
           path: /var/lib/grafana/dashboards
           foldersFromFilesStructure: false
 ---
-# The committed JSON stays the single source of truth — the same files the
-# Compose stack mounts.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -99,7 +97,6 @@ spec:
         {{- include "t99-app.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: grafana
       annotations:
-        # Roll the pod when a dashboard changes.
         checksum/dashboards: {{ (.Files.Glob "files/dashboards/*.json").AsConfig | sha256sum }}
     spec:
       securityContext:
@@ -129,8 +126,7 @@ spec:
             - name: GF_SERVER_ROOT_URL
               value: https://grafana.{{ .Values.domain }}
             {{- if and .Values.drizzleStudio.enabled .Values.drizzleStudio.oauth.enabled }}
-            # oauth2-proxy already authenticated whoever reaches us, so skip a
-            # second login. Editing still needs the admin account.
+            # oauth2-proxy already authenticated the caller: no second login.
             - name: GF_AUTH_ANONYMOUS_ENABLED
               value: 'true'
             - name: GF_AUTH_ANONYMOUS_ORG_ROLE
@@ -193,9 +189,8 @@ spec:
       port: 3000
       targetPort: 3000
 ---
-# Grafana and Alertmanager reuse Drizzle Studio's oauth2-proxy through nginx's
-# external-auth hooks, so all three sit behind one GitHub OAuth app. The proxy
-# sets a cookie for the whole parent domain, so one login covers every subdomain.
+# Grafana and Alertmanager reuse Drizzle Studio's oauth2-proxy via nginx's
+# external-auth hooks, so one GitHub OAuth app covers all three.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

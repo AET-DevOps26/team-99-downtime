@@ -33,8 +33,8 @@ spec:
             - --email-domain=*
             - --cookie-secure=true
             - --cookie-name=_t99_studio_oauth2
-            # Cookie valid for every subdomain, so this one proxy also authorises
-            # grafana.<domain> and alerts.<domain> via nginx's auth-url hooks.
+            # Cookie spans every subdomain, so this proxy also authorises
+            # grafana.<domain> and alerts.<domain>.
             - --cookie-domain=.{{ .Values.domain }}
             - --whitelist-domain=.{{ .Values.domain }}
             - --reverse-proxy=true
