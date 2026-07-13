@@ -29,9 +29,9 @@ jobs:
 
       - name: Run Zizmor
         run: |
-          pip install \
+          python3 -m pip install \
             --require-hashes \
-            --hash "sha256:6a958d8a0941d7e1d0de8436670b5cb7fc64c8028b4d16e3f519ccc77f953cef" \
+            --hash=sha256:6a958d8a0941d7e1d0de8436670b5cb7fc64c8028b4d16e3f519ccc77f953cef \
             zizmor==1.26.1
           zizmor --format sarif .github/workflows/ > zizmor.sarif || true
           [ -s zizmor.sarif ] || echo '{"version":"2.1.0","runs":[]}' > zizmor.sarif
