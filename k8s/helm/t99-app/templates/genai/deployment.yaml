@@ -52,18 +52,24 @@ spec:
           envFrom:
             - configMapRef:
                 name: {{ .Release.Name }}-genai-config
+          # Gates liveness/readiness until the app is up; allows up to 2 min
+          # for a cold start (image pull + uvicorn + summary-store connect).
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            periodSeconds: 5
+            failureThreshold: 24
           livenessProbe:
             httpGet:
               path: /health
               port: 8000
-            initialDelaySeconds: 15
             periodSeconds: 10
             failureThreshold: 6
           readinessProbe:
             httpGet:
               path: /health
               port: 8000
-            initialDelaySeconds: 5
             periodSeconds: 5
           resources:
             {{- toYaml .Values.genaiService.resources | nindent 12 }}

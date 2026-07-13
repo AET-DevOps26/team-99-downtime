@@ -25,8 +25,8 @@
 		reverse_proxy genai-service:8000
 	}
 
-	# Everything else -> the static client (served on :80 in the prod image).
+	# Everything else -> the static client (served on :8080 in the prod image).
 	handle {
-		reverse_proxy client:80
+		reverse_proxy client:8080
 	}
 }

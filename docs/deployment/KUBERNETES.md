@@ -53,7 +53,7 @@ k8s/
   → helm upgrade --install t99 → t99-prod
 ```
 
-All Helm invocations use `--wait --timeout 5m --rollback-on-failure`.
+All Helm invocations use `--wait --timeout 10m --rollback-on-failure`.
 
 ## Local Deploy
 

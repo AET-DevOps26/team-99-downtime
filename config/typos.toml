@@ -1,0 +1,18 @@
+[files]
+extend-exclude = [
+  "bun.lock",
+  "*.lock",
+  "node_modules/",
+  "dist/",
+  ".nx/",
+  "tmp/",
+  "reports/",
+  # Generated OpenAPI client — typos in generated code are upstream issues
+  "apps/client/src/shared/api/generated/",
+]
+
+[default.extend-words]
+# Add project-specific identifiers or abbreviations that typos incorrectly flags.
+# Format: "typo" = "correct"  — both sides must match (identity mapping keeps the word as-is)
+# JULI is the German name for July, used in test fixture CSV data.
+JULI = "JULI"

@@ -27,7 +27,8 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v6
+        # zizmor: ignore[artipacked] — credentials are required; this job pushes git tags
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
         with:
           fetch-depth: 0 # Required for Nx affected logic
           filter: tree:0 # Optional, but recommended by nx
@@ -36,10 +37,10 @@ jobs:
         uses: ./.github/actions/setup-build-tools
 
       - name: Derive appropriate SHAs for base and head for nx affected
-        uses: nrwl/nx-set-shas@v5
+        uses: nrwl/nx-set-shas@afb73a62d26e41464e9254689e1fd6122ee683c1 # pinned to v5
 
       - name: Restore Nx Cache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # pinned to v5
         id: cache-restore
         with:
           path: .nx/cache
@@ -53,11 +54,11 @@ jobs:
             nx-shared-${{ runner.os }}-
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # pinned to v4
 
       # Login to GitHub Container Registry
       - name: Log in to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # pinned to v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -95,12 +96,12 @@ jobs:
         if: steps.check-release.outputs.needed == 'true'
         shell: bash
         run: |
-          for vfile in $(find tmp -name ".docker-version" 2>/dev/null); do
+          while IFS= read -r vfile; do
             image=$(cat "$vfile")
             base="${image%:*}"
             docker tag "$image" "$base:latest"
             docker push "$base:latest"
-          done
+          done < <(find tmp -name ".docker-version" 2>/dev/null)
 
       # Collect registry digest for each pushed image so the attest job can fan out
       - name: Collect image refs and digests
@@ -120,14 +121,14 @@ jobs:
             echo "| Image | Tags | Digest |"
             echo "|-------|------|--------|"
           } >> "$GITHUB_STEP_SUMMARY"
-          for vfile in $(find tmp -name ".docker-version" 2>/dev/null); do
+          while IFS= read -r vfile; do
             image=$(cat "$vfile")
             name="${image%:*}"
             tag="${image##*:}"
             digest=$(docker buildx imagetools inspect "$image" --format '{{json .Manifest}}' | jq -r '.digest')
             images=$(echo "$images" | jq -c --arg n "$name" --arg d "$digest" '. + [{"name":$n,"digest":$d}]')
             echo "| \`$name\` | \`$tag\`, \`latest\` | \`${digest:7:12}…\` |" >> "$GITHUB_STEP_SUMMARY"
-          done
+          done < <(find tmp -name ".docker-version" 2>/dev/null)
           echo "images=$images" >> "$GITHUB_OUTPUT"
 
       - name: Write no-release summary
@@ -138,14 +139,14 @@ jobs:
 
       # This step runs even if the steps above fail
       - name: Save Nx Cache
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # pinned to v5
         if: always() && steps.cache-restore.outputs.cache-hit != 'true'
         with:
           path: .nx/cache
           key: ${{ steps.cache-restore.outputs.cache-primary-key }}
 
   attest:
-    name: Attest Image Provenance
+    name: Attest Image Provenance & SBOM
     needs: build-and-publish
     if: needs.build-and-publish.outputs.images != '' && needs.build-and-publish.outputs.images != '[]'
     runs-on: ubuntu-latest
@@ -160,15 +161,17 @@ jobs:
         image: ${{ fromJSON(needs.build-and-publish.outputs.images) }}
     steps:
       - name: Log in to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # pinned to v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Provenance: proves this digest was built by this workflow from this commit.
+      # Verifiable via: gh attestation verify oci://<image>@<digest> --repo <repo>
       - name: Attest build provenance
         id: attest
-        uses: actions/attest@v4
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # pinned to v4
         with:
           subject-name: ${{ matrix.image.name }}
           subject-digest: ${{ matrix.image.digest }}
@@ -181,14 +184,48 @@ jobs:
           gh attestation verify "oci://${{ matrix.image.name }}@${{ matrix.image.digest }}" \
             --repo "${{ github.repository }}"
 
+      # SBOM: scans the built image by digest and produces a CycloneDX bill of
+      # materials that reflects what actually ended up in the container, then
+      # attaches it to the image in the registry via keyless cosign (OIDC —
+      # no key management required).
+      # Verifiable via: cosign verify-attestation --type cyclonedx <image>
+      - name: Generate SBOM with Trivy
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # pinned to v0.36.0
+        with:
+          image-ref: ${{ matrix.image.name }}@${{ matrix.image.digest }}
+          format: cyclonedx
+          output: sbom.cdx.json
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ github.token }}
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # pinned to v4.1.2
+
+      - name: Attach SBOM to image
+        run: |
+          cosign attest \
+            --type cyclonedx \
+            --predicate sbom.cdx.json \
+            --yes \
+            ${{ matrix.image.name }}@${{ matrix.image.digest }}
+
+      - name: Verify SBOM attestation
+        run: |
+          cosign verify-attestation \
+            --type cyclonedx \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.github/workflows/" \
+            ${{ matrix.image.name }}@${{ matrix.image.digest }}
+
       - name: Write attestation summary
         run: |
           {
             echo "## Attestation"
             echo ""
-            echo "| Image | Digest | Status |"
-            echo "|-------|--------|--------|"
-            echo "| \`${{ matrix.image.name }}\` | \`${{ matrix.image.digest }}\` | ✅ Verified |"
+            echo "| Image | Digest | Provenance | SBOM |"
+            echo "|-------|--------|------------|------|"
+            echo "| \`${{ matrix.image.name }}\` | \`${{ matrix.image.digest }}\` | ✅ Verified | ✅ Attached |"
           } >> "$GITHUB_STEP_SUMMARY"
 
   # Delegates to the reusable deploy workflow so the automatic (on-release) and
@@ -218,9 +255,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up kubeconfig
         run: |
@@ -228,7 +266,7 @@ jobs:
           echo "${{ secrets.KUBECONFIG_DATA }}" | base64 -d > ~/.kube/config
 
       - name: Set up Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # pinned to v5
         with:
           version: 'v4.2.0'
 
@@ -249,15 +287,17 @@ jobs:
             --set genaiService.llmApiKey="${{ secrets.LLM_API_KEY }}" \
             --set drizzleStudio.github.clientId="${{ secrets.STUDIO_GITHUB_CLIENT_ID }}" \
             --set drizzleStudio.github.clientSecret="${{ secrets.STUDIO_GITHUB_CLIENT_SECRET }}" \
-            --wait --timeout 5m --rollback-on-failure
+            --wait --timeout 10m --rollback-on-failure
 
       - name: Write deploy summary
         run: |
           VERSION=$(git describe --tags --abbrev=0)
           VERSION=${VERSION#v}
-          echo "## Deployed to Stage" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Version:** \`$VERSION\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "**URL:** https://stage.t99.stud.k8s.aet.cit.tum.de" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## Deployed to Stage"
+            echo "**Version:** \`$VERSION\`"
+            echo "**URL:** https://stage.t99.stud.k8s.aet.cit.tum.de"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # ============================================================
   # OPTION B — Kargo warehouse refresh (commented out)

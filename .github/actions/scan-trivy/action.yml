@@ -1,0 +1,49 @@
+name: 'Scan with Trivy'
+description: 'Run Trivy with a shared DB cache, outputting SARIF'
+
+inputs:
+  scan-type:
+    description: 'Scan type: fs, image, config, or repo'
+    required: true
+  target:
+    description: 'Target to scan (path or image reference)'
+    required: true
+  scanners:
+    description: 'Comma-separated scanners: vuln, secret, misconfig, license'
+    default: 'vuln'
+  severity:
+    description: 'Comma-separated severity levels to report'
+    default: 'HIGH,CRITICAL'
+  output:
+    description: 'SARIF output file path'
+    required: true
+  exit-code:
+    description: '1 to fail the step on findings, 0 to report only'
+    default: '0'
+
+runs:
+  using: composite
+  steps:
+    # Persist the Trivy vulnerability DB across jobs and runs so each job does
+    # not download it independently. The run_id suffix in the key ensures a
+    # fresh write each run while restore-keys give cache hits on reruns.
+    - name: Cache Trivy DB
+      uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # pinned to v5
+      with:
+        path: ${{ runner.temp }}/trivy-cache
+        key: trivy-db-${{ runner.os }}-${{ github.run_id }}
+        restore-keys: |
+          trivy-db-${{ runner.os }}-
+
+    - name: Run Trivy
+      uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # pinned to v0.36.0
+      with:
+        scan-type: ${{ inputs.scan-type }}
+        scan-ref: ${{ inputs.target }}
+        scanners: ${{ inputs.scanners }}
+        severity: ${{ inputs.severity }}
+        format: sarif
+        output: ${{ inputs.output }}
+        exit-code: ${{ inputs.exit-code }}
+      env:
+        TRIVY_CACHE_DIR: ${{ runner.temp }}/trivy-cache

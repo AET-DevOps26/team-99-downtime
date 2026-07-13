@@ -14,7 +14,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
+        with:
+          persist-credentials: false
 
       - name: Set up kubeconfig
         run: |
@@ -22,14 +24,15 @@ jobs:
           echo "${{ secrets.KUBECONFIG_DATA }}" | base64 -d > ~/.kube/config
 
       - name: Set up Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # pinned to v5
         with:
           version: 'v4.2.0'
 
       - name: Deploy to t99-prod
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
-          VERSION="${{ inputs.version }}"
-          VERSION=${VERSION#v}
+          VERSION="${INPUT_VERSION#v}"
           helm upgrade --install t99 k8s/helm/t99-app/ \
             -n t99-prod \
             -f k8s/helm/t99-app/values.yaml \
@@ -43,10 +46,14 @@ jobs:
             --set genaiService.llmApiKey="${{ secrets.LLM_API_KEY }}" \
             --set drizzleStudio.github.clientId="${{ secrets.STUDIO_GITHUB_CLIENT_ID_PROD }}" \
             --set drizzleStudio.github.clientSecret="${{ secrets.STUDIO_GITHUB_CLIENT_SECRET_PROD }}" \
-            --wait --timeout 5m --rollback-on-failure
+            --wait --timeout 10m --rollback-on-failure
 
       - name: Write deploy summary
+        env:
+          VERSION: ${{ inputs.version }} # zizmor: ignore[template-injection] — workflow_dispatch input, requires write access to trigger
         run: |
-          echo "## Deployed to Production" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Version:** \`${{ inputs.version }}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "**URL:** https://t99.stud.k8s.aet.cit.tum.de" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## Deployed to Production"
+            echo "**Version:** \`$VERSION\`"
+            echo "**URL:** https://t99.stud.k8s.aet.cit.tum.de"
+          } >> "$GITHUB_STEP_SUMMARY"

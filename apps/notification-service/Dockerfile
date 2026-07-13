@@ -5,6 +5,7 @@ RUN apk add --no-cache bash
 EXPOSE 8081
 HEALTHCHECK --interval=10s --timeout=3s --start-period=120s --retries=20 \
   CMD wget -q --spider http://localhost:8081/actuator/health || exit 1
+# nosemgrep: dockerfile.security.missing-user.missing-user — dev-only image, host bind-mount breaks non-root user
 CMD ["./gradlew", "--no-daemon", ":notification-service:bootRun", "--continuous"]
 
 #prod

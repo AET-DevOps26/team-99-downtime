@@ -3,7 +3,10 @@ name: E2E Tests
 # Playwright suite against the deployed stage environment. Runs after every
 # Continuous Deployment run that actually deployed to stage, plus on demand.
 # Deliberately a separate workflow: a failing e2e run is a visible red run on
-# main but never blocks PRs or the CD pipeline.
+# main but never blocks PRs or the CD pipeline. When the suite fails, stage is
+# rolled back to the revision that was live before the tested deploy, captured
+# before the suite runs (manual runs can opt out via the rollback_on_failure
+# input, e.g. to inspect a broken deploy in place).
 on:
   workflow_run:
     workflows: ['Continuous Deployment']
@@ -15,6 +18,10 @@ on:
         description: 'Base URL to run the suite against'
         default: 'https://stage.t99.stud.k8s.aet.cit.tum.de'
         type: string
+      rollback_on_failure:
+        description: 'Roll back the stage release if the suite fails'
+        default: true
+        type: boolean
 
 # Two releases in quick succession: only the run against the newest deploy matters.
 concurrency:
@@ -35,6 +42,14 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       should_run: ${{ steps.gate.outputs.should_run }}
+      # Whether a failing suite may roll stage back. Automatic runs: always.
+      # Manual runs: only while the rollback_on_failure box stayed checked AND
+      # the run actually tested stage — a dispatch against any other URL must
+      # never mutate stage.
+      rollback_armed: >-
+        ${{ github.event_name != 'workflow_dispatch' ||
+            (inputs.rollback_on_failure &&
+             inputs.base_url == 'https://stage.t99.stud.k8s.aet.cit.tum.de') }}
     steps:
       - name: Gate on the triggering deploy
         id: gate
@@ -57,25 +72,82 @@ jobs:
             echo "should_run=false" >> "$GITHUB_OUTPUT"
           fi
 
+  # Snapshot the release BEFORE the suite runs: which revision is under test
+  # and which revision a rollback should restore. CD and this workflow use
+  # different concurrency groups, so a newer CD run can redeploy stage while
+  # an older suite is still running — the rollback job must not trust
+  # "whatever is previous" at rollback time.
+  capture-release:
+    name: Capture Stage Release
+    needs: check-deploy
+    if: >-
+      needs.check-deploy.outputs.should_run == 'true' &&
+      needs.check-deploy.outputs.rollback_armed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Talks only to the cluster — no GitHub token needed.
+    permissions: {}
+    outputs:
+      deployed_revision: ${{ steps.snapshot.outputs.deployed_revision }}
+      rollback_revision: ${{ steps.snapshot.outputs.rollback_revision }}
+    steps:
+      - name: Set up kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG_DATA }}" | base64 -d > ~/.kube/config
+
+      - name: Set up Helm
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # pinned to v5
+        with:
+          version: 'v4.2.0'
+
+      # rollback_revision = the newest superseded revision below the deployed
+      # one, i.e. what was live before the tested deploy. Empty on a first
+      # release (nothing to roll back to); the rollback job then skips.
+      - name: Snapshot deployed and rollback revisions
+        id: snapshot
+        run: |
+          history=$(helm history t99 -n t99-stage --max 50 -o json)
+          echo "$history" | jq -r '.[] | "rev \(.revision)\t\(.status)\t\(.description)"'
+          deployed=$(echo "$history" | jq '[.[] | select(.status == "deployed")] | last | .revision')
+          if [ "$deployed" = "null" ]; then
+            echo "No revision in status 'deployed' — cannot arm rollback." >&2
+            exit 1
+          fi
+          rollback=$(echo "$history" | jq -r --argjson cur "$deployed" \
+            '[.[] | select(.revision < $cur and .status == "superseded")] | last | .revision // empty')
+          echo "Testing revision $deployed; rollback target: ${rollback:-<none>}"
+          {
+            echo "deployed_revision=$deployed"
+            echo "rollback_revision=$rollback"
+          } >> "$GITHUB_OUTPUT"
+
   e2e:
     name: Playwright E2E
-    needs: check-deploy
-    if: needs.check-deploy.outputs.should_run == 'true'
+    # capture-release must finish first so the snapshot predates the suite,
+    # but a failed or skipped snapshot only disarms rollback — it never
+    # blocks the tests themselves.
+    needs: [check-deploy, capture-release]
+    if: (!cancelled()) && needs.check-deploy.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    outputs:
+      # Outcome of the Playwright step alone: setup or reporting breakage in
+      # this job must not look like a failing suite to the rollback job.
+      playwright_result: ${{ steps.playwright.outcome }}
     env:
       # Empty for workflow_run events, so the || default applies there.
       E2E_BASE_URL: ${{ inputs.base_url || 'https://stage.t99.stud.k8s.aet.cit.tum.de' }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
         with:
           # Test-only job — never writes the GITHUB_TOKEN into .git/config.
           persist-credentials: false
 
       # Only bun is needed — no Java/Python, so skip the setup-build-tools action.
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # pinned to v2
         with:
           bun-version: latest
 
@@ -86,11 +158,12 @@ jobs:
         run: bunx playwright install --with-deps chromium
 
       - name: Run E2E Tests
+        id: playwright
         run: bun nx e2e client-e2e
 
       # Paths are relative to the Playwright config dir (apps/client-e2e).
       - name: Upload Playwright Report
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # pinned to v7
         if: (!cancelled())
         with:
           name: playwright-report
@@ -101,7 +174,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Publish Test Results
-        uses: dorny/test-reporter@v3
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # pinned to v3
         if: (!cancelled())
         with:
           name: E2E Test Results
@@ -111,3 +184,66 @@ jobs:
           # The Run E2E Tests step already gates the job
           fail-on-error: false
           fail-on-empty: false
+
+  # A failing suite against a fresh deploy means stage is functionally broken
+  # even though the Helm release itself went healthy (cd.yml's
+  # --rollback-on-failure only covers deploys that never became healthy).
+  # Gated on the Playwright step itself — not the job — and rolls back to the
+  # exact revision captured before the suite ran, after verifying stage still
+  # runs the tested revision. capture-release only runs when rollback is
+  # armed (check-deploy.outputs.rollback_armed), so requiring its success
+  # already encodes the automatic-vs-manual policy.
+  rollback:
+    name: Rollback Stage Deploy
+    needs: [capture-release, e2e]
+    if: >-
+      failure() &&
+      needs.e2e.outputs.playwright_result == 'failure' &&
+      needs.capture-release.result == 'success' &&
+      needs.capture-release.outputs.rollback_revision != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Talks only to the cluster — no GitHub token needed.
+    permissions: {}
+    steps:
+      - name: Set up kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG_DATA }}" | base64 -d > ~/.kube/config
+
+      - name: Set up Helm
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # pinned to v5
+        with:
+          version: 'v4.2.0'
+
+      - name: Rollback t99-stage to captured revision
+        env:
+          DEPLOYED_REVISION: ${{ needs.capture-release.outputs.deployed_revision }}
+          ROLLBACK_REVISION: ${{ needs.capture-release.outputs.rollback_revision }}
+        run: |
+          # A newer CD run may have redeployed stage while the suite ran; its
+          # own e2e run judges that release — never roll back a release this
+          # run did not test. (Best effort: helm has no compare-and-swap, so a
+          # deploy landing between this check and the rollback still races;
+          # helm's per-release lock makes that fail loudly, not corrupt.)
+          current=$(helm history t99 -n t99-stage -o json \
+            | jq '[.[] | select(.status == "deployed")] | last | .revision')
+          if [ "$current" != "$DEPLOYED_REVISION" ]; then
+            echo "::notice::Stage is at revision $current, not tested revision $DEPLOYED_REVISION — a newer deploy owns stage, skipping rollback."
+            {
+              echo "## Stage Rollback Skipped"
+              echo ""
+              echo "Stage already moved to revision $current (this run tested revision $DEPLOYED_REVISION)."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          helm rollback t99 "$ROLLBACK_REVISION" -n t99-stage --wait --timeout 10m
+          {
+            echo "## Stage Rolled Back"
+            echo ""
+            echo "E2E tests failed on revision $DEPLOYED_REVISION — rolled \`t99-stage\` back to revision $ROLLBACK_REVISION."
+            echo ""
+            echo '```'
+            helm history t99 -n t99-stage --max 5
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

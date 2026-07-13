@@ -207,7 +207,7 @@ const main = defineCommand({
         --set ${`genaiService.image.tag=${version}`} \
         --set ${`drizzleStudio.enabled=${studioEnabled}`} \
         --set ${`drizzleStudio.oauth.enabled=${oauthEnabled}`} \
-        --wait --timeout 5m --rollback-on-failure \
+        --wait --timeout 10m --rollback-on-failure \
         ${dryRun ? ['--dry-run=client'] : []}`.quiet();
     } catch (err) {
       s.stop('Deploy failed.');
