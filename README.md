@@ -43,6 +43,7 @@ All three members contributed across the full stack throughout the project. Resp
 | Auth dev guide              | [docs/development/AUTHENTICATION.md](docs/development/AUTHENTICATION.md)       |
 | OpenAPI & generated clients | [docs/development/API_CLIENTS.md](docs/development/API_CLIENTS.md)             |
 | Kubernetes deployment       | [docs/deployment/KUBERNETES.md](docs/deployment/KUBERNETES.md)                 |
-| VM / Terraform deployment   | [docs/deployment/TERRAFORM.md](docs/deployment/TERRAFORM.md)                   |
+| Azure VM deployment         | [docs/deployment/AZURE.md](docs/deployment/AZURE.md)                           |
+| Terraform (Azure VM)        | [docs/deployment/TERRAFORM.md](docs/deployment/TERRAFORM.md)                   |
 | Scripts reference           | [docs/development/SCRIPTS.md](docs/development/SCRIPTS.md)                     |
 | Problem statement           | [docs/problem/PROBLEM_STATEMENT.md](docs/problem/PROBLEM_STATEMENT.md)         |
