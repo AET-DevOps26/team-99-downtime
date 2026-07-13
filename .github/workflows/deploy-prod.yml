@@ -46,7 +46,7 @@ jobs:
             --set genaiService.llmApiKey="${{ secrets.LLM_API_KEY }}" \
             --set drizzleStudio.github.clientId="${{ secrets.STUDIO_GITHUB_CLIENT_ID_PROD }}" \
             --set drizzleStudio.github.clientSecret="${{ secrets.STUDIO_GITHUB_CLIENT_SECRET_PROD }}" \
-            --wait --timeout 5m --rollback-on-failure
+            --wait --timeout 10m --rollback-on-failure
 
       - name: Write deploy summary
         env:
