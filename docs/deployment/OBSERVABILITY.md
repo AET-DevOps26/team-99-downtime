@@ -98,6 +98,11 @@ external-auth hooks. The proxy sets its cookie on the parent domain, so one
 GitHub login covers Studio, Grafana and Alertmanager - one OAuth app per
 environment, no second one to register.
 
+That proxy is the only thing guarding them, so the Ingress is tied to it: with
+`drizzleStudio.enabled` or `drizzleStudio.oauth.enabled` off, the chart renders
+**no monitoring Ingress at all** rather than an unauthenticated one. Grafana and
+Alertmanager still run - reach them with `kubectl port-forward` (below).
+
 Past the proxy you are an anonymous Grafana **Viewer**. Editing dashboards needs
 the admin account:
 
@@ -146,16 +151,25 @@ Loki and MailHog run locally only.
 
 ## Dashboards
 
-| Dashboard                                                                         | File                    |
-| --------------------------------------------------------------------------------- | ----------------------- |
-| Service Overview (availability, request rate, errors, latency, version, **logs**) | `service-overview.json` |
-| JVM Runtime (heap, GC, threads, CPU, uptime)                                      | `jvm-runtime.json`      |
+| Dashboard                                                               | File                    | Where        |
+| ----------------------------------------------------------------------- | ----------------------- | ------------ |
+| Service Overview (availability, request rate, errors, latency, version) | `service-overview.json` | everywhere   |
+| JVM Runtime (heap, GC, threads, CPU, uptime)                            | `jvm-runtime.json`      | everywhere   |
+| Logs (error log rate, live application logs)                            | `logs.json`             | Compose only |
 
-Dashboards are provisioned from JSON, so you don't import them by hand. They live
-in `k8s/helm/t99-app/files/dashboards/` - inside the chart, because Helm can only
-read files under the chart directory. The Compose stack mounts the same folder, so
-there is one copy, not two. To **update** one, edit the JSON and redeploy (or
-restart the Grafana container locally).
+Dashboards are provisioned from JSON, so you don't import them by hand. The two
+Prometheus dashboards live in `k8s/helm/t99-app/files/dashboards/` - inside the
+chart, because Helm can only read files under the chart directory. The Compose
+stack mounts that same folder, so there is one copy, not two.
+
+`logs.json` queries Loki, which only runs in Compose, so it lives apart in
+`infra/grafana/dashboards/` and is mounted only by the Compose stack. Keeping it
+out of the chart is what stops the cluster Grafana - which has no Loki datasource
+
+- from provisioning panels that can only render a missing-datasource error.
+
+To **update** a dashboard, edit the JSON and redeploy (or restart the Grafana
+container locally).
 
 To **export** a change made in the Grafana UI back into the repo: open the
 dashboard → **Share → Export → Save to file** (leave _Export for sharing
