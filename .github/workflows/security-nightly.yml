@@ -1,0 +1,165 @@
+name: Security (Nightly)
+
+on:
+  schedule:
+    - cron: '0 2 * * *' # nightly on the default branch
+  workflow_dispatch:
+
+# Minimal shared permissions; jobs override as needed.
+permissions:
+  contents: read
+
+jobs:
+  workflows:
+    name: Workflow Security
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      # Required by zizmor-action for online audits and by upload-sarif on
+      # private repos.
+      actions: read
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
+        with:
+          persist-credentials: false
+
+      # GH_TOKEN allows the impostor-commit online audit to verify SHA hashes
+      # against the GitHub API (without it the audit gets a 403 and aborts).
+      - name: Run Zizmor
+        uses: zizmorcore/zizmor-action@192e21d79ab29983730a13d1382995c2307fbcaa # pinned to v0.5.7
+        with:
+          inputs: .github/workflows/
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  secrets:
+    name: Secret Scan
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
+        with:
+          fetch-depth: 0 # full history so GitLeaks can scan all commits
+          persist-credentials: false
+
+      # gitleaks-action v3 requires a commercial license for private repos.
+      # Running the binary directly is free (MIT-licensed CLI, license applies
+      # to the action wrapper only). Scans full git history on nightly.
+      - name: Scan git history for secrets with GitLeaks
+        run: |
+          curl -sSfL \
+            "https://github.com/gitleaks/gitleaks/releases/download/v8.26.0/gitleaks_8.26.0_linux_x64.tar.gz" \
+            | tar -xz -C /usr/local/bin gitleaks || true
+          gitleaks detect --source . \
+            --report-format sarif --report-path gitleaks.sarif || true
+          [ -f gitleaks.sarif ] || echo '{"version":"2.1.0","runs":[]}' > gitleaks.sarif
+
+      - name: Upload GitLeaks SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # pinned to v4.37.0
+        with:
+          sarif_file: gitleaks.sarif
+          category: gitleaks
+
+      - name: Scan filesystem for secrets with Trivy
+        uses: ./.github/actions/scan-trivy
+        with:
+          scan-type: fs
+          target: .
+          scanners: secret
+          output: trivy-secrets.sarif
+
+      - name: Upload Trivy secrets SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # pinned to v4.37.0
+        with:
+          sarif_file: trivy-secrets.sarif
+          category: trivy-secrets
+
+  sast:
+    name: SAST (Static Application Security Testing)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
+        with:
+          persist-credentials: false
+
+      - name: Install Semgrep
+        run: pip install semgrep==1.169.0
+
+      # --config auto discovers rules for detected languages without requiring
+      # a SEMGREP_APP_TOKEN. Managed p/ rulesets require login in semgrep v1.x
+      # and return exit code 7 without authentication.
+      - name: Run Semgrep
+        run: |
+          semgrep scan \
+            --config auto \
+            --sarif \
+            --output semgrep.sarif \
+            . || true
+          [ -f semgrep.sarif ] || echo '{"version":"2.1.0","runs":[]}' > semgrep.sarif
+
+      - name: Upload Semgrep SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # pinned to v4.37.0
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+  dependencies:
+    name: Dependency Scan
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
+        with:
+          persist-credentials: false
+
+      - name: Scan dependencies with Trivy
+        uses: ./.github/actions/scan-trivy
+        with:
+          scan-type: fs
+          target: .
+          scanners: vuln
+          output: trivy-deps.sarif
+
+      - name: Upload dependency SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # pinned to v4.37.0
+        with:
+          sarif_file: trivy-deps.sarif
+          category: trivy-deps
+
+      # Produces a source-level CycloneDX SBOM from all package manifests in the
+      # repo. This is a different artifact from the image-level SBOM generated
+      # and signed by Trivy + cosign in cd.yml — that one scans the built image
+      # by digest and is attached to the registry. This one is useful for
+      # auditing dependency exposure before images are built (e.g. on a PR).
+      - name: Generate SBOM
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # pinned to v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: cyclonedx
+          output: sbom.cdx.json
+        env:
+          TRIVY_CACHE_DIR: ${{ runner.temp }}/trivy-cache
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # pinned to v7
+        if: always()
+        with:
+          name: sbom-${{ github.sha }}
+          path: sbom.cdx.json
+          retention-days: 90

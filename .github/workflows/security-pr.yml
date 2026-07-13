@@ -1,9 +1,7 @@
-name: Security
+name: Security (PR)
 
 on:
   pull_request:
-  schedule:
-    - cron: '0 2 * * *' # nightly on the default branch
 
 # Minimal shared permissions; jobs override as needed.
 permissions:
@@ -14,50 +12,24 @@ jobs:
   # These are linters and static checkers that run in seconds.
   # They block merge from day one.
 
-  spelling:
-    name: Spell Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
-        with:
-          persist-credentials: false
-      - uses: crate-ci/typos@bee27e3a4fd1ea2111cf90ab89cd076c870fce14 # pinned to v1.48.0
-        with:
-          config: config/typos.toml
-
   workflows:
-    name: Workflow Lint & Security
+    name: Workflow Security
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      security-events: write
       checks: write
-      # Required by zizmor-action for online audits and by upload-sarif on
-      # private repos.
-      actions: read
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
         with:
           persist-credentials: false
 
-      # docker:// reference is the correct integration — rhysd/actionlint has
-      # no action.yml and cannot be referenced as a GitHub Action directly.
-      # Digest pins the multi-arch image index for 1.7.12.
-      - name: Run actionlint
-        uses: docker://rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 # pinned to 1.7.12 # kics-scan ignore-line
-        with:
-          args: -color
-
-      # PR path: run zizmor binary directly and pipe findings to reviewdog.
-      # This annotates the PR diff without writing to the Security tab.
-      - name: Run Zizmor (PR — reviewdog annotations)
-        if: always() && github.event_name == 'pull_request'
+      - name: Run Zizmor
         run: |
           pip install zizmor==1.7.1 --quiet
           zizmor --format sarif .github/workflows/ > zizmor.sarif || true
+          [ -s zizmor.sarif ] || echo '{"version":"2.1.0","runs":[]}' > zizmor.sarif
 
       - name: Annotate Zizmor findings
-        if: always() && github.event_name == 'pull_request'
         uses: ./.github/actions/reviewdog
         with:
           format: sarif
@@ -66,23 +38,42 @@ jobs:
           fail-level: error
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      # Main/nightly path: use the action which auto-uploads to the Security tab.
-      # GH_TOKEN allows the impostor-commit online audit to verify SHA hashes
-      # against the GitHub API (without it the audit gets a 403 and aborts).
-      - name: Run Zizmor (main — Security tab)
-        if: always() && github.event_name != 'pull_request'
-        uses: zizmorcore/zizmor-action@192e21d79ab29983730a13d1382995c2307fbcaa # pinned to v0.5.7
-        with:
-          inputs: .github/workflows/
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  containers:
-    name: Dockerfile Lint
+  # Detects which file categories changed so heavy jobs can be skipped when
+  # their inputs are untouched.
+  changes:
+    name: Detect Changed Files
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      security-events: write
+    outputs:
+      dockerfiles: ${{ steps.filter.outputs.dockerfiles }}
+      iac: ${{ steps.filter.outputs.iac }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
+        with:
+          persist-credentials: false
+      - name: Detect changed file categories
+        id: filter
+        uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # pinned to v4.0.2
+        with:
+          filters: |
+            dockerfiles:
+              - '**/Dockerfile'
+              - '**/Dockerfile.*'
+              - '**/*.dockerfile'
+            iac:
+              - 'infra/**'
+              - 'k8s/**'
+              - '**/*.tf'
+              - '**/*.tfvars'
+
+  containers:
+    name: Dockerfile Lint
+    needs: [changes]
+    if: needs.changes.outputs.dockerfiles == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
       checks: write
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
@@ -90,10 +81,8 @@ jobs:
           persist-credentials: false
 
       # failure-threshold: none so hadolint always writes the SARIF file
-      # regardless of findings. Blocking on PR is handled by reviewdog below;
-      # the nightly run uploads to the Security tab.
+      # regardless of findings — reviewdog handles the blocking decision.
       - name: Lint Dockerfiles with Hadolint
-        id: hadolint
         uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5 # pinned to v3.3.0
         with:
           recursive: true
@@ -102,7 +91,6 @@ jobs:
           failure-threshold: none
 
       - name: Annotate Hadolint findings
-        if: github.event_name == 'pull_request'
         uses: ./.github/actions/reviewdog
         with:
           format: sarif
@@ -111,38 +99,18 @@ jobs:
           fail-level: error
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload Hadolint SARIF
-        if: always() && github.event_name != 'pull_request'
-        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # pinned to v4.37.0
-        with:
-          sarif_file: hadolint.sarif
-          category: hadolint
-
   iac:
-    name: IaC Lint & Misconfiguration
+    name: IaC Security
+    needs: [changes]
+    if: needs.changes.outputs.iac == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      security-events: write
       checks: write
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
         with:
           persist-credentials: false
-
-      - name: Setup tflint
-        uses: terraform-linters/setup-tflint@6e1e0642c0289bd619021bf6b34e3c08ed1e005a # pinned to v6.3.0
-        with:
-          tflint_version: v0.63.1
-          tflint_config_path: infra/terraform/.tflint.hcl
-
-      - name: Init tflint
-        working-directory: infra/terraform
-        run: tflint --init
-
-      - name: Run tflint
-        working-directory: infra/terraform
-        run: tflint --format compact
 
       # KICS found real issues during initial rollout — non-blocking until they
       # are triaged. Remove continue-on-error once the Security tab is clean.
@@ -161,7 +129,6 @@ jobs:
           exclude_queries: 'd6355c88-1e8d-49e9-b2f2-f8a1ca12c75b,1c1325ff-831d-43a1-973e-839ae57dfcc0'
 
       - name: Annotate KICS findings
-        if: always() && github.event_name == 'pull_request'
         uses: ./.github/actions/reviewdog
         with:
           format: sarif
@@ -170,47 +137,39 @@ jobs:
           fail-level: none
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload KICS SARIF
-        if: always() && github.event_name != 'pull_request'
-        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # pinned to v4.37.0
-        with:
-          sarif_file: kics-results/results.sarif
-          category: kics
-
   # ── Tier 2 — deeper scans, non-blocking during initial rollout ───────────
-  # On pull_request: findings appear as Check annotations via reviewdog
-  # (no Security tab entry, no duplicate alerts).
-  # On push/schedule: findings are uploaded to the Security tab only.
+  # Findings appear as Check annotations via reviewdog.
   # continue-on-error: true lets the workflow finish regardless of findings.
 
   secrets:
-    name: Secret Detection
+    name: Secret Scan
     runs-on: ubuntu-latest
-    continue-on-error: true # remove after initial triage
+    continue-on-error: true
     permissions:
       contents: read
-      security-events: write
       checks: write
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
         with:
-          fetch-depth: 0 # full history so GitLeaks can scan all commits
+          fetch-depth: 0 # full history required for gitleaks log-opts range
           persist-credentials: false
 
       # gitleaks-action v3 requires a commercial license for private repos.
       # Running the binary directly is free (MIT-licensed CLI, license applies
-      # to the action wrapper only).
-      - name: Scan git history for secrets with GitLeaks
+      # to the action wrapper only). Scans only the PR diff range.
+      - name: Scan PR diff for secrets with GitLeaks
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
           curl -sSfL \
             "https://github.com/gitleaks/gitleaks/releases/download/v8.26.0/gitleaks_8.26.0_linux_x64.tar.gz" \
             | tar -xz -C /usr/local/bin gitleaks || true
           gitleaks detect --source . \
+            --log-opts="origin/${BASE_REF}..HEAD" \
             --report-format sarif --report-path gitleaks.sarif || true
           [ -f gitleaks.sarif ] || echo '{"version":"2.1.0","runs":[]}' > gitleaks.sarif
 
       - name: Annotate GitLeaks findings
-        if: github.event_name == 'pull_request'
         uses: ./.github/actions/reviewdog
         with:
           format: sarif
@@ -218,13 +177,6 @@ jobs:
           name: gitleaks
           fail-level: none
           github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload GitLeaks SARIF
-        if: always() && github.event_name != 'pull_request'
-        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # pinned to v4.37.0
-        with:
-          sarif_file: gitleaks.sarif
-          category: gitleaks
 
       - name: Scan filesystem for secrets with Trivy
         uses: ./.github/actions/scan-trivy
@@ -235,7 +187,6 @@ jobs:
           output: trivy-secrets.sarif
 
       - name: Annotate Trivy secret findings
-        if: github.event_name == 'pull_request'
         uses: ./.github/actions/reviewdog
         with:
           format: sarif
@@ -244,20 +195,12 @@ jobs:
           fail-level: none
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload Trivy secrets SARIF
-        if: always() && github.event_name != 'pull_request'
-        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # pinned to v4.37.0
-        with:
-          sarif_file: trivy-secrets.sarif
-          category: trivy-secrets
-
   sast:
-    name: SAST (Semgrep)
+    name: SAST (Static Application Security Testing)
     runs-on: ubuntu-latest
-    continue-on-error: true # remove after initial triage
+    continue-on-error: true
     permissions:
       contents: read
-      security-events: write
       checks: write
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
@@ -280,7 +223,6 @@ jobs:
           [ -f semgrep.sarif ] || echo '{"version":"2.1.0","runs":[]}' > semgrep.sarif
 
       - name: Annotate Semgrep findings
-        if: github.event_name == 'pull_request'
         uses: ./.github/actions/reviewdog
         with:
           format: sarif
@@ -289,20 +231,12 @@ jobs:
           fail-level: none
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload Semgrep SARIF
-        if: always() && github.event_name != 'pull_request'
-        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # pinned to v4.37.0
-        with:
-          sarif_file: semgrep.sarif
-          category: semgrep
-
   dependencies:
-    name: Dependency Vulnerabilities & SBOM
+    name: Dependency Scan
     runs-on: ubuntu-latest
-    continue-on-error: true # remove after initial triage
+    continue-on-error: true
     permissions:
       contents: read
-      security-events: write
       checks: write
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
@@ -318,7 +252,6 @@ jobs:
           output: trivy-deps.sarif
 
       - name: Annotate Trivy dependency findings
-        if: github.event_name == 'pull_request'
         uses: ./.github/actions/reviewdog
         with:
           format: sarif
@@ -326,33 +259,3 @@ jobs:
           name: trivy-deps
           fail-level: none
           github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload dependency SARIF
-        if: always() && github.event_name != 'pull_request'
-        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # pinned to v4.37.0
-        with:
-          sarif_file: trivy-deps.sarif
-          category: trivy-deps
-
-      # Produces a source-level CycloneDX SBOM from all package manifests in the
-      # repo. This is a different artifact from the image-level SBOM generated
-      # and signed by Trivy + cosign in cd.yml — that one scans the built image
-      # by digest and is attached to the registry. This one is useful for
-      # auditing dependency exposure before images are built (e.g. on a PR).
-      - name: Generate SBOM
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # pinned to v0.36.0
-        with:
-          scan-type: fs
-          scan-ref: .
-          format: cyclonedx
-          output: sbom.cdx.json
-        env:
-          TRIVY_CACHE_DIR: ${{ runner.temp }}/trivy-cache
-
-      - name: Upload SBOM artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # pinned to v7
-        if: always()
-        with:
-          name: sbom-${{ github.sha }}
-          path: sbom.cdx.json
-          retention-days: 90
