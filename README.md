@@ -27,15 +27,16 @@ This also brings up the observability stack - metrics, logs and alerting in Graf
 Metrics, dashboards and alerting. Behind the same GitHub OAuth gate as Drizzle
 Studio - repo collaborators only, one login per environment covers all three.
 
-| Environment | Grafana                                           | Alertmanager                                     |
-| ----------- | ------------------------------------------------- | ------------------------------------------------ |
-| Stage       | https://grafana.stage.t99.stud.k8s.aet.cit.tum.de | https://alerts.stage.t99.stud.k8s.aet.cit.tum.de |
-| Prod        | https://grafana.t99.stud.k8s.aet.cit.tum.de       | https://alerts.t99.stud.k8s.aet.cit.tum.de       |
-| Local       | http://localhost:3001                             | http://localhost:9093                            |
+| Environment | Grafana                                           | Alertmanager                                     | Alert mail                      |
+| ----------- | ------------------------------------------------- | ------------------------------------------------ | ------------------------------- |
+| Stage       | https://grafana.stage.t99.stud.k8s.aet.cit.tum.de | https://alerts.stage.t99.stud.k8s.aet.cit.tum.de | Resend → `noreply@1ho.st`       |
+| Prod        | https://grafana.t99.stud.k8s.aet.cit.tum.de       | https://alerts.t99.stud.k8s.aet.cit.tum.de       | Resend → `noreply@1ho.st`       |
+| Local       | http://localhost:3001                             | http://localhost:9093                            | http://localhost:8025 (MailHog) |
 
 Part of the app's Helm chart, so it deploys with everything else. Firing alerts are
-emailed via Resend on the cluster, and captured by MailHog (http://localhost:8025)
-locally. See [Observability](docs/deployment/OBSERVABILITY.md).
+emailed through Resend on the cluster; locally they are captured by **MailHog** at
+http://localhost:8025 instead of being delivered, so no SMTP credentials are needed
+for dev. See [Observability](docs/deployment/OBSERVABILITY.md).
 
 ## Deployment
 
