@@ -228,19 +228,5 @@ jobs:
             echo "| \`${{ matrix.image.name }}\` | \`${{ matrix.image.digest }}\` | ✅ Verified | ✅ Attached |"
           } >> "$GITHUB_STEP_SUMMARY"
 
-  # Delegates to the reusable deploy workflow so the automatic (on-release) and
-  # manual (workflow_dispatch button) deploys share one set of steps.
-  deploy:
-    name: Deploy to Azure VM
-    needs: [build-and-publish, attest]
-    if: needs.build-and-publish.outputs.images != '' && needs.build-and-publish.outputs.images != '[]'
-    permissions:
-      contents: read
-      packages: read
-      deployments: write
-    uses: ./.github/workflows/deploy-azure.yml
-    with:
-      image_tag: ${{ needs.build-and-publish.outputs.version }}
-    secrets: inherit
-
-  # Stage deployment is handled by deploy-stage.yml, triggered on release: released.
+  # Stage and Azure VM deployments are handled by their own workflows,
+  # both triggered on release: released.

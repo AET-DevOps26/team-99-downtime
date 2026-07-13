@@ -3,6 +3,10 @@ name: Security (PR)
 on:
   pull_request:
 
+concurrency:
+  group: security-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 # Minimal shared permissions; jobs override as needed.
 permissions:
   contents: read

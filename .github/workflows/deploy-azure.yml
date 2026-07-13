@@ -1,27 +1,25 @@
 name: Deploy to Azure VM
 
-# Reusable + manually-triggerable deploy. Runs the Ansible playbook against the
-# VM to (re)deploy the stack at a given image tag.
-#   - workflow_dispatch: the "Run workflow" button (pick any tag, default latest)
-#   - workflow_call:      invoked by cd.yml on every release (passes the version)
+# Triggered automatically on every release if the DEPLOY_AZURE_ENABLED repo
+# variable is set to 'true' (Settings → Secrets and variables → Actions → Variables).
+# The workflow_dispatch trigger always runs regardless of that variable.
 on:
+  release:
+    types: [released]
   workflow_dispatch:
     inputs:
       image_tag:
         description: 'Image tag to deploy (e.g. 0.1.2 or latest)'
         default: 'latest'
         type: string
-  workflow_call:
-    inputs:
-      image_tag:
-        description: 'Image tag to deploy'
-        required: true
-        type: string
 
 jobs:
   deploy:
     name: Deploy to Azure VM
     runs-on: ubuntu-latest
+    # On release: gated by the DEPLOY_AZURE_ENABLED repo variable.
+    # On workflow_dispatch: always runs (explicit intent).
+    if: github.event_name == 'workflow_dispatch' || vars.DEPLOY_AZURE_ENABLED == 'true'
     permissions:
       contents: read
       # Lets the VM pull the private GHCR images using this job's GITHUB_TOKEN.
@@ -64,11 +62,12 @@ jobs:
       - name: Run Ansible playbook
         working-directory: infra/ansible
         env:
-          ANSIBLE_HOST_KEY_CHECKING: 'False'
-          IMAGE_TAG: ${{ inputs.image_tag }}
+          # workflow_dispatch: caller provides the tag; release: take it from the event.
+          IMAGE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.image_tag || github.event.release.tag_name }}
           DEPLOY_DOMAIN: ${{ vars.APP_DOMAIN }}
           GHCR_USER: ${{ github.actor }}
         run: |
+          IMAGE_TAG="${IMAGE_TAG#v}"
           ansible-playbook playbook.yml \
             --extra-vars "app_image_tag=$IMAGE_TAG" \
             --extra-vars "domain=$DEPLOY_DOMAIN" \
@@ -83,9 +82,10 @@ jobs:
       - name: Write deploy summary
         if: always()
         env:
-          IMAGE_TAG: ${{ inputs.image_tag }}
+          IMAGE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.image_tag || github.event.release.tag_name }}
           DEPLOY_DOMAIN: ${{ vars.APP_DOMAIN }}
         run: |
+          IMAGE_TAG="${IMAGE_TAG#v}"
           {
             echo "## Deploy to Azure VM"
             echo ""

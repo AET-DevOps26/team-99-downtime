@@ -5,6 +5,10 @@ on:
     types: [opened, synchronize, reopened, edited]
   merge_group:
 
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # Runs on every PR event including title/body edits, which the other jobs
   # don't care about. The 'edited' type is on the shared trigger above so this
