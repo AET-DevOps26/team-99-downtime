@@ -9,11 +9,10 @@ EXPOSE 4200
 # the dev server binds IPv4 only, so the probe would always fail.
 HEALTHCHECK --interval=10s --timeout=3s --start-period=60s --retries=15 \
     CMD wget -q --spider http://127.0.0.1:4200 || exit 1
-CMD ["sh", "-c", "bun install --frozen-lockfile && bun nx serve client --host 0.0.0.0"]
+CMD ["sh", "-c", "bun install --frozen-lockfile && exec bun nx serve client --host 0.0.0.0"]
 
 #prod
 FROM joseluisq/static-web-server:2-alpine AS prod
-RUN adduser -D -H -s /sbin/nologin appuser
 ENV SERVER_ROOT=/public \
     SERVER_FALLBACK_PAGE=/public/index.html \
     SERVER_COMPRESSION=true \
@@ -21,4 +20,3 @@ ENV SERVER_ROOT=/public \
     SERVER_PORT=8080
 COPY dist/apps/client/client /public
 EXPOSE 8080
-USER appuser
