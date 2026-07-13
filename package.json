@@ -4,7 +4,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "nx run-many -t serve --parallel",
-    "deploy:k8s": "bun run scripts/deploy-stage.ts",
+    "deploy:k8s": "bun run scripts/deploy/main.ts",
     "prepare": "husky",
     "openapi": "bun scripts/generate-openapi.ts"
   },
