@@ -102,4 +102,20 @@ if (rows.length === 0) {
   console.log('auth-migrate: demo user already exists with correct ID, skipping.');
 }
 
-await pool.end();
+// pool.end() can hang if better-auth's internal pg pool keeps the socket open.
+// Race it against a timeout so we always reach process.exit(0).
+await Promise.race([
+  pool.end(),
+  new Promise<void>((resolve) =>
+    setTimeout(() => {
+      console.warn('auth-migrate: pg pool did not close in time, forcing exit.');
+      resolve();
+    }, 5_000)
+  ),
+]).catch((err) => {
+  console.error('auth-migrate: error closing pg pool:', err);
+});
+
+// better-auth holds an internal connection pool with no public close() method;
+// without an explicit exit the process hangs indefinitely.
+process.exit(0);
