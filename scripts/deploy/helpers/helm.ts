@@ -5,15 +5,20 @@ import { unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
 /** Writes a value into a nested object using a dot-notation path. */
 export function setPath(obj: Record<string, unknown>, path: string, value: string): void {
   const parts = path.split('.');
+  if (parts.some((k) => UNSAFE_KEYS.has(k))) {
+    throw new Error(`Unsafe helm path segment in: ${path}`);
+  }
   let cur = obj;
   for (let i = 0; i < parts.length - 1; i++) {
     cur[parts[i]] ??= {};
     cur = cur[parts[i]] as Record<string, unknown>;
   }
-  cur[parts.at(-1)!] = value;
+  cur[parts[parts.length - 1]] = value;
 }
 
 /** Serialises a plain object to indented YAML (string leaf values only). */
@@ -33,7 +38,7 @@ export async function writeTempValues(
   obj: Record<string, unknown>
 ): Promise<{ path: string; cleanup: () => Promise<void> }> {
   const path = join(tmpdir(), `t99-deploy-${Date.now()}.yaml`);
-  await Bun.write(path, toYaml(obj) + '\n');
+  await Bun.write(path, `${toYaml(obj)}\n`);
   return { path, cleanup: () => unlink(path).catch(() => {}) };
 }
 
