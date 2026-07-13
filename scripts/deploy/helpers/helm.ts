@@ -15,7 +15,11 @@ export function setPath(obj: Record<string, unknown>, path: string, value: strin
   }
   let cur = obj;
   for (let i = 0; i < parts.length - 1; i++) {
-    cur[parts[i]] ??= {};
+    // Object.create(null) produces a prototype-less node — eliminates the
+    // prototype pollution vector even if the key guard above were bypassed.
+    if (cur[parts[i]] === undefined || cur[parts[i]] === null) {
+      cur[parts[i]] = Object.create(null) as Record<string, unknown>;
+    }
     cur = cur[parts[i]] as Record<string, unknown>;
   }
   cur[parts[parts.length - 1]] = value;

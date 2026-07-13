@@ -85,7 +85,7 @@ const main = defineCommand({
     );
 
     // ── Build Helm values ─────────────────────────────────────────────────────
-    const valuesObj: Record<string, unknown> = {};
+    const valuesObj = Object.create(null) as Record<string, unknown>;
     for (const input of inputs) {
       if (input.feature && !featureEnabled[input.feature]) continue;
       setPath(valuesObj, input.helmPath, resolved.get(input.envVar) ?? '');
