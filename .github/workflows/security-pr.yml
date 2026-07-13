@@ -29,7 +29,10 @@ jobs:
 
       - name: Run Zizmor
         run: |
-          pip install zizmor==1.7.1 --quiet
+          pip install \
+            --require-hashes \
+            --hash "sha256:6a958d8a0941d7e1d0de8436670b5cb7fc64c8028b4d16e3f519ccc77f953cef" \
+            zizmor==1.26.1
           zizmor --format sarif .github/workflows/ > zizmor.sarif || true
           [ -s zizmor.sarif ] || echo '{"version":"2.1.0","runs":[]}' > zizmor.sarif
 
@@ -132,7 +135,14 @@ jobs:
           # cluster. Inline kics-scan ignores do not apply to these two queries.
           exclude_queries: 'd6355c88-1e8d-49e9-b2f2-f8a1ca12c75b,1c1325ff-831d-43a1-973e-839ae57dfcc0'
 
+      - name: Ensure KICS SARIF exists
+        if: always()
+        run: |
+          [ -s kics-results/results.sarif ] || \
+            echo '{"version":"2.1.0","runs":[]}' > kics-results/results.sarif
+
       - name: Annotate KICS findings
+        if: always()
         uses: ./.github/actions/reviewdog
         with:
           format: sarif
@@ -171,7 +181,7 @@ jobs:
           gitleaks detect --source . \
             --log-opts="origin/${BASE_REF}..HEAD" \
             --report-format sarif --report-path gitleaks.sarif || true
-          [ -f gitleaks.sarif ] || echo '{"version":"2.1.0","runs":[]}' > gitleaks.sarif
+          [ -s gitleaks.sarif ] || echo '{"version":"2.1.0","runs":[]}' > gitleaks.sarif
 
       - name: Annotate GitLeaks findings
         uses: ./.github/actions/reviewdog
@@ -224,7 +234,7 @@ jobs:
             --sarif \
             --output semgrep.sarif \
             . || true
-          [ -f semgrep.sarif ] || echo '{"version":"2.1.0","runs":[]}' > semgrep.sarif
+          [ -s semgrep.sarif ] || echo '{"version":"2.1.0","runs":[]}' > semgrep.sarif
 
       - name: Annotate Semgrep findings
         uses: ./.github/actions/reviewdog

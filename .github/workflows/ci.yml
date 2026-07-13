@@ -7,7 +7,7 @@ on:
 
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event.action != 'edited' }}
 
 jobs:
   # Runs on every PR event including title/body edits, which the other jobs
@@ -72,6 +72,7 @@ jobs:
     if: github.event.action != 'edited'
     permissions:
       contents: read
+      pull-requests: read
     outputs:
       helm: ${{ steps.filter.outputs.helm }}
       terraform: ${{ steps.filter.outputs.terraform }}
@@ -118,6 +119,7 @@ jobs:
     needs: [changes]
     if: >-
       always() &&
+      github.event_name == 'pull_request' &&
       github.event.action != 'edited' &&
       needs.changes.result == 'success' &&
       needs.changes.outputs.terraform == 'true'
@@ -140,7 +142,7 @@ jobs:
       - name: Run tflint
         working-directory: infra/terraform
         run: |
-          tflint --format checkstyle > ../../tflint.xml || true
+          tflint --force --format checkstyle > ../../tflint.xml
           [ -s ../../tflint.xml ] || echo '<?xml version="1.0" encoding="UTF-8"?><checkstyle version="5.0"></checkstyle>' > ../../tflint.xml
       - name: Annotate tflint findings
         uses: ./.github/actions/reviewdog

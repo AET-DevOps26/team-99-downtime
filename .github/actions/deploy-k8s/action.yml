@@ -58,7 +58,7 @@ runs:
         status=$(helm status t99 -n "$NAMESPACE" -o json 2>/dev/null | jq -r '.info.status' || echo "not-found")
         if [[ "$status" == "pending-upgrade" || "$status" == "pending-install" || "$status" == "pending-rollback" ]]; then
           echo "Release is in state '$status' — rolling back to last good revision"
-          helm rollback t99 0 -n "$NAMESPACE" --wait --timeout 5m
+          helm rollback t99 0 -n "$NAMESPACE" --wait --timeout 5m || echo "No prior revision to roll back; cluster will start fresh"
         else
           echo "Release state: '$status' — no rollback needed"
         fi
@@ -75,20 +75,40 @@ runs:
         RESEND_API_KEY: ${{ inputs.resend-api-key }}
       run: |
         VERSION="${VERSION#v}"
+        # Write secrets to a temp file so they don't appear in ps aux or get
+        # silently mangled by helm --set's comma/backslash escaping rules.
+        secrets_file=$(mktemp)
+        trap 'rm -f "$secrets_file"' EXIT
+        python3 - <<'PYEOF' > "$secrets_file"
+        import os, json
+        def dump(d, indent=0):
+            for k, v in d.items():
+                prefix = '  ' * indent
+                if isinstance(v, dict):
+                    print(f"{prefix}{k}:")
+                    dump(v, indent + 1)
+                else:
+                    print(f"{prefix}{k}: {json.dumps(v)}")
+        dump({
+            'genaiService': {'llmApiKey': os.environ['LLM_API_KEY']},
+            'drizzleStudio': {'github': {
+                'clientId': os.environ['STUDIO_CLIENT_ID'],
+                'clientSecret': os.environ['STUDIO_CLIENT_SECRET'],
+            }},
+            'alertmanager': {'resendApiKey': os.environ['RESEND_API_KEY']},
+        })
+        PYEOF
         helm upgrade --install t99 k8s/helm/t99-app/ \
           -n "$NAMESPACE" \
           -f k8s/helm/t99-app/values.yaml \
           -f "$VALUES_FILE" \
+          -f "$secrets_file" \
           --set authService.image.tag="$VERSION" \
           --set client.image.tag="$VERSION" \
           --set transactionService.image.tag="$VERSION" \
           --set notificationService.image.tag="$VERSION" \
           --set budgetService.image.tag="$VERSION" \
           --set genaiService.image.tag="$VERSION" \
-          --set genaiService.llmApiKey="$LLM_API_KEY" \
-          --set drizzleStudio.github.clientId="$STUDIO_CLIENT_ID" \
-          --set drizzleStudio.github.clientSecret="$STUDIO_CLIENT_SECRET" \
-          --set alertmanager.resendApiKey="$RESEND_API_KEY" \
           --wait --timeout 10m --rollback-on-failure
 
     # Runs when this job is cancelled mid-deploy (e.g. superseded by a newer release).
@@ -100,7 +120,7 @@ runs:
         NAMESPACE: ${{ inputs.namespace }}
       run: |
         echo "Job cancelled — rolling back t99 to last good revision"
-        helm rollback t99 0 -n "$NAMESPACE" --wait --timeout 5m
+        helm rollback t99 0 -n "$NAMESPACE" --wait --timeout 30s
 
     - name: Write deploy summary
       shell: bash

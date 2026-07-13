@@ -47,6 +47,7 @@ jobs:
       ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
       ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
       ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      IMAGE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.image_tag || github.event.release.tag_name }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
@@ -109,7 +110,6 @@ jobs:
       - name: Run Ansible playbook
         working-directory: infra/ansible
         env:
-          IMAGE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.image_tag || github.event.release.tag_name }}
           DEPLOY_DOMAIN: ${{ vars.APP_DOMAIN }}
           GHCR_USER: ${{ github.actor }}
         run: |
@@ -128,7 +128,6 @@ jobs:
       - name: Write deploy summary
         if: always()
         env:
-          IMAGE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.image_tag || github.event.release.tag_name }}
           DEPLOY_DOMAIN: ${{ vars.APP_DOMAIN }}
         run: |
           IMAGE_TAG="${IMAGE_TAG#v}"
