@@ -70,6 +70,18 @@ const outcomes: Record<number, string> = {
   5: 'SERVER_ERROR',
 };
 
+// Better Auth serves parameterised routes (/api/auth/reset-password/<token>).
+// Recording the concrete path would make `uri` unbounded — one series per token.
+const VARIABLE_SEGMENT = /^(?:[0-9a-fA-F-]{16,}|[\w-]{24,}|\d+)$/;
+
+function normalizeUri(pathname: string): string {
+  const normalized = pathname
+    .split('/')
+    .map((segment) => (VARIABLE_SEGMENT.test(segment) ? ':param' : segment))
+    .join('/');
+  return normalized.length > 120 ? '/other' : normalized;
+}
+
 /** Wraps a fetch handler: serves /metrics, times everything else. */
 export function withMetrics(handler: (req: Request) => Response | Promise<Response>) {
   return async (req: Request): Promise<Response> => {
@@ -84,17 +96,22 @@ export function withMetrics(handler: (req: Request) => Response | Promise<Respon
     }
 
     const started = performance.now();
-    const response = await handler(req);
-    const status = response.status;
-    requests
-      .labels(
-        application,
-        req.method,
-        pathname,
-        String(status),
-        outcomes[Math.floor(status / 100)] ?? 'UNKNOWN'
-      )
-      .observe((performance.now() - started) / 1000);
-    return response;
+    // Observe in `finally`: a throwing handler is the case most worth measuring.
+    let status = 500;
+    try {
+      const response = await handler(req);
+      status = response.status;
+      return response;
+    } finally {
+      requests
+        .labels(
+          application,
+          req.method,
+          normalizeUri(pathname),
+          String(status),
+          outcomes[Math.floor(status / 100)] ?? 'UNKNOWN'
+        )
+        .observe((performance.now() - started) / 1000);
+    }
   };
 }

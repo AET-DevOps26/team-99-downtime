@@ -18,7 +18,8 @@ tests:
         exp_alerts:
           - exp_labels:
               severity: critical
-              application: genai
+              # derived from `service`, to match Micrometer's application label
+              application: genai-service
               service: genai
               job: expenseflow-services
               instance: genai-service:8000

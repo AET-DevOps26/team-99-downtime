@@ -6,10 +6,10 @@ groups:
         for: 2m
         labels:
           severity: critical
-          # `up` is labelled by scrape target, not by Micrometer's `application`.
-          # Copy it across so grouping, inhibition and the mail subject line up
-          # with every other rule.
-          application: '{{ $labels.service }}'
+          # `up` is labelled `service` (budget), every other rule keys off
+          # Micrometer's `application` (budget-service). Without this, grouping
+          # and inhibition never match.
+          application: '{{ $labels.service }}-service'
         annotations:
           summary: 'Service {{ $labels.service }} is down'
           description: 'Prometheus has been unable to scrape {{ $labels.service }} for more than 2 minutes.'

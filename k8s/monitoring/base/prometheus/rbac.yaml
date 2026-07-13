@@ -34,6 +34,7 @@ roleRef:
   kind: Role
   name: prometheus
 subjects:
+  # No namespace: kustomize fills in the overlay's. Hardcoding it here would
+  # bind prod's RoleBinding to the stage ServiceAccount.
   - kind: ServiceAccount
     name: prometheus
-    namespace: t99-stage
