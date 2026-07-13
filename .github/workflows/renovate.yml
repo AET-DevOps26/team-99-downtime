@@ -19,3 +19,5 @@ jobs:
       - uses: renovatebot/github-action@dd5302ec17783b2fc721b19ae7209b57b1587765 # pinned to v46.1.17
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          RENOVATE_REPOSITORIES: ${{ github.repository }}
