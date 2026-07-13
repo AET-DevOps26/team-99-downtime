@@ -78,6 +78,16 @@ Defaults worth knowing (`infra/terraform/variables.tf`):
 
 The network security group opens **22, 80 and 443** only.
 
+The Terraform layout itself:
+
+| Path                         | What                                                     |
+| ---------------------------- | -------------------------------------------------------- |
+| `infra/terraform/bootstrap/` | Storage account + container for remote state (run once)  |
+| `infra/terraform/`           | Resource group, VNet, NSG, public IP, VM                 |
+| `backend.tf`                 | Partial azurerm backend - values supplied at `init` time |
+| `variables.tf`               | Region, VM size, SSH key, DNS label, allowed SSH CIDR    |
+| `outputs.tf`                 | `public_ip`, `fqdn`, `app_host`, `ssh_command`           |
+
 ### 3. Point GitHub at the VM
 
 Add the secrets and variable below, and every release deploys itself.
@@ -218,5 +228,4 @@ fine for a smoke test but not for Google login - OAuth requires HTTPS.
 | `docker-compose.prod.yaml`     | The stack Ansible copies to the VM          |
 | `.github/workflows/deploy.yml` | The reusable deploy job                     |
 
-See also [TERRAFORM.md](TERRAFORM.md) for the Terraform layout itself, and
-[KUBERNETES.md](KUBERNETES.md) for the cluster deployment.
+See [KUBERNETES.md](KUBERNETES.md) for the cluster deployment.
