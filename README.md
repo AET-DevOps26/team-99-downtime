@@ -24,8 +24,8 @@ This also brings up the observability stack - metrics, logs and alerting in Graf
 
 ### Observability
 
-Metrics, dashboards and alerting. Gated by GitHub - repo collaborators only, one
-login per environment.
+Metrics, dashboards and alerting. Behind the same GitHub OAuth gate as Drizzle
+Studio - repo collaborators only, one login per environment covers all three.
 
 | Environment | Grafana                                           | Alertmanager                                     |
 | ----------- | ------------------------------------------------- | ------------------------------------------------ |

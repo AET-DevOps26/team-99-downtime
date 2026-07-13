@@ -331,7 +331,11 @@ services:
       GF_USERS_ALLOW_SIGN_UP: 'false'
     volumes:
       - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./k8s/helm/t99-app/files/dashboards:/var/lib/grafana/dashboards:ro
+      # The chart's dashboards are Prometheus-only so they also render in the
+      # cluster, where no Loki is deployed. The log panels live alongside them
+      # here, where Loki and Promtail are part of the stack.
+      - ./k8s/helm/t99-app/files/dashboards:/var/lib/grafana/dashboards/shared:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards/local:ro
       - grafana_data:/var/lib/grafana
     ports:
       - '3001:3000'
