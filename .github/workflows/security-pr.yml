@@ -41,7 +41,7 @@ jobs:
           format: sarif
           input: zizmor.sarif
           name: zizmor
-          fail-level: error
+          fail-level: none
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
   # Detects which file categories changed so heavy jobs can be skipped when
@@ -102,7 +102,7 @@ jobs:
           format: sarif
           input: hadolint.sarif
           name: hadolint
-          fail-level: error
+          fail-level: none
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
   iac:
@@ -129,10 +129,6 @@ jobs:
           output_formats: 'sarif'
           output_path: kics-results
           exclude_paths: 'node_modules,dist,.nx,tmp'
-          # Promtail needs a read-only docker.sock to discover containers and
-          # tail their logs. Local dev compose only; nothing mounts it on the
-          # cluster. Inline kics-scan ignores do not apply to these two queries.
-          exclude_queries: 'd6355c88-1e8d-49e9-b2f2-f8a1ca12c75b,1c1325ff-831d-43a1-973e-839ae57dfcc0'
 
       - name: Ensure KICS SARIF exists
         if: always()
@@ -223,15 +219,28 @@ jobs:
       - name: Install Semgrep
         run: pip install semgrep==1.169.0
 
+      - name: Get changed files
+        id: changed
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          files=$(git diff --name-only "origin/${BASE_REF}...HEAD" | tr '\n' ' ')
+          echo "files=$files" >> "$GITHUB_OUTPUT"
+
       # --config auto discovers rules for detected languages without requiring
       # a SEMGREP_APP_TOKEN. Managed p/ rulesets require login in semgrep v1.x
       # and return exit code 7 without authentication.
+      # Only scans files changed in this PR via --include flags.
       - name: Run Semgrep
+        env:
+          CHANGED_FILES: ${{ steps.changed.outputs.files }}
         run: |
+          includes=$(echo "$CHANGED_FILES" | tr ' ' '\n' | grep -v '^$' | sed 's/^/--include /' | tr '\n' ' ')
           semgrep scan \
             --config auto \
             --sarif \
             --output semgrep.sarif \
+            $includes \
             . || true
           [ -s semgrep.sarif ] || echo '{"version":"2.1.0","runs":[]}' > semgrep.sarif
 

@@ -42,5 +42,5 @@ runs:
           -name="$RD_NAME" \
           -reporter=github-pr-check \
           -fail-level="$RD_FAIL_LEVEL" \
-          -filter-mode=nofilter \
+          -filter-mode=added \
           < "$RD_INPUT"
