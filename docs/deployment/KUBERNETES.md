@@ -12,7 +12,7 @@ ExpenseFlow is a microservices monorepo (6 services + PostgreSQL) deployed to a 
 - **Helm** — single umbrella chart with per-env values files
 - **GitHub Actions** — direct `helm upgrade --install` from the pipeline, no GitOps controller
 - **oauth2-proxy** — GitHub OAuth gate for Drizzle Studio (repo-collaborator access)
-- **Bun TypeScript scripts** — local deploys via `scripts/deploy-stage.ts`
+- **Bun TypeScript scripts** — local deploys via `scripts/deploy/main.ts`
 
 ## Repository Layout
 
@@ -58,24 +58,25 @@ All Helm invocations use `--wait --timeout 10m --rollback-on-failure`.
 ## Local Deploy
 
 ```sh
-bun deploy:k8s                        # → t99-stage (latest git tag)
-bun deploy:k8s --prod                 # → t99-prod with values.prod.yaml
-bun deploy:k8s -n t99-prod            # → explicit namespace override
-bun deploy:k8s --dry-run              # validate without applying changes
-bun deploy:k8s --no-studio            # skip Drizzle Studio entirely
-bun deploy:k8s --no-oauth             # deploy Studio without OAuth protection
-bun deploy:k8s --client-id=<id> --client-secret=<secret>  # non-interactive
+bun deploy:k8s                                     # latest tag → t99-stage
+bun deploy:k8s --env prod                          # latest tag → t99-prod (values.prod.yaml)
+bun deploy:k8s --env prod --namespace t99-staging  # prod values file, custom namespace
+bun deploy:k8s --version 1.2.3                     # pin an explicit version
+bun deploy:k8s --dry-run                           # validate without applying
 ```
 
-The script uses `@clack/prompts` for a styled interactive experience. The flow is:
+`--env` selects the values file; `--namespace` overrides the k8s namespace independently (defaults to `t99-<env>`).
 
-1. Check the cluster for an existing `t99-studio-oauth2` secret
-   - **Found** → credentials loaded automatically, no questions asked
-   - **Not found** → interactive prompts:
-     - Deploy Drizzle Studio? → No skips it entirely
-     - Protect with GitHub OAuth? (recommended) → Yes prompts for credentials; No warns and confirms public access
+The script resolves each required input in order — CLI flag → `.env` → existing cluster secret → interactive prompt. Credentials already stored in the cluster are reused silently. In a non-interactive environment (CI) any unresolved optional input disables the corresponding feature; required inputs cause a hard exit with a clear message.
 
-CLI flags override interactive prompts — any flag provided skips the corresponding question.
+To bypass a prompt non-interactively, pass the value as a flag or set it in `.env`:
+
+```sh
+# All inputs can be overridden via flag:
+bun deploy:k8s --llm-api-key=sk-... --github-oauth-client-id=... --github-oauth-client-secret=...
+```
+
+See [SCRIPTS.md](../development/SCRIPTS.md#scriptsdeploy) for the full input reference.
 
 ## Ingress
 
@@ -195,13 +196,13 @@ All secrets carry `helm.sh/resource-policy: keep` — they survive `helm uninsta
 
 Required GitHub Actions secrets:
 
-| Secret                             | Used by                                      |
-| ---------------------------------- | -------------------------------------------- |
-| `KUBECONFIG_DATA`                  | base64-encoded kubeconfig for cluster access |
-| `STUDIO_GITHUB_CLIENT_ID`          | Stage OAuth App client ID                    |
-| `STUDIO_GITHUB_CLIENT_SECRET`      | Stage OAuth App client secret                |
-| `STUDIO_GITHUB_CLIENT_ID_PROD`     | Prod OAuth App client ID                     |
-| `STUDIO_GITHUB_CLIENT_SECRET_PROD` | Prod OAuth App client secret                 |
+| Secret                            | Used by                                      |
+| --------------------------------- | -------------------------------------------- |
+| `KUBECONFIG_DATA`                 | base64-encoded kubeconfig for cluster access |
+| `GITHUB_OAUTH_CLIENT_ID`          | Stage OAuth App client ID                    |
+| `GITHUB_OAUTH_CLIENT_SECRET`      | Stage OAuth App client secret                |
+| `GITHUB_OAUTH_CLIENT_ID_PROD`     | Prod OAuth App client ID                     |
+| `GITHUB_OAUTH_CLIENT_SECRET_PROD` | Prod OAuth App client secret                 |
 
 ## Bootstrap (First-Time Setup)
 
