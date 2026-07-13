@@ -24,31 +24,51 @@ The `openapi-drift` job in `testing.yml` runs the same `bun run openapi` on ever
 
 None beyond the repo toolchain (Bun, JDK 21 via the Gradle wrapper, uv).
 
-## `scripts/deploy-stage.ts`
+## `scripts/deploy/main.ts`
 
-Deploys the latest Helm release to a Kubernetes namespace (defaults to `t99-stage`).
+Deploys ExpenseFlow to any Kubernetes environment. Defaults to the latest git tag on `t99-stage`.
 
 **Usage:**
 
 ```sh
-bun deploy:k8s                # deploy to t99-stage
-bun deploy:k8s -n t99-prod   # deploy to a different namespace
+bun deploy:k8s                                     # latest tag → t99-stage
+bun deploy:k8s --env prod                          # latest tag → t99-prod (values.prod.yaml)
+bun deploy:k8s --env prod --namespace t99-staging  # prod values file, custom namespace
+bun deploy:k8s --version 1.2.3                     # explicit version override
+bun deploy:k8s --dry-run                           # validate without applying
 ```
+
+`--env` and `--namespace` are independent: `--env` picks the values file; `--namespace` sets the k8s namespace (defaults to `t99-<env>`).
 
 **What it does:**
 
-1. Reads the latest git tag as the image version (fails if no tags exist)
-2. Looks up the `t99-studio-oauth2` secret in the target namespace for GitHub OAuth credentials; prompts interactively if the secret is absent
-3. Runs `helm upgrade --install` with `values.yaml` + `values.stage.yaml`, setting all service image tags to the resolved version and passing the OAuth credentials via `--set`
-4. Waits up to 10 minutes for the rollout; rolls back on failure
+1. Resolves the image version from `--version` or the latest git tag
+2. For every input declared in `scripts/deploy/inputs.ts`, resolves a value in order:
+   - CLI flag (e.g. `--llm-api-key`, `--studio-github-client-id`)
+   - `.env` file at the repo root
+   - Existing cluster secret (via `kubectl get secret`)
+   - Interactive prompt (TTY only)
+3. Optional feature inputs (e.g. GitHub OAuth credentials for protected tools) that remain unresolved disable the feature — silently in CI, with a yes/no confirm in an interactive terminal
+4. Writes all resolved values to a short-lived temp file passed to Helm via `-f`; nothing sensitive appears on the process list
+5. Runs `helm upgrade --install` with `values.yaml`, the env values file, and the temp values
+6. Waits up to 10 minutes for the rollout; rolls back on failure and surfaces stderr
+
+**Adding a new secret or optional feature:**
+
+Add one entry to `scripts/deploy/inputs.ts`. No changes to `main.ts` are needed.
 
 **Prerequisites:**
 
 - `kubectl` configured with access to the target cluster/namespace
 - `helm` installed
-- A git tag on the current commit (e.g. `git tag v0.3.1`)
-- On first run: GitHub OAuth App client ID and secret for Drizzle Studio (see [KUBERNETES.md](../deployment/KUBERNETES.md#drizzle-studio))
+- At least one git tag (e.g. `git tag v0.3.1`), or pass `--version` explicitly
 
-**Required env / secrets:**
+**Inputs resolved at deploy time:**
 
-None — credentials are read from the cluster secret or prompted interactively.
+| Env var                      | Required | Feature gate                                           |
+| ---------------------------- | -------- | ------------------------------------------------------ |
+| `LLM_API_KEY`                | Yes      | —                                                      |
+| `DEMO_USER_PASSWORD`         | No       | — (account locked with random password if unset)       |
+| `RESEND_API_KEY`             | No       | — (Alertmanager email notifications disabled if unset) |
+| `GITHUB_OAUTH_CLIENT_ID`     | No       | OAuth-protected tools (Drizzle Studio, Grafana)        |
+| `GITHUB_OAUTH_CLIENT_SECRET` | No       | OAuth-protected tools (Drizzle Studio, Grafana)        |

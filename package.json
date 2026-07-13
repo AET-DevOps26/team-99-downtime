@@ -4,7 +4,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "nx run-many -t serve --parallel",
-    "deploy:k8s": "bun run scripts/deploy-stage.ts",
+    "deploy:k8s": "bun run scripts/deploy/main.ts",
     "prepare": "husky",
     "openapi": "bun scripts/generate-openapi.ts"
   },
@@ -32,6 +32,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.3.0",
+    "dotenv": "^17.4.2",
     "isbot": "^5",
     "lucide-react": "^1.16.0",
     "next-themes": "^0.4.6",
