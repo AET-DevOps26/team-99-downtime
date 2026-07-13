@@ -44,7 +44,7 @@ jobs:
       # no action.yml and cannot be referenced as a GitHub Action directly.
       # Digest pins the multi-arch image index for 1.7.12.
       - name: Run actionlint
-        uses: docker://rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 # pinned to 1.7.12
+        uses: docker://rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 # pinned to 1.7.12 # kics-scan ignore-line
         with:
           args: -color
 
