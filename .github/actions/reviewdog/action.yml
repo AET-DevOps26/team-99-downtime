@@ -1,0 +1,42 @@
+name: 'Annotate with reviewdog'
+description: >
+  Reads a tool output file (SARIF, checkstyle, …) and posts findings as
+  GitHub Check annotations on the PR. Does NOT upload to the Security tab.
+
+inputs:
+  format:
+    description: 'reviewdog input format: sarif, checkstyle, rdjsonl, …'
+    required: true
+  input:
+    description: 'Path to the findings file'
+    required: true
+  name:
+    description: 'Name shown on the GitHub Check (e.g. "hadolint", "trivy-deps")'
+    required: true
+  fail-level:
+    description: 'Fail the check at this level: none | warning | error'
+    default: 'none'
+  github-token:
+    description: 'GITHUB_TOKEN with checks:write permission'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Set up reviewdog
+      uses: reviewdog/action-setup@d8a7baabd7f3e8544ee4dbde3ee41d0011c3a93f # pinned to v1.5.0
+      with:
+        reviewdog_version: v0.20.3
+
+    - name: Annotate
+      shell: bash
+      env:
+        REVIEWDOG_GITHUB_API_TOKEN: ${{ inputs.github-token }}
+      run: |
+        reviewdog \
+          -f="${{ inputs.format }}" \
+          -name="${{ inputs.name }}" \
+          -reporter=github-pr-check \
+          -fail-level="${{ inputs.fail-level }}" \
+          -filter-mode=nofilter \
+          < "${{ inputs.input }}"

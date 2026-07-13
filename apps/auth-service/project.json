@@ -21,9 +21,9 @@
       "options": {
         "cwd": "apps/auth-service"
       },
-      "command": "bun test",
+      "command": "bun test --reporter junit --reporter-outfile ../../reports/apps/auth-service/junit.xml",
       "cache": true,
-      "outputs": []
+      "outputs": ["{workspaceRoot}/reports/apps/auth-service"]
     }
   },
   "tags": [],

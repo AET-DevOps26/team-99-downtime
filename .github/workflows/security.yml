@@ -5,8 +5,7 @@ on:
   schedule:
     - cron: '0 2 * * *' # nightly on the default branch
 
-# Minimal shared permissions; jobs that upload SARIF override to add
-# security-events: write.
+# Minimal shared permissions; jobs override as needed.
 permissions:
   contents: read
 
@@ -32,6 +31,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      checks: write
       # Required by zizmor-action for online audits and by upload-sarif on
       # private repos.
       actions: read
@@ -48,12 +48,29 @@ jobs:
         with:
           args: -color
 
-      # Pinned to SHA as recommended by zizmor's own docs. The action uploads
-      # SARIF to Code Scanning automatically (advanced-security: true default).
+      # PR path: run zizmor binary directly and pipe findings to reviewdog.
+      # This annotates the PR diff without writing to the Security tab.
+      - name: Run Zizmor (PR — reviewdog annotations)
+        if: always() && github.event_name == 'pull_request'
+        run: |
+          pip install zizmor==1.7.1 --quiet
+          zizmor --format sarif .github/workflows/ > zizmor.sarif || true
+
+      - name: Annotate Zizmor findings
+        if: always() && github.event_name == 'pull_request'
+        uses: ./.github/actions/reviewdog
+        with:
+          format: sarif
+          input: zizmor.sarif
+          name: zizmor
+          fail-level: error
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Main/nightly path: use the action which auto-uploads to the Security tab.
       # GH_TOKEN allows the impostor-commit online audit to verify SHA hashes
       # against the GitHub API (without it the audit gets a 403 and aborts).
-      - name: Run Zizmor
-        if: always()
+      - name: Run Zizmor (main — Security tab)
+        if: always() && github.event_name != 'pull_request'
         uses: zizmorcore/zizmor-action@192e21d79ab29983730a13d1382995c2307fbcaa # pinned to v0.5.7
         with:
           inputs: .github/workflows/
@@ -66,22 +83,37 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      checks: write
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
         with:
           persist-credentials: false
 
+      # failure-threshold: none so hadolint always writes the SARIF file
+      # regardless of findings. Blocking on PR is handled by reviewdog below;
+      # the nightly run uploads to the Security tab.
       - name: Lint Dockerfiles with Hadolint
+        id: hadolint
         uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5 # pinned to v3.3.0
         with:
           recursive: true
           format: sarif
           output-file: hadolint.sarif
-          failure-threshold: error
+          failure-threshold: none
+
+      - name: Annotate Hadolint findings
+        if: github.event_name == 'pull_request'
+        uses: ./.github/actions/reviewdog
+        with:
+          format: sarif
+          input: hadolint.sarif
+          name: hadolint
+          fail-level: error
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Hadolint SARIF
+        if: always() && github.event_name != 'pull_request'
         uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # pinned to v4.37.0
-        if: always()
         with:
           sarif_file: hadolint.sarif
           category: hadolint
@@ -92,6 +124,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      checks: write
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
         with:
@@ -127,17 +160,28 @@ jobs:
           # cluster. Inline kics-scan ignores do not apply to these two queries.
           exclude_queries: 'd6355c88-1e8d-49e9-b2f2-f8a1ca12c75b,1c1325ff-831d-43a1-973e-839ae57dfcc0'
 
+      - name: Annotate KICS findings
+        if: always() && github.event_name == 'pull_request'
+        uses: ./.github/actions/reviewdog
+        with:
+          format: sarif
+          input: kics-results/results.sarif
+          name: kics
+          fail-level: none
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Upload KICS SARIF
+        if: always() && github.event_name != 'pull_request'
         uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # pinned to v4.37.0
-        if: always()
         with:
           sarif_file: kics-results/results.sarif
           category: kics
 
   # ── Tier 2 — deeper scans, non-blocking during initial rollout ───────────
-  # continue-on-error: true lets the workflow finish and SARIF upload to Code
-  # Scanning even when findings exist. Remove it once the initial triage of
-  # the Security tab is complete and severity thresholds are tuned.
+  # On pull_request: findings appear as Check annotations via reviewdog
+  # (no Security tab entry, no duplicate alerts).
+  # On push/schedule: findings are uploaded to the Security tab only.
+  # continue-on-error: true lets the workflow finish regardless of findings.
 
   secrets:
     name: Secret Detection
@@ -146,6 +190,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      checks: write
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
         with:
@@ -164,9 +209,19 @@ jobs:
             --report-format sarif --report-path gitleaks.sarif || true
           [ -f gitleaks.sarif ] || echo '{"version":"2.1.0","runs":[]}' > gitleaks.sarif
 
+      - name: Annotate GitLeaks findings
+        if: github.event_name == 'pull_request'
+        uses: ./.github/actions/reviewdog
+        with:
+          format: sarif
+          input: gitleaks.sarif
+          name: gitleaks
+          fail-level: none
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Upload GitLeaks SARIF
+        if: always() && github.event_name != 'pull_request'
         uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # pinned to v4.37.0
-        if: always()
         with:
           sarif_file: gitleaks.sarif
           category: gitleaks
@@ -179,9 +234,19 @@ jobs:
           scanners: secret
           output: trivy-secrets.sarif
 
+      - name: Annotate Trivy secret findings
+        if: github.event_name == 'pull_request'
+        uses: ./.github/actions/reviewdog
+        with:
+          format: sarif
+          input: trivy-secrets.sarif
+          name: trivy-secrets
+          fail-level: none
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Upload Trivy secrets SARIF
+        if: always() && github.event_name != 'pull_request'
         uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # pinned to v4.37.0
-        if: always()
         with:
           sarif_file: trivy-secrets.sarif
           category: trivy-secrets
@@ -193,6 +258,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      checks: write
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
         with:
@@ -213,9 +279,19 @@ jobs:
             . || true
           [ -f semgrep.sarif ] || echo '{"version":"2.1.0","runs":[]}' > semgrep.sarif
 
+      - name: Annotate Semgrep findings
+        if: github.event_name == 'pull_request'
+        uses: ./.github/actions/reviewdog
+        with:
+          format: sarif
+          input: semgrep.sarif
+          name: semgrep
+          fail-level: none
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Upload Semgrep SARIF
+        if: always() && github.event_name != 'pull_request'
         uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # pinned to v4.37.0
-        if: always()
         with:
           sarif_file: semgrep.sarif
           category: semgrep
@@ -227,6 +303,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      checks: write
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
         with:
@@ -240,9 +317,19 @@ jobs:
           scanners: vuln
           output: trivy-deps.sarif
 
+      - name: Annotate Trivy dependency findings
+        if: github.event_name == 'pull_request'
+        uses: ./.github/actions/reviewdog
+        with:
+          format: sarif
+          input: trivy-deps.sarif
+          name: trivy-deps
+          fail-level: none
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Upload dependency SARIF
+        if: always() && github.event_name != 'pull_request'
         uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # pinned to v4.37.0
-        if: always()
         with:
           sarif_file: trivy-deps.sarif
           category: trivy-deps
