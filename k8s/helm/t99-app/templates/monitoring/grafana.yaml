@@ -188,9 +188,12 @@ spec:
     - name: http
       port: 3000
       targetPort: 3000
+{{- if and .Values.drizzleStudio.enabled .Values.drizzleStudio.oauth.enabled }}
 ---
 # Grafana and Alertmanager reuse Drizzle Studio's oauth2-proxy via nginx's
-# external-auth hooks, so one GitHub OAuth app covers all three.
+# external-auth hooks, so one GitHub OAuth app covers all three. The proxy is
+# the only thing guarding them, so without it there is no Ingress at all --
+# reach the dashboards with `kubectl port-forward` instead.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -200,10 +203,8 @@ metadata:
     app.kubernetes.io/component: monitoring
   annotations:
     cert-manager.io/cluster-issuer: {{ .Values.clusterIssuer | quote }}
-    {{- if and .Values.drizzleStudio.enabled .Values.drizzleStudio.oauth.enabled }}
     nginx.ingress.kubernetes.io/auth-url: https://studio.{{ .Values.domain }}/oauth2/auth
     nginx.ingress.kubernetes.io/auth-signin: https://studio.{{ .Values.domain }}/oauth2/start?rd=$escaped_request_uri
-    {{- end }}
 spec:
   ingressClassName: nginx
   tls:
