@@ -48,7 +48,7 @@ bun deploy:k8s --dry-run                           # validate without applying
    - `.env` file at the repo root
    - Existing cluster secret (via `kubectl get secret`)
    - Interactive prompt (TTY only)
-3. Optional feature inputs (e.g. Drizzle Studio credentials) that remain unresolved disable the feature — silently in CI, with a yes/no confirm in an interactive terminal
+3. Optional feature inputs (e.g. GitHub OAuth credentials for protected tools) that remain unresolved disable the feature — silently in CI, with a yes/no confirm in an interactive terminal
 4. Writes all resolved values to a short-lived temp file passed to Helm via `-f`; nothing sensitive appears on the process list
 5. Runs `helm upgrade --install` with `values.yaml`, the env values file, and the temp values
 6. Waits up to 10 minutes for the rollout; rolls back on failure and surfaces stderr
@@ -65,9 +65,10 @@ Add one entry to `scripts/deploy/inputs.ts`. No changes to `main.ts` are needed.
 
 **Inputs resolved at deploy time:**
 
-| Env var                       | Required | Feature gate                                     |
-| ----------------------------- | -------- | ------------------------------------------------ |
-| `LLM_API_KEY`                 | Yes      | —                                                |
-| `DEMO_USER_PASSWORD`          | No       | — (account locked with random password if unset) |
-| `STUDIO_GITHUB_CLIENT_ID`     | No       | Drizzle Studio                                   |
-| `STUDIO_GITHUB_CLIENT_SECRET` | No       | Drizzle Studio                                   |
+| Env var                      | Required | Feature gate                                           |
+| ---------------------------- | -------- | ------------------------------------------------------ |
+| `LLM_API_KEY`                | Yes      | —                                                      |
+| `DEMO_USER_PASSWORD`         | No       | — (account locked with random password if unset)       |
+| `RESEND_API_KEY`             | No       | — (Alertmanager email notifications disabled if unset) |
+| `GITHUB_OAUTH_CLIENT_ID`     | No       | OAuth-protected tools (Drizzle Studio, Grafana)        |
+| `GITHUB_OAUTH_CLIENT_SECRET` | No       | OAuth-protected tools (Drizzle Studio, Grafana)        |

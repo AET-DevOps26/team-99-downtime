@@ -73,7 +73,7 @@ To bypass a prompt non-interactively, pass the value as a flag or set it in `.en
 
 ```sh
 # All inputs can be overridden via flag:
-bun deploy:k8s --llm-api-key=sk-... --studio-github-client-id=... --studio-github-client-secret=...
+bun deploy:k8s --llm-api-key=sk-... --github-oauth-client-id=... --github-oauth-client-secret=...
 ```
 
 See [SCRIPTS.md](../development/SCRIPTS.md#scriptsdeploy) for the full input reference.
@@ -196,13 +196,13 @@ All secrets carry `helm.sh/resource-policy: keep` — they survive `helm uninsta
 
 Required GitHub Actions secrets:
 
-| Secret                             | Used by                                      |
-| ---------------------------------- | -------------------------------------------- |
-| `KUBECONFIG_DATA`                  | base64-encoded kubeconfig for cluster access |
-| `STUDIO_GITHUB_CLIENT_ID`          | Stage OAuth App client ID                    |
-| `STUDIO_GITHUB_CLIENT_SECRET`      | Stage OAuth App client secret                |
-| `STUDIO_GITHUB_CLIENT_ID_PROD`     | Prod OAuth App client ID                     |
-| `STUDIO_GITHUB_CLIENT_SECRET_PROD` | Prod OAuth App client secret                 |
+| Secret                            | Used by                                      |
+| --------------------------------- | -------------------------------------------- |
+| `KUBECONFIG_DATA`                 | base64-encoded kubeconfig for cluster access |
+| `GITHUB_OAUTH_CLIENT_ID`          | Stage OAuth App client ID                    |
+| `GITHUB_OAUTH_CLIENT_SECRET`      | Stage OAuth App client secret                |
+| `GITHUB_OAUTH_CLIENT_ID_PROD`     | Prod OAuth App client ID                     |
+| `GITHUB_OAUTH_CLIENT_SECRET_PROD` | Prod OAuth App client secret                 |
 
 ## Bootstrap (First-Time Setup)
 

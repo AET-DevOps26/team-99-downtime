@@ -19,12 +19,15 @@ export interface Feature {
   label: string;
   /** Helm dot-notation path set to true/false, e.g. "drizzleStudio.enabled" */
   enabledFlag: string;
+  /** Subdomain prefix shown in the post-deploy summary (e.g. "studio" → https://studio.<domain>) */
+  subdomain?: string;
 }
 
 export const features: Record<string, Feature> = {
   drizzleStudio: {
-    label: 'Drizzle Studio',
+    label: 'OAuth-protected tools (Drizzle Studio, Grafana)',
     enabledFlag: 'drizzleStudio.enabled',
+    subdomain: 'studio',
   },
 };
 
@@ -43,16 +46,22 @@ export const inputs: DeployInput[] = [
     helmPath: 'demoUserPassword',
   },
   {
-    description: 'GitHub OAuth Client ID for Drizzle Studio',
-    envVar: 'STUDIO_GITHUB_CLIENT_ID',
+    description: 'Resend API key for Alertmanager email notifications',
+    envVar: 'RESEND_API_KEY',
+    secret: true,
+    helmPath: 'alertmanager.resendApiKey',
+  },
+  {
+    description: 'GitHub OAuth Client ID for protected tools (Drizzle Studio, Grafana)',
+    envVar: 'GITHUB_OAUTH_CLIENT_ID',
     secret: false,
     helmPath: 'drizzleStudio.github.clientId',
     feature: 'drizzleStudio',
     clusterSecret: { name: 't99-studio-oauth2', key: 'clientId' },
   },
   {
-    description: 'GitHub OAuth Client Secret for Drizzle Studio',
-    envVar: 'STUDIO_GITHUB_CLIENT_SECRET',
+    description: 'GitHub OAuth Client Secret for protected tools (Drizzle Studio, Grafana)',
+    envVar: 'GITHUB_OAUTH_CLIENT_SECRET',
     secret: true,
     helmPath: 'drizzleStudio.github.clientSecret',
     feature: 'drizzleStudio',
