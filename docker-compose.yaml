@@ -322,7 +322,8 @@ services:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
       # No default on purpose: `:?` refuses to start rather than fall back to a
       # guessable admin/admin.
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env — see .env.example}
+      # kics-scan ignore-line
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env - see .env.example}
       GF_USERS_ALLOW_SIGN_UP: 'false'
     volumes:
       - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro

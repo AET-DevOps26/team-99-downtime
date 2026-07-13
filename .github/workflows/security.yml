@@ -122,6 +122,10 @@ jobs:
           output_formats: 'sarif'
           output_path: kics-results
           exclude_paths: 'node_modules,dist,.nx,tmp'
+          # Promtail needs a read-only docker.sock to discover containers and
+          # tail their logs. Local dev compose only; nothing mounts it on the
+          # cluster. Inline kics-scan ignores do not apply to these two queries.
+          exclude_queries: 'd6355c88-1e8d-49e9-b2f2-f8a1ca12c75b,1c1325ff-831d-43a1-973e-839ae57dfcc0'
 
       - name: Upload KICS SARIF
         uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # pinned to v4.37.0
