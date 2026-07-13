@@ -12,6 +12,8 @@ jobs:
   deploy-prod:
     name: Deploy to Production
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6

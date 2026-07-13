@@ -28,6 +28,9 @@ on:
         default: 'latest'
         type: string
 
+# Minimal permissions; each job declares only what it needs.
+permissions: {}
+
 jobs:
   deploy:
     name: Deploy to Azure VM
@@ -48,6 +51,9 @@ jobs:
       ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
       ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
       IMAGE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.image_tag || github.event.release.tag_name }}
+      TF_BACKEND_STORAGE_ACCOUNT: ${{ vars.TF_BACKEND_STORAGE_ACCOUNT }}
+      TF_BACKEND_RESOURCE_GROUP: ${{ vars.TF_BACKEND_RESOURCE_GROUP }}
+      VM_SSH_PUBLIC_KEY: ${{ vars.VM_SSH_PUBLIC_KEY }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
@@ -69,14 +75,14 @@ jobs:
         working-directory: infra/terraform
         run: |
           terraform init \
-            -backend-config="storage_account_name=${{ vars.TF_BACKEND_STORAGE_ACCOUNT }}" \
-            -backend-config="resource_group_name=${{ vars.TF_BACKEND_RESOURCE_GROUP }}"
+            -backend-config="storage_account_name=$TF_BACKEND_STORAGE_ACCOUNT" \
+            -backend-config="resource_group_name=$TF_BACKEND_RESOURCE_GROUP"
 
       - name: Terraform apply
         working-directory: infra/terraform
         run: |
           terraform apply -auto-approve \
-            -var "ssh_public_key=${{ vars.VM_SSH_PUBLIC_KEY }}"
+            -var "ssh_public_key=$VM_SSH_PUBLIC_KEY"
 
       - name: Get VM host
         id: vm-host
@@ -145,11 +151,16 @@ jobs:
     needs: [deploy]
     if: needs.deploy.result == 'success' && vars.AZURE_VM_AUTO_SHUTDOWN == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
       ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
       ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
       ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      TF_BACKEND_STORAGE_ACCOUNT: ${{ vars.TF_BACKEND_STORAGE_ACCOUNT }}
+      TF_BACKEND_RESOURCE_GROUP: ${{ vars.TF_BACKEND_RESOURCE_GROUP }}
+      VM_SSH_PUBLIC_KEY: ${{ vars.VM_SSH_PUBLIC_KEY }}
     steps:
       - name: Wait 30 minutes
         run: sleep 1800
@@ -166,14 +177,14 @@ jobs:
         working-directory: infra/terraform
         run: |
           terraform init \
-            -backend-config="storage_account_name=${{ vars.TF_BACKEND_STORAGE_ACCOUNT }}" \
-            -backend-config="resource_group_name=${{ vars.TF_BACKEND_RESOURCE_GROUP }}"
+            -backend-config="storage_account_name=$TF_BACKEND_STORAGE_ACCOUNT" \
+            -backend-config="resource_group_name=$TF_BACKEND_RESOURCE_GROUP"
 
       - name: Terraform destroy
         working-directory: infra/terraform
         run: |
           terraform destroy -auto-approve \
-            -var "ssh_public_key=${{ vars.VM_SSH_PUBLIC_KEY }}"
+            -var "ssh_public_key=$VM_SSH_PUBLIC_KEY"
 
   # Runs when workflow_dispatch is triggered with shutdown: true.
   # Immediately destroys the VM without deploying anything.
@@ -181,11 +192,16 @@ jobs:
     name: Destroy VM
     if: github.event_name == 'workflow_dispatch' && inputs.shutdown == true
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
       ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
       ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
       ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      TF_BACKEND_STORAGE_ACCOUNT: ${{ vars.TF_BACKEND_STORAGE_ACCOUNT }}
+      TF_BACKEND_RESOURCE_GROUP: ${{ vars.TF_BACKEND_RESOURCE_GROUP }}
+      VM_SSH_PUBLIC_KEY: ${{ vars.VM_SSH_PUBLIC_KEY }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
@@ -199,11 +215,11 @@ jobs:
         working-directory: infra/terraform
         run: |
           terraform init \
-            -backend-config="storage_account_name=${{ vars.TF_BACKEND_STORAGE_ACCOUNT }}" \
-            -backend-config="resource_group_name=${{ vars.TF_BACKEND_RESOURCE_GROUP }}"
+            -backend-config="storage_account_name=$TF_BACKEND_STORAGE_ACCOUNT" \
+            -backend-config="resource_group_name=$TF_BACKEND_RESOURCE_GROUP"
 
       - name: Terraform destroy
         working-directory: infra/terraform
         run: |
           terraform destroy -auto-approve \
-            -var "ssh_public_key=${{ vars.VM_SSH_PUBLIC_KEY }}"
+            -var "ssh_public_key=$VM_SSH_PUBLIC_KEY"
