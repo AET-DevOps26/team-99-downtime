@@ -40,6 +40,11 @@ spec:
       containers:
         - name: alertmanager
           image: prom/alertmanager:v0.28.1
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
           args:
             - --config.file=/etc/alertmanager/alertmanager.yml
             - --storage.path=/alertmanager

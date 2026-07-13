@@ -23,9 +23,13 @@ jobs:
   deploy:
     name: Deploy monitoring (${{ inputs.environment || 'stage' }})
     runs-on: ubuntu-latest
+    # Lets prod be gated with required reviewers in the repo settings.
+    environment: ${{ inputs.environment || 'stage' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
+        with:
+          persist-credentials: false
 
       - name: Set up kubeconfig
         run: |
