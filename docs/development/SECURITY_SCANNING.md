@@ -55,7 +55,8 @@ Every container image released by `cd.yml` receives two attestations attached to
 ```sh
 gh attestation verify \
   oci://ghcr.io/aet-devops26/team-99-downtime/<image>@<digest> \
-  --repo aet-devops26/team-99-downtime
+  --repo aet-devops26/team-99-downtime \
+  --signer-workflow .github/workflows/cd.yml
 ```
 
 Add `--format json | jq '.[0].verificationResult'` to see the full certificate fields (workflow path, commit SHA, run URL, timestamp).
@@ -74,7 +75,7 @@ Verify the SBOM attestation and decode it:
 cosign verify-attestation \
   --type cyclonedx \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  --certificate-identity-regexp "^https://github.com/AET-DevOps26/team-99-downtime/.github/workflows/" \
+  --certificate-identity-regexp "^https://github.com/AET-DevOps26/team-99-downtime/.github/workflows/cd\\.yml@" \
   ghcr.io/aet-devops26/team-99-downtime/<image>@<digest> \
   | jq -r '.payload | @base64d | fromjson | .predicate'
 ```
@@ -82,7 +83,12 @@ cosign verify-attestation \
 List all components and versions:
 
 ```sh
-... | jq -r '.predicate.components[] | "\(.name) \(.version)"'
+cosign verify-attestation \
+  --type cyclonedx \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity-regexp "^https://github.com/AET-DevOps26/team-99-downtime/.github/workflows/cd\\.yml@" \
+  ghcr.io/aet-devops26/team-99-downtime/<image>@<digest> \
+  | jq -r '.payload | @base64d | fromjson | .predicate.components[] | "\(.name) \(.version)"'
 ```
 
 Save the SBOM to a file (e.g. for upload to [Dependency-Track](https://dependencytrack.org/)):
@@ -91,7 +97,7 @@ Save the SBOM to a file (e.g. for upload to [Dependency-Track](https://dependenc
 cosign verify-attestation \
   --type cyclonedx \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  --certificate-identity-regexp "^https://github.com/AET-DevOps26/team-99-downtime/.github/workflows/" \
+  --certificate-identity-regexp "^https://github.com/AET-DevOps26/team-99-downtime/.github/workflows/cd\\.yml@" \
   ghcr.io/aet-devops26/team-99-downtime/<image>@<digest> \
   | jq -r '.payload | @base64d | fromjson | .predicate' > sbom.cdx.json
 ```
@@ -99,11 +105,11 @@ cosign verify-attestation \
 ### Find the digest for a released image
 
 ```sh
-docker buildx imagetools inspect ghcr.io/aet-devops26/team-99-downtime/<image>:latest \
+docker buildx imagetools inspect ghcr.io/aet-devops26/team-99-downtime/<image>:v1.2.3 \
   --format '{{json .Manifest}}' | jq -r '.digest'
 ```
 
-Or from the **Released Images** table in the `cd` workflow run summary.
+Replace `v1.2.3` with the actual release tag. The canonical digest is also listed in the **Released Images** table in the `cd` workflow run summary.
 
 ## Trigger strategy
 
