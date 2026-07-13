@@ -32,11 +32,15 @@ runs:
       shell: bash
       env:
         REVIEWDOG_GITHUB_API_TOKEN: ${{ inputs.github-token }}
+        RD_FORMAT: ${{ inputs.format }}
+        RD_NAME: ${{ inputs.name }}
+        RD_FAIL_LEVEL: ${{ inputs.fail-level }}
+        RD_INPUT: ${{ inputs.input }}
       run: |
         reviewdog \
-          -f="${{ inputs.format }}" \
-          -name="${{ inputs.name }}" \
+          -f="$RD_FORMAT" \
+          -name="$RD_NAME" \
           -reporter=github-pr-check \
-          -fail-level="${{ inputs.fail-level }}" \
+          -fail-level="$RD_FAIL_LEVEL" \
           -filter-mode=nofilter \
-          < "${{ inputs.input }}"
+          < "$RD_INPUT"
