@@ -41,6 +41,76 @@ Security scanning runs automatically in the `security` workflow on every pull re
 
 **Trivy + Cosign in `cd.yml`** — After each release build, Trivy scans every built container image _by digest_ and generates a CycloneDX SBOM reflecting what actually ended up in the image. Cosign attaches it to the image in GHCR using keyless signing (GitHub OIDC — no key management required). Verifiable with `cosign verify-attestation --type cyclonedx ghcr.io/<image>@<digest>`.
 
+## Verifying attestations
+
+Every container image released by `cd.yml` receives two attestations attached to its digest in GHCR:
+
+| Attestation      | Tool                        | Predicate type                   | What it proves                                                     |
+| ---------------- | --------------------------- | -------------------------------- | ------------------------------------------------------------------ |
+| Build provenance | `actions/attest` + Sigstore | `https://slsa.dev/provenance/v1` | This digest was built by `cd.yml` on `main` from a specific commit |
+| SBOM             | Trivy + cosign (keyless)    | `https://cyclonedx.org/bom`      | Full CycloneDX bill of materials for what ended up in the image    |
+
+### Verify build provenance
+
+```sh
+gh attestation verify \
+  oci://ghcr.io/aet-devops26/team-99-downtime/<image>@<digest> \
+  --repo aet-devops26/team-99-downtime \
+  --signer-workflow .github/workflows/cd.yml
+```
+
+Add `--format json | jq '.[0].verificationResult'` to see the full certificate fields (workflow path, commit SHA, run URL, timestamp).
+
+### Inspect the SBOM
+
+Install cosign if needed:
+
+```sh
+brew install cosign
+```
+
+Verify the SBOM attestation and decode it:
+
+```sh
+cosign verify-attestation \
+  --type cyclonedx \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity-regexp "^https://github.com/AET-DevOps26/team-99-downtime/.github/workflows/cd\\.yml@" \
+  ghcr.io/aet-devops26/team-99-downtime/<image>@<digest> \
+  | jq -r '.payload | @base64d | fromjson | .predicate'
+```
+
+List all components and versions:
+
+```sh
+cosign verify-attestation \
+  --type cyclonedx \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity-regexp "^https://github.com/AET-DevOps26/team-99-downtime/.github/workflows/cd\\.yml@" \
+  ghcr.io/aet-devops26/team-99-downtime/<image>@<digest> \
+  | jq -r '.payload | @base64d | fromjson | .predicate.components[] | "\(.name) \(.version)"'
+```
+
+Save the SBOM to a file (e.g. for upload to [Dependency-Track](https://dependencytrack.org/)):
+
+```sh
+cosign verify-attestation \
+  --type cyclonedx \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity-regexp "^https://github.com/AET-DevOps26/team-99-downtime/.github/workflows/cd\\.yml@" \
+  ghcr.io/aet-devops26/team-99-downtime/<image>@<digest> \
+  | jq -r '.payload | @base64d | fromjson | .predicate' > sbom.cdx.json
+```
+
+### Find the digest for a released image
+
+```sh
+docker buildx imagetools inspect ghcr.io/aet-devops26/team-99-downtime/<image>:v1.2.3 \
+  --format '{{json .Manifest}}' | jq -r '.digest'
+```
+
+Replace `v1.2.3` with the actual release tag. The canonical digest is also listed in the **Released Images** table in the `cd` workflow run summary.
+
 ## Trigger strategy
 
 | Tier     | Jobs                                         | Triggers     | Merge behaviour                                                                                                                |
