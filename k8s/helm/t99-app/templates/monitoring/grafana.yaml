@@ -204,7 +204,9 @@ metadata:
   annotations:
     cert-manager.io/cluster-issuer: {{ .Values.clusterIssuer | quote }}
     nginx.ingress.kubernetes.io/auth-url: https://studio.{{ .Values.domain }}/oauth2/auth
-    nginx.ingress.kubernetes.io/auth-signin: https://studio.{{ .Values.domain }}/oauth2/start?rd=$escaped_request_uri
+    # rd must carry the full origin, not just the path: without the host,
+    # oauth2-proxy sends you back to its own host (studio) after the callback.
+    nginx.ingress.kubernetes.io/auth-signin: https://studio.{{ .Values.domain }}/oauth2/start?rd=$scheme://$host$escaped_request_uri
 spec:
   ingressClassName: nginx
   tls:
