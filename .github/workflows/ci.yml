@@ -5,6 +5,10 @@ on:
     types: [opened, synchronize, reopened, edited]
   merge_group:
 
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event.action != 'edited' }}
+
 jobs:
   # Runs on every PR event including title/body edits, which the other jobs
   # don't care about. The 'edited' type is on the shared trigger above so this
@@ -62,9 +66,42 @@ jobs:
       - name: Fail if linters left uncommitted changes
         run: git diff --exit-code
 
+  changes:
+    name: Detect Changed Files
+    runs-on: ubuntu-latest
+    if: github.event.action != 'edited'
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      helm: ${{ steps.filter.outputs.helm }}
+      terraform: ${{ steps.filter.outputs.terraform }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
+        with:
+          persist-credentials: false
+      - name: Detect changed file categories
+        id: filter
+        uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # pinned to v4.0.2
+        with:
+          filters: |
+            helm:
+              - 'k8s/helm/**'
+            terraform:
+              - 'infra/terraform/**'
+              - '**/*.tf'
+              - '**/*.tfvars'
+
   helm-lint:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && github.event.action != 'edited'
+    needs: [changes]
+    if: >-
+      always() &&
+      github.event_name == 'pull_request' &&
+      github.event.action != 'edited' &&
+      needs.changes.result == 'success' &&
+      needs.changes.outputs.helm == 'true'
     permissions:
       contents: read
     steps:
@@ -73,17 +110,48 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Check for Helm chart changes
-        id: helm-changes
-        uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # pinned to v4.0.2
-        with:
-          filters: |
-            helm:
-              - 'k8s/helm/**'
-
       - name: Lint Helm chart
-        if: steps.helm-changes.outputs.helm == 'true'
         run: helm lint k8s/helm/t99-app/ -f k8s/helm/t99-app/values.stage.yaml
+
+  tflint:
+    name: Terraform Lint
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: >-
+      always() &&
+      github.event_name == 'pull_request' &&
+      github.event.action != 'edited' &&
+      needs.changes.result == 'success' &&
+      needs.changes.outputs.terraform == 'true'
+    permissions:
+      contents: read
+      checks: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
+        with:
+          persist-credentials: false
+      - name: Setup tflint
+        uses: terraform-linters/setup-tflint@6e1e0642c0289bd619021bf6b34e3c08ed1e005a # pinned to v6.3.0
+        with:
+          tflint_version: v0.63.1
+          tflint_config_path: infra/terraform/.tflint.hcl
+      - name: Init tflint
+        working-directory: infra/terraform
+        run: tflint --init
+      - name: Run tflint
+        working-directory: infra/terraform
+        run: |
+          tflint --force --format checkstyle > ../../tflint.xml
+          [ -s ../../tflint.xml ] || echo '<?xml version="1.0" encoding="UTF-8"?><checkstyle version="5.0"></checkstyle>' > ../../tflint.xml
+      - name: Annotate tflint findings
+        uses: ./.github/actions/reviewdog
+        with:
+          format: checkstyle
+          input: tflint.xml
+          name: tflint
+          fail-level: error
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
   # Regenerates every OpenAPI spec and the typed client from the code (no
   # containers: springdoc Gradle plugin, FastAPI in-memory export, Better Auth
@@ -145,20 +213,62 @@ jobs:
           files: ${{ steps.modified-migrations.outputs.file_names }}
           config: config/squawk.toml
 
+  spelling:
+    name: Spell Check
+    runs-on: ubuntu-latest
+    if: github.event.action != 'edited'
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
+        with:
+          persist-credentials: false
+      - uses: crate-ci/typos@bee27e3a4fd1ea2111cf90ab89cd076c870fce14 # pinned to v1.48.0
+        with:
+          config: config/typos.toml
+
+  actionlint:
+    name: Workflow Lint
+    runs-on: ubuntu-latest
+    if: github.event.action != 'edited'
+    permissions:
+      contents: read
+      checks: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
+        with:
+          persist-credentials: false
+      - name: Run actionlint
+        uses: reviewdog/action-actionlint@6fb7acc99f4a1008869fa8a0f09cfca740837d9d # pinned to v1.72.0
+        with:
+          reporter: github-pr-check
+          fail_level: none
+          filter_mode: added
+          tool_name: actionlint
+          actionlint_flags: -ignore 'SC2016:'
+
   build-and-test:
     runs-on: ubuntu-latest
-    needs: [commitlint, lint, helm-lint, openapi-drift, squawk]
-    # commitlint, lint, helm-lint, and squawk are skipped on merge_group and on
-    # 'edited' events, hence the always() + skipped handling. openapi-drift runs
-    # on both events and must have passed — don't build against a stale API contract.
+    needs:
+      [commitlint, lint, changes, helm-lint, tflint, openapi-drift, squawk, spelling, actionlint]
+    # commitlint, lint, helm-lint, tflint, squawk, spelling, and actionlint are
+    # skipped on merge_group and on 'edited' events, hence the always() + skipped
+    # handling. openapi-drift runs on both events and must have passed — don't
+    # build against a stale API contract.
     if: >-
       always() &&
       github.event.action != 'edited' &&
       (needs.commitlint.result == 'success' || needs.commitlint.result == 'skipped') &&
       (needs.lint.result == 'success' || needs.lint.result == 'skipped') &&
+      (needs.changes.result == 'success' || needs.changes.result == 'skipped') &&
       (needs['helm-lint'].result == 'success' || needs['helm-lint'].result == 'skipped') &&
+      (needs.tflint.result == 'success' || needs.tflint.result == 'skipped') &&
       (needs['openapi-drift'].result == 'success' || needs['openapi-drift'].result == 'skipped') &&
-      (needs.squawk.result == 'success' || needs.squawk.result == 'skipped')
+      (needs.squawk.result == 'success' || needs.squawk.result == 'skipped') &&
+      (needs.spelling.result == 'success' || needs.spelling.result == 'skipped') &&
+      (needs.actionlint.result == 'success' || needs.actionlint.result == 'skipped')
     name: Build, Test, and Publish Containers
     permissions:
       contents: read

@@ -1,0 +1,137 @@
+name: 'Deploy to Kubernetes'
+description: >
+  Helm upgrade with kubeconfig setup, pending-state cleanup before deploy,
+  and automatic rollback when the job is cancelled mid-deploy.
+
+inputs:
+  version:
+    description: 'Image tag to deploy (leading v is stripped automatically)'
+    required: true
+  namespace:
+    description: 'Kubernetes namespace to deploy into (e.g. t99-stage)'
+    required: true
+  values-file:
+    description: 'Path to the environment-specific Helm values file (e.g. k8s/helm/t99-app/values.stage.yaml)'
+    required: true
+  environment-url:
+    description: 'Public URL of the environment, shown in the deploy summary'
+    required: true
+  kubeconfig-data:
+    description: 'Base64-encoded kubeconfig'
+    required: true
+  llm-api-key:
+    description: 'LLM API key passed to the genai service'
+    required: true
+  studio-github-client-id:
+    description: 'Drizzle Studio GitHub OAuth client ID'
+    required: true
+  studio-github-client-secret:
+    description: 'Drizzle Studio GitHub OAuth client secret'
+    required: true
+  resend-api-key:
+    description: 'Resend API key for Alertmanager email notifications'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Set up kubeconfig
+      shell: bash
+      env:
+        KUBECONFIG_DATA: ${{ inputs.kubeconfig-data }}
+      run: |
+        mkdir -p ~/.kube
+        printf '%s' "$KUBECONFIG_DATA" | base64 -d > ~/.kube/config
+
+    - name: Set up Helm
+      uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # pinned to v5
+      with:
+        version: 'v4.2.0'
+
+    # If the previous run was cancelled mid-deploy it may have left the release in a
+    # pending state. Roll back to the last good revision so this deploy starts clean.
+    - name: Roll back any pending Helm release
+      shell: bash
+      env:
+        NAMESPACE: ${{ inputs.namespace }}
+      run: |
+        status=$(helm status t99 -n "$NAMESPACE" -o json 2>/dev/null | jq -r '.info.status' || echo "not-found")
+        if [[ "$status" == "pending-upgrade" || "$status" == "pending-install" || "$status" == "pending-rollback" ]]; then
+          echo "Release is in state '$status' — rolling back to last good revision"
+          helm rollback t99 0 -n "$NAMESPACE" --wait --timeout 5m || echo "No prior revision to roll back; cluster will start fresh"
+        else
+          echo "Release state: '$status' — no rollback needed"
+        fi
+
+    - name: Deploy
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        NAMESPACE: ${{ inputs.namespace }}
+        VALUES_FILE: ${{ inputs.values-file }}
+        LLM_API_KEY: ${{ inputs.llm-api-key }}
+        STUDIO_CLIENT_ID: ${{ inputs.studio-github-client-id }}
+        STUDIO_CLIENT_SECRET: ${{ inputs.studio-github-client-secret }}
+        RESEND_API_KEY: ${{ inputs.resend-api-key }}
+      run: |
+        VERSION="${VERSION#v}"
+        # Write secrets to a temp file so they don't appear in ps aux or get
+        # silently mangled by helm --set's comma/backslash escaping rules.
+        secrets_file=$(mktemp)
+        trap 'rm -f "$secrets_file"' EXIT
+        python3 - <<'PYEOF' > "$secrets_file"
+        import os, json
+        def dump(d, indent=0):
+            for k, v in d.items():
+                prefix = '  ' * indent
+                if isinstance(v, dict):
+                    print(f"{prefix}{k}:")
+                    dump(v, indent + 1)
+                else:
+                    print(f"{prefix}{k}: {json.dumps(v)}")
+        dump({
+            'genaiService': {'llmApiKey': os.environ['LLM_API_KEY']},
+            'drizzleStudio': {'github': {
+                'clientId': os.environ['STUDIO_CLIENT_ID'],
+                'clientSecret': os.environ['STUDIO_CLIENT_SECRET'],
+            }},
+            'alertmanager': {'resendApiKey': os.environ['RESEND_API_KEY']},
+        })
+        PYEOF
+        helm upgrade --install t99 k8s/helm/t99-app/ \
+          -n "$NAMESPACE" \
+          -f k8s/helm/t99-app/values.yaml \
+          -f "$VALUES_FILE" \
+          -f "$secrets_file" \
+          --set authService.image.tag="$VERSION" \
+          --set client.image.tag="$VERSION" \
+          --set transactionService.image.tag="$VERSION" \
+          --set notificationService.image.tag="$VERSION" \
+          --set budgetService.image.tag="$VERSION" \
+          --set genaiService.image.tag="$VERSION" \
+          --wait --timeout 10m --rollback-on-failure
+
+    # Runs when this job is cancelled mid-deploy (e.g. superseded by a newer release).
+    # Rolls Helm back to the last deployed revision so the cluster is left in a known-good state.
+    - name: Rollback on cancellation
+      if: cancelled()
+      shell: bash
+      env:
+        NAMESPACE: ${{ inputs.namespace }}
+      run: |
+        echo "Job cancelled — rolling back t99 to last good revision"
+        helm rollback t99 0 -n "$NAMESPACE" --wait --timeout 30s
+
+    - name: Write deploy summary
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        NAMESPACE: ${{ inputs.namespace }}
+        ENVIRONMENT_URL: ${{ inputs.environment-url }}
+      run: |
+        VERSION="${VERSION#v}"
+        {
+          echo "## Deployed to $NAMESPACE"
+          echo "**Version:** \`$VERSION\`"
+          echo "**URL:** $ENVIRONMENT_URL"
+        } >> "$GITHUB_STEP_SUMMARY"

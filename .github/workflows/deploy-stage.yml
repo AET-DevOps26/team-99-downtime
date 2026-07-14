@@ -1,0 +1,34 @@
+name: Deploy to Stage
+
+on:
+  release:
+    types: [released]
+
+concurrency:
+  group: deploy-stage
+  cancel-in-progress: true
+
+jobs:
+  deploy-k8s:
+    name: Deploy to k8s staging environment
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
+        with:
+          persist-credentials: false
+
+      - name: Deploy to t99-stage
+        uses: ./.github/actions/deploy-k8s
+        with:
+          version: ${{ github.event.release.tag_name }}
+          namespace: t99-stage
+          values-file: k8s/helm/t99-app/values.stage.yaml
+          environment-url: https://stage.t99.stud.k8s.aet.cit.tum.de
+          kubeconfig-data: ${{ secrets.KUBECONFIG_DATA }}
+          llm-api-key: ${{ secrets.LLM_API_KEY }}
+          studio-github-client-id: ${{ secrets.STUDIO_GITHUB_CLIENT_ID }}
+          studio-github-client-secret: ${{ secrets.STUDIO_GITHUB_CLIENT_SECRET }}
+          resend-api-key: ${{ secrets.RESEND_API_KEY }}
