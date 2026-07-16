@@ -133,6 +133,7 @@ jobs:
       - name: Ensure KICS SARIF exists
         if: always()
         run: |
+          mkdir -p kics-results
           [ -s kics-results/results.sarif ] || \
             echo '{"version":"2.1.0","runs":[]}' > kics-results/results.sarif
 

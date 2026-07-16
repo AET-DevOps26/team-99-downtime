@@ -81,6 +81,75 @@ jobs:
           sarif_file: trivy-secrets.sarif
           category: trivy-secrets
 
+  containers:
+    name: Dockerfile Lint
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
+        with:
+          persist-credentials: false
+
+      # failure-threshold: none so hadolint always writes the SARIF file
+      # regardless of findings.
+      - name: Lint Dockerfiles with Hadolint
+        uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5 # pinned to v3.3.0
+        with:
+          recursive: true
+          format: sarif
+          output-file: hadolint.sarif
+          failure-threshold: none
+
+      - name: Ensure Hadolint SARIF exists
+        if: always()
+        run: |
+          [ -s hadolint.sarif ] || echo '{"version":"2.1.0","runs":[]}' > hadolint.sarif
+
+      - name: Upload Hadolint SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # pinned to v4.37.0
+        with:
+          sarif_file: hadolint.sarif
+          category: hadolint
+
+  iac:
+    name: IaC Security
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
+        with:
+          persist-credentials: false
+
+      - name: Run KICS
+        uses: checkmarx/kics-github-action@05aa5eb70eede1355220f4ca5238d96b397e30a6 # pinned to v2.1.20
+        continue-on-error: true
+        with:
+          path: '.'
+          output_formats: 'sarif'
+          output_path: kics-results
+          exclude_paths: 'node_modules,dist,.nx,tmp'
+
+      - name: Ensure KICS SARIF exists
+        if: always()
+        run: |
+          mkdir -p kics-results
+          [ -s kics-results/results.sarif ] || \
+            echo '{"version":"2.1.0","runs":[]}' > kics-results/results.sarif
+
+      - name: Upload KICS SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # pinned to v4.37.0
+        with:
+          sarif_file: kics-results/results.sarif
+          category: kics
+
   sast:
     name: SAST (Static Application Security Testing)
     runs-on: ubuntu-latest
