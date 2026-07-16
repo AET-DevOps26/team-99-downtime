@@ -1,7 +1,8 @@
 name: Deploy to Azure VM
 
-# Triggered automatically on every release if the DEPLOY_AZURE_ENABLED repo
-# variable is set to 'true' (Settings → Secrets and variables → Actions → Variables).
+# Triggered automatically on every release (including bot-created releases via the
+# Continuous Delivery workflow) if the DEPLOY_AZURE_ENABLED repo variable is set to
+# 'true' (Settings → Secrets and variables → Actions → Variables).
 # The workflow_dispatch trigger always runs regardless of that variable.
 #
 # workflow_dispatch inputs:
@@ -9,14 +10,18 @@ name: Deploy to Azure VM
 #   image_tag: tag to deploy when not using the shutdown option
 #
 # Required secrets: ARM_CLIENT_ID, ARM_CLIENT_SECRET, ARM_SUBSCRIPTION_ID, ARM_TENANT_ID
-#   VM_SSH_PRIVATE_KEY, POSTGRES_PASSWORD, BETTER_AUTH_SECRET,
-#   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, LLM_API_KEY
-# Required variables: TF_BACKEND_STORAGE_ACCOUNT, TF_BACKEND_RESOURCE_GROUP,
-#   VM_SSH_PUBLIC_KEY, APP_DOMAIN
+#   VM_SSH_PRIVATE_KEY, TF_BACKEND_STORAGE_ACCOUNT, TF_BACKEND_RESOURCE_GROUP,
+#   POSTGRES_PASSWORD, BETTER_AUTH_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, LLM_API_KEY
+# Required variables: APP_DOMAIN
 # Optional variables: DEPLOY_AZURE_ENABLED, AZURE_VM_AUTO_SHUTDOWN
 on:
   release:
     types: [released]
+  # zizmor: ignore[dangerous-triggers] — we only check out our own main branch and
+  # never run code from the triggering workflow's head.
+  workflow_run:
+    workflows: ['Continuous Delivery']
+    types: [completed]
   workflow_dispatch:
     inputs:
       shutdown:
@@ -35,11 +40,12 @@ jobs:
   deploy:
     name: Deploy to Azure VM
     runs-on: ubuntu-latest
-    # On release: gated by the DEPLOY_AZURE_ENABLED repo variable.
+    # On release / workflow_run: gated by the DEPLOY_AZURE_ENABLED repo variable.
     # On workflow_dispatch: runs unless the shutdown flag is set.
     if: >-
       (github.event_name == 'workflow_dispatch' && inputs.shutdown != true) ||
-      (github.event_name == 'release' && vars.DEPLOY_AZURE_ENABLED == 'true')
+      (github.event_name == 'release' && vars.DEPLOY_AZURE_ENABLED == 'true') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && vars.DEPLOY_AZURE_ENABLED == 'true')
     permissions:
       contents: read
       # Lets the VM pull the private GHCR images using this job's GITHUB_TOKEN.
@@ -51,20 +57,34 @@ jobs:
       ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
       ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
       IMAGE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.image_tag || github.event.release.tag_name }}
-      TF_BACKEND_STORAGE_ACCOUNT: ${{ vars.TF_BACKEND_STORAGE_ACCOUNT }}
-      TF_BACKEND_RESOURCE_GROUP: ${{ vars.TF_BACKEND_RESOURCE_GROUP }}
-      VM_SSH_PUBLIC_KEY: ${{ vars.VM_SSH_PUBLIC_KEY }}
+      TF_BACKEND_STORAGE_ACCOUNT: ${{ secrets.TF_BACKEND_STORAGE_ACCOUNT }}
+      TF_BACKEND_RESOURCE_GROUP: ${{ secrets.TF_BACKEND_RESOURCE_GROUP }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
         with:
           persist-credentials: false
 
+      - name: Resolve image tag
+        id: resolve-tag
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_run" ]; then
+            TAG=$(gh release view --json tagName -q .tagName)
+          else
+            TAG="${IMAGE_TAG}"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
       - name: Configure SSH key
+        id: setup-ssh
         run: |
           mkdir -p ~/.ssh
           printf '%s\n' "${{ secrets.VM_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
+          echo "pubkey=$(ssh-keygen -y -f ~/.ssh/id_ed25519)" >> "$GITHUB_OUTPUT"
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # pinned to v3.1.2
@@ -80,9 +100,13 @@ jobs:
 
       - name: Terraform apply
         working-directory: infra/terraform
+        env:
+          SSH_PUBLIC_KEY: ${{ steps.setup-ssh.outputs.pubkey }}
+          APP_DOMAIN: ${{ vars.APP_DOMAIN }}
         run: |
           terraform apply -auto-approve \
-            -var "ssh_public_key=$VM_SSH_PUBLIC_KEY"
+            -var "ssh_public_key=$SSH_PUBLIC_KEY" \
+            -var "dns_label=${APP_DOMAIN%%.*}"
 
       - name: Get VM host
         id: vm-host
@@ -116,6 +140,7 @@ jobs:
       - name: Run Ansible playbook
         working-directory: infra/ansible
         env:
+          IMAGE_TAG: ${{ steps.resolve-tag.outputs.tag }}
           DEPLOY_DOMAIN: ${{ vars.APP_DOMAIN }}
           GHCR_USER: ${{ github.actor }}
         run: |
@@ -134,6 +159,7 @@ jobs:
       - name: Write deploy summary
         if: always()
         env:
+          IMAGE_TAG: ${{ steps.resolve-tag.outputs.tag }}
           DEPLOY_DOMAIN: ${{ vars.APP_DOMAIN }}
         run: |
           IMAGE_TAG="${IMAGE_TAG#v}"
@@ -158,9 +184,8 @@ jobs:
       ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
       ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
       ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
-      TF_BACKEND_STORAGE_ACCOUNT: ${{ vars.TF_BACKEND_STORAGE_ACCOUNT }}
-      TF_BACKEND_RESOURCE_GROUP: ${{ vars.TF_BACKEND_RESOURCE_GROUP }}
-      VM_SSH_PUBLIC_KEY: ${{ vars.VM_SSH_PUBLIC_KEY }}
+      TF_BACKEND_STORAGE_ACCOUNT: ${{ secrets.TF_BACKEND_STORAGE_ACCOUNT }}
+      TF_BACKEND_RESOURCE_GROUP: ${{ secrets.TF_BACKEND_RESOURCE_GROUP }}
     steps:
       - name: Wait 30 minutes
         run: sleep 1800
@@ -169,6 +194,15 @@ jobs:
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
         with:
           persist-credentials: false
+
+      - name: Derive SSH public key
+        id: setup-ssh
+        run: |
+          key_file=$(mktemp)
+          printf '%s\n' "${{ secrets.VM_SSH_PRIVATE_KEY }}" > "$key_file"
+          chmod 600 "$key_file"
+          echo "pubkey=$(ssh-keygen -y -f "$key_file")" >> "$GITHUB_OUTPUT"
+          rm "$key_file"
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # pinned to v3.1.2
@@ -182,9 +216,11 @@ jobs:
 
       - name: Terraform destroy
         working-directory: infra/terraform
+        env:
+          SSH_PUBLIC_KEY: ${{ steps.setup-ssh.outputs.pubkey }}
         run: |
           terraform destroy -auto-approve \
-            -var "ssh_public_key=$VM_SSH_PUBLIC_KEY"
+            -var "ssh_public_key=$SSH_PUBLIC_KEY"
 
   # Runs when workflow_dispatch is triggered with shutdown: true.
   # Immediately destroys the VM without deploying anything.
@@ -199,14 +235,22 @@ jobs:
       ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
       ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
       ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
-      TF_BACKEND_STORAGE_ACCOUNT: ${{ vars.TF_BACKEND_STORAGE_ACCOUNT }}
-      TF_BACKEND_RESOURCE_GROUP: ${{ vars.TF_BACKEND_RESOURCE_GROUP }}
-      VM_SSH_PUBLIC_KEY: ${{ vars.VM_SSH_PUBLIC_KEY }}
+      TF_BACKEND_STORAGE_ACCOUNT: ${{ secrets.TF_BACKEND_STORAGE_ACCOUNT }}
+      TF_BACKEND_RESOURCE_GROUP: ${{ secrets.TF_BACKEND_RESOURCE_GROUP }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
         with:
           persist-credentials: false
+
+      - name: Derive SSH public key
+        id: setup-ssh
+        run: |
+          key_file=$(mktemp)
+          printf '%s\n' "${{ secrets.VM_SSH_PRIVATE_KEY }}" > "$key_file"
+          chmod 600 "$key_file"
+          echo "pubkey=$(ssh-keygen -y -f "$key_file")" >> "$GITHUB_OUTPUT"
+          rm "$key_file"
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # pinned to v3.1.2
@@ -220,6 +264,8 @@ jobs:
 
       - name: Terraform destroy
         working-directory: infra/terraform
+        env:
+          SSH_PUBLIC_KEY: ${{ steps.setup-ssh.outputs.pubkey }}
         run: |
           terraform destroy -auto-approve \
-            -var "ssh_public_key=$VM_SSH_PUBLIC_KEY"
+            -var "ssh_public_key=$SSH_PUBLIC_KEY"

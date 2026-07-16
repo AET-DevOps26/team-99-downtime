@@ -15,5 +15,5 @@ output "ssh_command" {
 
 output "app_host" {
   description = "Host Ansible/Caddy should treat as the public origin (FQDN if set, else IP)."
-  value       = azurerm_public_ip.main.fqdn != null ? azurerm_public_ip.main.fqdn : azurerm_public_ip.main.ip_address
+  value       = coalesce(azurerm_public_ip.main.fqdn, azurerm_public_ip.main.ip_address)
 }

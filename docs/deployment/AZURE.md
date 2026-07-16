@@ -21,7 +21,7 @@ Caddy is the only container with published ports. Everything else talks over the
 internal `team99` network, so the services are not reachable from the internet
 directly.
 
-Live: <https://expenseflow.spaincentral.cloudapp.azure.com>
+Live: <https://expenseflow-app.spaincentral.cloudapp.azure.com>
 
 ## Prerequisites
 
@@ -211,7 +211,7 @@ provisions a Let's Encrypt certificate automatically on first request,
 redirecting `:80` to `:443`.
 
 > `APP_DOMAIN` must be the **bare hostname**. A value like
-> `https://expenseflow.spaincentral.cloudapp.azure.com` is written straight into
+> `https://expenseflow-app.spaincentral.cloudapp.azure.com` is written straight into
 > the Caddyfile as a site address, where the scheme breaks routing and every
 > Better Auth route answers 404.
 
