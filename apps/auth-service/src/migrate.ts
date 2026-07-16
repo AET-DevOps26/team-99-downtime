@@ -27,8 +27,10 @@ const DEMO_NAME = 'Demo User';
 // Use a fixed password when DEMO_USER_PASSWORD is set (stage/demo deployments).
 // Without it the account is locked with a random password — it still gets the
 // fixed UUID so Flyway seed data in other services can reference it, but nobody
-// can log in without deliberately setting the env var.
-const DEMO_PASSWORD = process.env.DEMO_USER_PASSWORD ?? crypto.randomUUID();
+// can log in without deliberately setting the env var. `||` not `??`: the Helm
+// secret delivers an empty string when no password is configured, which must
+// also fall back to the random password.
+const DEMO_PASSWORD = process.env.DEMO_USER_PASSWORD || crypto.randomUUID();
 if (!process.env.DEMO_USER_PASSWORD) {
   console.log(
     'auth-migrate: DEMO_USER_PASSWORD not set — demo account locked with random password.'
