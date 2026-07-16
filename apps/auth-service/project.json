@@ -21,7 +21,7 @@
       "options": {
         "cwd": "apps/auth-service"
       },
-      "command": "mkdir -p ../../reports/apps/auth-service && bun test --reporter junit --reporter-outfile ../../reports/apps/auth-service/junit.xml",
+      "command": "bun -e \"require('fs').mkdirSync('../../reports/apps/auth-service', { recursive: true })\" && bun test --reporter junit --reporter-outfile ../../reports/apps/auth-service/junit.xml",
       "cache": true,
       "outputs": ["{workspaceRoot}/reports/apps/auth-service"]
     }
