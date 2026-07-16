@@ -102,9 +102,11 @@ jobs:
         working-directory: infra/terraform
         env:
           SSH_PUBLIC_KEY: ${{ steps.setup-ssh.outputs.pubkey }}
+          APP_DOMAIN: ${{ vars.APP_DOMAIN }}
         run: |
           terraform apply -auto-approve \
-            -var "ssh_public_key=$SSH_PUBLIC_KEY"
+            -var "ssh_public_key=$SSH_PUBLIC_KEY" \
+            -var "dns_label=${APP_DOMAIN%%.*}"
 
       - name: Get VM host
         id: vm-host
