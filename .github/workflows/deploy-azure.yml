@@ -1,7 +1,8 @@
 name: Deploy to Azure VM
 
-# Triggered automatically on every release if the DEPLOY_AZURE_ENABLED repo
-# variable is set to 'true' (Settings → Secrets and variables → Actions → Variables).
+# Triggered automatically on every release (including bot-created releases via the
+# Continuous Delivery workflow) if the DEPLOY_AZURE_ENABLED repo variable is set to
+# 'true' (Settings → Secrets and variables → Actions → Variables).
 # The workflow_dispatch trigger always runs regardless of that variable.
 #
 # workflow_dispatch inputs:
@@ -17,6 +18,9 @@ name: Deploy to Azure VM
 on:
   release:
     types: [released]
+  workflow_run:
+    workflows: ['Continuous Delivery']
+    types: [completed]
   workflow_dispatch:
     inputs:
       shutdown:
@@ -35,11 +39,12 @@ jobs:
   deploy:
     name: Deploy to Azure VM
     runs-on: ubuntu-latest
-    # On release: gated by the DEPLOY_AZURE_ENABLED repo variable.
+    # On release / workflow_run: gated by the DEPLOY_AZURE_ENABLED repo variable.
     # On workflow_dispatch: runs unless the shutdown flag is set.
     if: >-
       (github.event_name == 'workflow_dispatch' && inputs.shutdown != true) ||
-      (github.event_name == 'release' && vars.DEPLOY_AZURE_ENABLED == 'true')
+      (github.event_name == 'release' && vars.DEPLOY_AZURE_ENABLED == 'true') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && vars.DEPLOY_AZURE_ENABLED == 'true')
     permissions:
       contents: read
       # Lets the VM pull the private GHCR images using this job's GITHUB_TOKEN.
@@ -59,6 +64,14 @@ jobs:
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # pinned to v6
         with:
           persist-credentials: false
+
+      - name: Resolve image tag for workflow_run
+        if: github.event_name == 'workflow_run'
+        run: |
+          TAG=$(gh release view --json tagName -q .tagName)
+          echo "IMAGE_TAG=$TAG" >> "$GITHUB_ENV"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configure SSH key
         run: |

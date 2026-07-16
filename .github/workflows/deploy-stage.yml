@@ -3,6 +3,15 @@ name: Deploy to Stage
 on:
   release:
     types: [released]
+  workflow_run:
+    workflows: ['Continuous Delivery']
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Image tag to deploy (e.g. 0.1.2 or latest)'
+        default: 'latest'
+        type: string
 
 concurrency:
   group: deploy-stage
@@ -12,6 +21,9 @@ jobs:
   deploy-k8s:
     name: Deploy to k8s staging environment
     runs-on: ubuntu-latest
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
     permissions:
       contents: read
     steps:
@@ -20,10 +32,24 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Resolve image tag
+        id: resolve-tag
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "tag=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+          else
+            TAG=$(gh release view --json tagName -q .tagName)
+            echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Deploy to t99-stage
         uses: ./.github/actions/deploy-k8s
         with:
-          version: ${{ github.event.release.tag_name }}
+          version: ${{ steps.resolve-tag.outputs.tag }}
           namespace: t99-stage
           values-file: k8s/helm/t99-app/values.stage.yaml
           environment-url: https://stage.t99.stud.k8s.aet.cit.tum.de
