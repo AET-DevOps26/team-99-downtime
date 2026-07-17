@@ -11,6 +11,8 @@ name: E2E Tests
 # No branches filter: release-triggered Deploy to Stage runs report the tag
 # as head_branch, so filtering on main would silently drop them.
 on:
+  # zizmor: ignore[dangerous-triggers] — we only check out our own main branch and
+  # never run code from the triggering workflow's head.
   workflow_run:
     workflows: ['Deploy to Stage']
     types: [completed]
