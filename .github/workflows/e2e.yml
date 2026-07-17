@@ -1,17 +1,19 @@
 name: E2E Tests
 
 # Playwright suite against the deployed stage environment. Runs after every
-# Continuous Deployment run that actually deployed to stage, plus on demand.
-# Deliberately a separate workflow: a failing e2e run is a visible red run on
-# main but never blocks PRs or the CD pipeline. When the suite fails, stage is
-# rolled back to the revision that was live before the tested deploy, captured
-# before the suite runs (manual runs can opt out via the rollback_on_failure
-# input, e.g. to inspect a broken deploy in place).
+# successful Deploy to Stage run, plus on demand. Deliberately a separate
+# workflow: a failing e2e run is a visible red run on main but never blocks
+# PRs or the deploy pipeline. When the suite fails, stage is rolled back to
+# the revision that was live before the tested deploy, captured before the
+# suite runs (manual runs can opt out via the rollback_on_failure input,
+# e.g. to inspect a broken deploy in place).
+#
+# No branches filter: release-triggered Deploy to Stage runs report the tag
+# as head_branch, so filtering on main would silently drop them.
 on:
   workflow_run:
-    workflows: ['Continuous Deployment']
+    workflows: ['Deploy to Stage']
     types: [completed]
-    branches: [main]
   workflow_dispatch:
     inputs:
       base_url:
@@ -31,12 +33,11 @@ concurrency:
 permissions:
   contents: read
   checks: write # dorny/test-reporter
-  actions: read # read the triggering CD run's jobs
 
 jobs:
   # Runs on BOTH trigger types so it is never skipped — a skipped needed job
-  # would silently skip the e2e job too. CD completes "successfully" even when
-  # no release was cut, so gate on the Deploy to Stage job having succeeded.
+  # would silently skip the e2e job too. Deploy to Stage concludes "skipped"
+  # when the CD run it chains from failed, so gate on an actual success.
   check-deploy:
     name: Check Stage Deploy
     runs-on: ubuntu-latest
@@ -54,28 +55,27 @@ jobs:
       - name: Gate on the triggering deploy
         id: gate
         env:
-          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          # Deploy to Stage has a single job, so the run conclusion is the
+          # deploy job's conclusion.
+          DEPLOY_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             echo "Manual dispatch — running."
             echo "should_run=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # Job *names*, not YAML job ids, are what the API exposes.
-          conclusion=$(gh api --paginate \
-            "repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/jobs" \
-            --jq '.jobs[] | select(.name == "Deploy to Stage") | .conclusion')
-          echo "Deploy to Stage conclusion: ${conclusion:-<job did not run>}"
-          if [ "$conclusion" = "success" ]; then
+          echo "Deploy to Stage conclusion: $DEPLOY_CONCLUSION"
+          if [ "$DEPLOY_CONCLUSION" = "success" ]; then
             echo "should_run=true" >> "$GITHUB_OUTPUT"
           else
             echo "should_run=false" >> "$GITHUB_OUTPUT"
           fi
 
   # Snapshot the release BEFORE the suite runs: which revision is under test
-  # and which revision a rollback should restore. CD and this workflow use
-  # different concurrency groups, so a newer CD run can redeploy stage while
-  # an older suite is still running — the rollback job must not trust
+  # and which revision a rollback should restore. Deploys and this workflow
+  # use different concurrency groups, so a newer deploy can land on stage
+  # while an older suite is still running — the rollback job must not trust
   # "whatever is previous" at rollback time.
   capture-release:
     name: Capture Stage Release
@@ -186,7 +186,7 @@ jobs:
           fail-on-empty: false
 
   # A failing suite against a fresh deploy means stage is functionally broken
-  # even though the Helm release itself went healthy (cd.yml's
+  # even though the Helm release itself went healthy (the deploy-k8s action's
   # --rollback-on-failure only covers deploys that never became healthy).
   # Gated on the Playwright step itself — not the job — and rolls back to the
   # exact revision captured before the suite ran, after verifying stage still
@@ -221,7 +221,7 @@ jobs:
           DEPLOYED_REVISION: ${{ needs.capture-release.outputs.deployed_revision }}
           ROLLBACK_REVISION: ${{ needs.capture-release.outputs.rollback_revision }}
         run: |
-          # A newer CD run may have redeployed stage while the suite ran; its
+          # A newer deploy may have landed on stage while the suite ran; its
           # own e2e run judges that release — never roll back a release this
           # run did not test. (Best effort: helm has no compare-and-swap, so a
           # deploy landing between this check and the rollback still races;
