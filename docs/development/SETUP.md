@@ -184,7 +184,7 @@ bunx nx serve genai-service   # uvicorn --reload, http://localhost:8000
 bunx nx test genai-service    # uv run pytest
 ```
 
-Endpoints `POST /api/genai/analyze` and `GET /api/genai/me` require a Bearer JWT; `GET /health` is public.
+The bearer-protected API exposes `POST /api/genai/categorize`, `POST /api/genai/parse-file`, `POST /api/genai/summarize`, `GET /api/genai/summarize/latest`, and `GET /api/genai/me`. `GET /health` is public.
 
 ## Git Hooks
 

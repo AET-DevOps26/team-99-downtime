@@ -7,6 +7,13 @@ Personal finance app — track expenses, manage budgets, and get spending alerts
 ## Quick Start
 
 ```sh
+cp .env.example .env
+
+# Generate these values and paste them into the matching entries in .env
+openssl rand -base64 32 # BETTER_AUTH_SECRET
+openssl rand -base64 24 # GRAFANA_ADMIN_PASSWORD
+
+docker compose config --quiet
 docker compose up -d --build
 ```
 

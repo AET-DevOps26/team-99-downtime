@@ -46,11 +46,20 @@ k8s/
      Tags: ghcr.io/aet-devops26/team-99-downtime/t99-{service}:{semver} + :latest
   2. Cut versioned release via nx release (conventional commits gate)
   3. Attest build provenance (GitHub Attestations)
-  4. helm upgrade --install t99 → t99-stage (automatic)
+
+[deploy-stage.yml — after successful cd.yml, release, or manual dispatch]
+  → helm upgrade --install t99 → t99-stage
+
+[e2e.yml — after successful deploy-stage.yml, or manual dispatch]
+  → run Playwright against stage; roll back the tested release on failure
 
 [deploy-prod.yml — manual workflow_dispatch]
   Input: version tag (e.g. 0.3.1)
   → helm upgrade --install t99 → t99-prod
+
+[deploy-azure.yml — optional Azure VM path]
+  Manual workflow_dispatch always supported
+  Automatic release / successful cd.yml deployment only when DEPLOY_AZURE_ENABLED=true
 ```
 
 All Helm invocations use `--wait --timeout 10m --rollback-on-failure`.
@@ -76,7 +85,7 @@ To bypass a prompt non-interactively, pass the value as a flag or set it in `.en
 bun deploy:k8s --llm-api-key=sk-... --github-oauth-client-id=... --github-oauth-client-secret=...
 ```
 
-See [SCRIPTS.md](../development/SCRIPTS.md#scriptsdeploy) for the full input reference.
+See [SCRIPTS.md](../development/SCRIPTS.md#scriptsdeploymaints) for the full input reference.
 
 ## Ingress
 
@@ -196,13 +205,15 @@ All secrets carry `helm.sh/resource-policy: keep` — they survive `helm uninsta
 
 Required GitHub Actions secrets:
 
-| Secret                            | Used by                                      |
-| --------------------------------- | -------------------------------------------- |
-| `KUBECONFIG_DATA`                 | base64-encoded kubeconfig for cluster access |
-| `GITHUB_OAUTH_CLIENT_ID`          | Stage OAuth App client ID                    |
-| `GITHUB_OAUTH_CLIENT_SECRET`      | Stage OAuth App client secret                |
-| `GITHUB_OAUTH_CLIENT_ID_PROD`     | Prod OAuth App client ID                     |
-| `GITHUB_OAUTH_CLIENT_SECRET_PROD` | Prod OAuth App client secret                 |
+| Secret                             | Used by                                                |
+| ---------------------------------- | ------------------------------------------------------ |
+| `KUBECONFIG_DATA`                  | Base64-encoded kubeconfig for deploy and E2E workflows |
+| `STUDIO_GITHUB_CLIENT_ID`          | Stage OAuth App client ID                              |
+| `STUDIO_GITHUB_CLIENT_SECRET`      | Stage OAuth App client secret                          |
+| `STUDIO_GITHUB_CLIENT_ID_PROD`     | Production OAuth App client ID                         |
+| `STUDIO_GITHUB_CLIENT_SECRET_PROD` | Production OAuth App client secret                     |
+| `LLM_API_KEY`                      | GenAI service in stage and production                  |
+| `RESEND_API_KEY`                   | Alertmanager email delivery in stage and production    |
 
 ## Bootstrap (First-Time Setup)
 
@@ -212,7 +223,8 @@ Required GitHub Actions secrets:
 4. Create two GitHub OAuth Apps (one for stage, one for prod) with callback URLs:
    - Stage: `https://studio.stage.t99.stud.k8s.aet.cit.tum.de/oauth2/callback`
    - Prod: `https://studio.t99.stud.k8s.aet.cit.tum.de/oauth2/callback`
-5. Add the four `STUDIO_GITHUB_*` secrets to GitHub Actions
-6. Push to `main` — the CD pipeline handles the rest
+5. Add `STUDIO_GITHUB_CLIENT_ID` and `STUDIO_GITHUB_CLIENT_SECRET` for stage, plus their `_PROD` variants for production
+6. Add `LLM_API_KEY` and `RESEND_API_KEY`
+7. Push to `main` — `cd.yml` builds the release, `deploy-stage.yml` deploys it, and `e2e.yml` validates stage
 
 For local deploys: `bun deploy:k8s` (prompts for OAuth credentials on first run).

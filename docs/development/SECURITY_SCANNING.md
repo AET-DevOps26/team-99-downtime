@@ -1,6 +1,6 @@
 # Security Scanning
 
-Security scanning runs automatically in the `security` workflow on every pull request and nightly on `main`. Findings appear in the GitHub **Security → Code Scanning** tab and as inline annotations on PR diffs.
+Security scanning runs in [`security-pr.yml`](../../.github/workflows/security-pr.yml) on every pull request and in [`security-nightly.yml`](../../.github/workflows/security-nightly.yml) nightly and on manual dispatch. Findings appear in the GitHub **Security → Code Scanning** tab and as inline annotations on PR diffs.
 
 ## Tools
 
@@ -113,12 +113,12 @@ Replace `v1.2.3` with the actual release tag. The canonical digest is also liste
 
 ## Trigger strategy
 
-| Tier     | Jobs                                         | Triggers     | Merge behaviour                                                                                                                |
-| -------- | -------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| 1 — fast | `spelling`, `workflows`, `containers`, `iac` | PR + nightly | Block on any finding                                                                                                           |
-| 2 — deep | `secrets`, `sast`, `dependencies`            | PR + nightly | Report only (high/critical findings fail the job but `continue-on-error: true` prevents blocking merge during initial rollout) |
+| Tier     | Jobs                                         | Triggers     | Merge behaviour                                                     |
+| -------- | -------------------------------------------- | ------------ | ------------------------------------------------------------------- |
+| 1 — fast | `spelling`, `workflows`, `containers`, `iac` | PR + nightly | Block on any finding                                                |
+| 2 — deep | `secrets`, `sast`, `dependencies`            | PR + nightly | Report only (`continue-on-error: true` keeps findings non-blocking) |
 
-Once the initial triage of pre-existing findings is complete, remove `continue-on-error: true` from the Tier 2 jobs in [security.yml](../../.github/workflows/security.yml) to make them blocking.
+The current blocking and report-only settings are defined separately in [`security-pr.yml`](../../.github/workflows/security-pr.yml) and [`security-nightly.yml`](../../.github/workflows/security-nightly.yml).
 
 ## Where findings appear
 
@@ -217,7 +217,7 @@ Then reference it in the action via `--baseline-path .gitleaks-baseline.json`.
 
 ### Trivy
 
-Add CVE IDs or file paths to [`.trivyignore`](../../.trivyignore) (create if it doesn't exist):
+Add CVE IDs or file paths to an optional `.trivyignore` file at the repository root. Create it only when a real suppression is required:
 
 ```
 # Accepted risk: no fix available upstream
@@ -272,13 +272,3 @@ trivy fs .
 # IaC scan (Docker image, ~1 GB)
 docker run --rm -v "$(pwd):/path" checkmarx/kics:latest scan -p /path
 ```
-
-## First-run rollout procedure
-
-When `security.yml` is merged for the first time:
-
-1. All Tier 2 jobs have `continue-on-error: true` — the workflow completes and SARIF is uploaded even with findings.
-2. GitHub Code Scanning is seeded with the current state of the repo as the baseline. Pre-existing findings appear in the Security tab but will **not** block future PRs — only new findings introduced by a PR are flagged on that PR.
-3. Triage the Security tab: dismiss accepted risks with a justification note (e.g. "test environment only", "no upstream fix available").
-4. For GitLeaks: if there are many historical false positives, generate a baseline file (see suppression section above) and commit it.
-5. Once triage is complete, remove `continue-on-error: true` from the Tier 2 jobs in `security.yml` and open a PR to make them blocking.
