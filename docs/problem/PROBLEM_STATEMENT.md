@@ -26,7 +26,7 @@ High-level capabilities the app provides:
 | ------------------------------ | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
 | **Transaction categorization** | Maps strings ( `DB VERTRIEB`) or free-text input (`"12€ kebab for lunch"`) to a category from the user's budget list. | Eliminates the entry overhead and categorisation. |
 | **Natural-language parsing**   | Extracts amount, merchant, and category from informal text.                                                           | Lets users log expenses by typing one sentence.   |
-| **Weekly summary**             | Produces a narrative like of the spendings _"You spent 23% more on dining this week, mostly on weekends."_            | Provides trends and statistics                    |
+| **Weekly summary**             | Produces a narrative such as _"You spent 23% more on dining this week, mostly on weekends."_                          | Provides trends and statistics                    |
 
 ## 4. Scenarios & Workflows
 

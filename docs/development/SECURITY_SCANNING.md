@@ -217,7 +217,7 @@ Then reference it in the action via `--baseline-path .gitleaks-baseline.json`.
 
 ### Trivy
 
-Add CVE IDs or file paths to an optional `.trivyignore` file at the repository root. Create it only when a real suppression is required:
+Add finding IDs (such as CVE, misconfiguration, or secret rule IDs) to an optional `.trivyignore` file at the repository root. Create it only when a real suppression is required:
 
 ```
 # Accepted risk: no fix available upstream
