@@ -14,13 +14,15 @@ User creates categories → transactions are aggregated per category → budget 
 
 ## API
 
-| Method | Endpoint               | Purpose                         |
-| ------ | ---------------------- | ------------------------------- |
-| POST   | `/api/categories`      | Create a category               |
-| GET    | `/api/categories`      | List categories                 |
-| PUT    | `/api/categories/{id}` | Update a category               |
-| DELETE | `/api/categories/{id}` | Delete a category               |
-| GET    | `/api/budgets/status`  | Get budget usage/status summary |
+| Method | Endpoint                       | Purpose                          |
+| ------ | ------------------------------ | -------------------------------- |
+| GET    | `/api/budgets/categories`      | List categories                  |
+| POST   | `/api/budgets/categories`      | Create a category                |
+| PATCH  | `/api/budgets/categories/{id}` | Update a category                |
+| DELETE | `/api/budgets/categories/{id}` | Delete a category                |
+| GET    | `/api/budgets/status`          | Get budget usage/status summary  |
+| POST   | `/api/budgets/threshold-check` | Evaluate budget alert thresholds |
+| GET    | `/api/budgets/me`              | Probe the authenticated user     |
 
 ## Class diagram
 

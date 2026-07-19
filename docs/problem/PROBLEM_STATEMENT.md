@@ -1,4 +1,4 @@
-# ExpenseFlow 
+# ExpenseFlow
 
 ## 1. Problem Statement
 
@@ -13,7 +13,7 @@ Individuals and small households who want a all-in-one option for tracking expen
 High-level capabilities the app provides:
 
 - **Bank Transaction Import:** Upload a CSV export from a bank or drop in a free-text description; the system ingests both.
-- **AI-Powered Categorization:** A LangChain-based service classifies each transaction (e.g. `LIEFERANDO MUNICH` → *Dining*) without manual tagging.
+- **AI-Powered Categorization:** A LangChain-based service classifies each transaction (e.g. `LIEFERANDO MUNICH` → _Dining_) without manual tagging.
 - **Budget Management:** Users define monthly limits per category; the app tracks live spend against those limits.
 - **Spending Dashboard:** Visual breakdown of spending per category, remaining budget, and historical trends.
 - **Weekly AI Summary:** Plain-language narrative of the week's spending behavior and notable shifts.
@@ -22,11 +22,11 @@ High-level capabilities the app provides:
 
 ## 3. GenAI Integration
 
-| Capability | What the LLM does | Why it matters |
-|---|---|---|
+| Capability                     | What the LLM does                                                                                                     | Why it matters                                    |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
 | **Transaction categorization** | Maps strings ( `DB VERTRIEB`) or free-text input (`"12€ kebab for lunch"`) to a category from the user's budget list. | Eliminates the entry overhead and categorisation. |
-| **Natural-language parsing** | Extracts amount, merchant, and category from informal text. | Lets users log expenses by typing one sentence. |
-| **Weekly summary** | Produces a narrative like of the spendings *"You spent 23% more on dining this week, mostly on weekends."* | Provides trends and statistics|
+| **Natural-language parsing**   | Extracts amount, merchant, and category from informal text.                                                           | Lets users log expenses by typing one sentence.   |
+| **Weekly summary**             | Produces a narrative such as _"You spent 23% more on dining this week, mostly on weekends."_                          | Provides trends and statistics                    |
 
 ## 4. Scenarios & Workflows
 
@@ -54,10 +54,9 @@ High-level capabilities the app provides:
 
 7. Users can also access a centralized transaction history view containing all imported expenses in one place.
 
-
 ### Scenario B - Threshold Alert
 
-1. User’s *Dining* budget reaches €165 / €200 after a new transaction.
+1. User’s _Dining_ budget reaches €165 / €200 after a new transaction.
 
 2. The Budget Service detects that category usage exceeded the 80% threshold.
 
@@ -65,7 +64,6 @@ High-level capabilities the app provides:
 
 4. The user receives an in-app notification:
    > "You've used 82% of your Dining budget — €35 remaining for this month."
-
 
 ### Scenario C - Weekly Spending Insight
 
@@ -76,16 +74,16 @@ High-level capabilities the app provides:
    - spending totals from the previous week.
 
 3. The LLM generates a behavioral spending summary:
+
    > "Dining expenses increased by 23% compared to last week, primarily during weekends. Grocery spending decreased by €40."
 
 4. The summary is displayed on the dashboard and optionally pushed as a notification.
 
-
 ### Scenario D - User Correction Feedback Loop
 
-1. The AI Service incorrectly categorizes a pharmacy transaction as *Groceries*.
+1. The AI Service incorrectly categorizes a pharmacy transaction as _Groceries_.
 
-2. The user manually updates the category to *Health*.
+2. The user manually updates the category to _Health_.
 
 3. The correction is stored in the system.
 
@@ -93,7 +91,9 @@ High-level capabilities the app provides:
 
 ## 5. Preliminary Architecture — 3 Microservices
 
-> Preliminary architecture focused on modularity and separation of concerns.
+> This section records the initial three-service design. See the
+> [Service Overview](../architecture/SERVICE_OVERVIEW.md) for the implemented
+> six-service architecture.
 
 ### 1. Transaction Service
 
@@ -104,18 +104,23 @@ Handles transaction import, normalization, storage, and history management.
 Import CSV/text → send to AI Service for categorization → store transactions → expose history and filters.
 
 **Features:**
+
 - Bank CSV imports
 - Free-text expense parsing
 - Transaction history
 - Filtering and manual edits
 
 **API:**
+
 - `POST /api/transactions/import`
+- `POST /api/transactions/free-text`
 - `POST /api/transactions`
 - `GET /api/transactions`
-- `GET /api/transactions/{id}`
-- `PATCH /api/transactions/{id}/category`
+- `PATCH /api/transactions/{id}`
 - `DELETE /api/transactions/{id}`
+- `GET /api/transactions/spend`
+- `GET /api/transactions/weekly-report`
+- `GET /api/transactions/me`
 
 ---
 
@@ -128,16 +133,20 @@ Manages categories, spending limits, and budget monitoring.
 User creates categories → transactions are aggregated per category → budget usage is calculated → alerts are triggered at thresholds.
 
 **Features:**
+
 - Budget tracking
 - Threshold alerts (80% / 100%)
 - Spend analytics per category
 
 **API:**
-- `POST /api/categories`
-- `GET /api/categories`
-- `PUT /api/categories/{id}`
-- `DELETE /api/categories/{id}`
+
+- `POST /api/budgets/categories`
+- `GET /api/budgets/categories`
+- `PATCH /api/budgets/categories/{id}`
+- `DELETE /api/budgets/categories/{id}`
 - `GET /api/budgets/status`
+- `POST /api/budgets/threshold-check`
+- `GET /api/budgets/me`
 
 ---
 
@@ -150,12 +159,17 @@ Handles transaction categorization and financial summaries using LLM pipelines.
 Receive transaction data → classify/summarize → return structured output.
 
 **Features:**
+
 - Transaction categorization
 - Free-text parsing
 - Weekly summaries
 - User correction feedback loop
 
 **API:**
-- `POST /api/ai/categorize`
-- `POST /api/ai/summarize`
-- `GET /api/ai/summarize/latest`
+
+- `POST /api/genai/categorize`
+- `POST /api/genai/parse-file`
+- `POST /api/genai/summarize`
+- `GET /api/genai/summarize/latest`
+- `GET /api/genai/me`
+- `GET /health`

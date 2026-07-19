@@ -32,7 +32,8 @@ Spring / FastAPI / Better Auth code  ──►  openapi/<service>.json  ──�
 - Both the specs (`openapi/`) and the generated modules
   (`apps/client/src/shared/api/generated/`) are **committed**, so reviewers see
   the contract change in the diff — and **CI fails the PR if they're stale**
-  (the `openapi-drift` job in `testing.yml` regenerates everything and diffs).
+  (the `openapi-drift` job in [`ci.yml`](../../.github/workflows/ci.yml)
+  regenerates everything and diffs).
 
 ---
 
@@ -138,7 +139,7 @@ endpoints — get a token per [`AUTHENTICATION.md`](AUTHENTICATION.md).
   in-process and re-roots the paths under `/api/auth`.
 - **Codegen + drift check:** [`scripts/generate-openapi.ts`](../../scripts/generate-openapi.ts)
   canonicalises all specs and emits the generated modules; the `openapi-drift`
-  job in [`testing.yml`](../../.github/workflows/testing.yml) reruns the whole
+  job in [`ci.yml`](../../.github/workflows/ci.yml) reruns the whole
   pipeline and fails on any uncommitted difference.
 - **Aggregated UI:** the `swagger-ui` container in
   [`docker-compose.yaml`](../../docker-compose.yaml) is configured with every

@@ -7,6 +7,13 @@ Personal finance app — track expenses, manage budgets, and get spending alerts
 ## Quick Start
 
 ```sh
+cp .env.example .env
+
+# Generate these values and paste them into the matching entries in .env
+openssl rand -base64 32 # BETTER_AUTH_SECRET
+openssl rand -base64 24 # GRAFANA_ADMIN_PASSWORD
+
+docker compose config --quiet
 docker compose up -d --build
 ```
 
@@ -46,11 +53,11 @@ Every push to `main` is automatically deployed to **stage**. Promote to **prod**
 
 All three members contributed across the full stack throughout the project. Responsibilities rotated heavily — the areas below reflect where each person took the lead, not exclusive ownership.
 
-| Member                                                              | Primary focus                                                                                                                     |
-| ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Daniel Günther ([@danielgnth](https://github.com/danielgnth))       | Monorepo tooling (NX), CI/CD pipelines, Kubernetes / Helm infrastructure                                                          |
-| Stefania Mocan ([@stefaniamocan](https://github.com/stefaniamocan)) | Azure VM deployment (Terraform + Ansible), Docker Compose stack, OpenAPI generation, architecture docs                            |
-| Bilgehan Savgu ([@bilgehansavgu](https://github.com/bilgehansavgu)) | Java microservices foundation, authentication (Better Auth), React client (UI/shadcn), budget feature, Caddy setup, GenAI service |
+| Member                                                              | Primary focus                                                                                                                                                    |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Daniel Günther ([@danielgnth](https://github.com/danielgnth))       | Monorepo tooling (NX), CI/CD pipelines, Kubernetes / Helm infrastructure                                                                                         |
+| Stefania Mocan ([@stefaniamocan](https://github.com/stefaniamocan)) | Azure VM deployment (Terraform + Ansible), Docker Compose stack, OpenAPI generation, architecture docs                                                           |
+| Bilgehan Savgu ([@bilgehansavgu](https://github.com/bilgehansavgu)) | Playwright end-to-end testing, Java microservices foundation, authentication (Better Auth), React client (UI/shadcn), budget feature, Caddy setup, GenAI service |
 
 ## Docs
 

@@ -18,7 +18,7 @@ bun run openapi   # the whole pipeline, one command
 4. Canonicalises every spec in `openapi/` (recursively sorted keys, no `servers` block, 2-space indent) so output is byte-identical across machines — the CI drift check depends on this
 5. Runs `openapi-typescript` over each spec to emit the typed client modules
 
-The `openapi-drift` job in `testing.yml` runs the same `bun run openapi` on every PR and fails on any uncommitted difference. See [API_CLIENTS.md](API_CLIENTS.md) for the full picture.
+The `openapi-drift` job in [`ci.yml`](../../.github/workflows/ci.yml) runs the same `bun run openapi` on every PR and fails on any uncommitted difference. See [API_CLIENTS.md](API_CLIENTS.md) for the full picture.
 
 **Prerequisites:**
 
