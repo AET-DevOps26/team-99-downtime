@@ -104,7 +104,7 @@ genaiService:
 swaggerUi:
   image:
     repository: swaggerapi/swagger-ui
-    tag: v5.17.14
+    tag: v5.32.14
   port: 8080
   resources:
     requests:
@@ -142,7 +142,7 @@ drizzleStudio:
 monitoring:
   enabled: true
   prometheus:
-    image: prom/prometheus:v3.5.5
+    image: prom/prometheus:v3.14.0
     retention: 7d
     storage: 5Gi
     storageClass: ''
@@ -165,7 +165,7 @@ monitoring:
         memory: 192Mi
         cpu: 50m
   alertmanager:
-    image: prom/alertmanager:v0.28.1
+    image: prom/alertmanager:v0.34.0
     storage: 1Gi
     storageClass: ''
     resources:

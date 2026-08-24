@@ -20,7 +20,7 @@ services:
   # Single-origin dev gateway : browser hits http://localhost:9099,
   # Caddy routes by path to each service. Config in ./Caddyfile.
   caddy:
-    image: caddy:2-alpine
+    image: caddy:2-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
     restart: unless-stopped
     ports:
       - '9099:80'
@@ -32,7 +32,7 @@ services:
       - swagger-ui
     networks: [team99]
   swagger-ui:
-    image: swaggerapi/swagger-ui:v5.17.14
+    image: swaggerapi/swagger-ui:v5.32.14@sha256:3d93169968848d371a6a56ca1ab18b47a8906ba461b8eba0688866354f5431d5
     restart: unless-stopped
     environment:
       BASE_URL: /docs
@@ -47,7 +47,7 @@ services:
     networks: [team99]
 
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16-alpine@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-devuser}
@@ -69,7 +69,7 @@ services:
   # Creates missing per-service databases, then exits (init scripts alone only
   # run on a fresh volume).
   db-init:
-    image: postgres:16-alpine
+    image: postgres:16-alpine@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685
     restart: 'no'
     depends_on:
       postgres:
@@ -85,7 +85,7 @@ services:
     networks: [team99]
 
   drizzle-studio:
-    image: ghcr.io/drizzle-team/gateway:latest
+    image: ghcr.io/drizzle-team/gateway:latest@sha256:d7422d0593e3fee60a4755739a931717bc9fb22a91fc8254ed4dc9f7d9597388
     restart: unless-stopped
     environment:
       STORE_PATH: /app
@@ -254,7 +254,7 @@ services:
   # Observability: metrics (Prometheus) + logs (Loki) in Grafana, alerts mailed
   # by Alertmanager. Config in ./infra — see docs/deployment/OBSERVABILITY.md.
   prometheus:
-    image: prom/prometheus:v3.5.5
+    image: prom/prometheus:v3.14.0@sha256:5ce7540c3c00ef4ab0c9d2c995c6a5b9c421f44b4a115d97a2c7af3b1c21cbb0
     restart: unless-stopped
     command:
       - --config.file=/etc/prometheus/prometheus.yml
@@ -272,7 +272,7 @@ services:
     networks: [team99]
 
   alertmanager:
-    image: prom/alertmanager:v0.28.1
+    image: prom/alertmanager:v0.34.0@sha256:690c7b525f4367aa91f73e2f91c632206d32e97c6384bdbf2fb7a861b420340d
     restart: unless-stopped
     command:
       - --config.file=/etc/alertmanager/alertmanager.yml
@@ -289,7 +289,7 @@ services:
   # Capture-only SMTP: holds the alert mails instead of delivering them, so the
   # stack needs no real SMTP credentials.
   mailhog:
-    image: mailhog/mailhog:v1.0.1
+    image: mailhog/mailhog:v1.0.1@sha256:8d76a3d4ffa32a3661311944007a415332c4bb855657f4f6c57996405c009bea
     restart: unless-stopped
     ports:
       - '8025:8025'

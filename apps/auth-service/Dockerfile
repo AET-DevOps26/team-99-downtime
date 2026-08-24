@@ -1,5 +1,5 @@
 #dev
-FROM oven/bun:1-alpine AS dev
+FROM oven/bun:1-alpine@sha256:07235578f79ef8c6f97d94aee7938e76f5cdba5f21ae5dbfdd3d3d38058437eb AS dev
 RUN apk add --no-cache openjdk21-jre-headless
 ENV JAVA_HOME=/usr/lib/jvm/default-jvm \
     PATH="/usr/lib/jvm/default-jvm/bin:$PATH"
@@ -12,7 +12,7 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=10 \
 CMD ["sh", "-c", "bun install --frozen-lockfile && bun nx serve auth-service"]
 
 #prod
-FROM oven/bun:1-alpine AS prod
+FROM oven/bun:1-alpine@sha256:07235578f79ef8c6f97d94aee7938e76f5cdba5f21ae5dbfdd3d3d38058437eb AS prod
 WORKDIR /app
 COPY package.json bun.lock ./
 # --ignore-scripts skips the root `prepare: husky` hook (husky is a devDependency
